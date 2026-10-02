@@ -1,0 +1,28 @@
+{
+  "audit": "EasyList/EasyPrivacy unrestricted anchored-host overlap",
+  "retrieved_at_utc": "2026-10-02T09:31:45+00:00",
+  "method": "Remove only candidate ||host^$third-party rules covered by an upstream unrestricted ||domain^ block. Do not add rules. Path-specific, resource-limited, site-limited, and exception filters are outside scope. Static audit only.",
+  "sources": {
+    "EasyList": {
+      "url": "https://easylist.to/easylist/easylist.txt",
+      "sha256": "371d70a9bd700f23fa4740ad81ea4e003cb7d48cdcb48f977f6ba3fea5349a08",
+      "bytes": 2075457
+    },
+    "EasyPrivacy": {
+      "url": "https://easylist.to/easylist/easyprivacy.txt",
+      "sha256": "fa565e0d5fbea0d2d7ce0ae83f0a83001b27542a766eee766059f34d84c2fd23",
+      "bytes": 1507228
+    }
+  },
+  "removed_count": {
+    "ad.txt": 0,
+    "tracking.txt": 0,
+    "strict.txt": 0
+  },
+  "removed_rules": {
+    "ad.txt": [],
+    "tracking.txt": [],
+    "strict.txt": []
+  },
+  "status": "REVIEW_REQUIRED; no browser regression or auto-publication"
+}
