@@ -1,0 +1,11 @@
+{
+  "schema": "adblock-promotion-evidence/v1",
+  "candidate_sha256": {
+    "ad.txt": "c29b03935b83761979db29882ea000e5b2e773a53f5bca8e32af28ddd02167ab",
+    "tracking.txt": "a1f301f03d59789b40508d42f56b25b0ecca7619b09d066c4aff301d6ed17b2b",
+    "strict.txt": "61dc17ca74f6b7fcf5ce0bfadeed057cae5d5fa1e369d07f74f9d2836dc19117"
+  },
+  "assessments": [],
+  "status": "UNVERIFIED",
+  "note": "No per-rule source, overlap, regression, canary, or rollback evidence has been recorded. This manifest intentionally blocks promotion."
+}
