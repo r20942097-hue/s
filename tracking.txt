@@ -1,0 +1,23 @@
+[Adblock Plus 2.0]
+! Title: Universal Web Tracking Filter (Optional)
+! Version: 20261002.1
+! Expires: 5 days
+! Homepage: https://github.com/r20942097-hue/s
+! Subscription: https://raw.githubusercontent.com/r20942097-hue/s/main/tracking.txt
+! Description: Optional third-party analytics and session-measurement blocking.
+! Policy: Network blocking only; rules target third-party requests.
+! This list can disable analytics, feedback widgets, or embedded site features.
+! Use only if you accept that tradeoff; disable this list first when troubleshooting.
+! No cosmetic, cookie-banner, anti-adblock, paywall, or URL-rewrite rules.
+! License: CC0-1.0
+!
+! Cross-site analytics and measurement
+||google-analytics.com^$third-party
+||analytics.google.com^$third-party
+||scorecardresearch.com^$third-party
+||quantserve.com^$third-party
+||hotjar.com^$third-party
+||fullstory.com^$third-party
+||mixpanel.com^$third-party
+||amplitude.com^$third-party
+||clarity.ms^$third-party
