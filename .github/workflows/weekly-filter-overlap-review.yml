@@ -1,0 +1,48 @@
+name: Weekly filter overlap review
+
+on:
+  schedule:
+    - cron: '17 4 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  overlap-review:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Run tests and refresh overlap evidence
+        run: |
+          python -m unittest discover -s v2/scripts -p 'test_*.py'
+          python v2/scripts/refresh_upstream_overlap.py
+          python v2/scripts/validate_filters.py
+      - name: Open review pull request when the audit changes files
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if git diff --quiet -- v2; then
+            echo 'No filter or evidence changes.'
+            exit 0
+          fi
+          open_pr=$(gh pr list --state open --base main --json number --jq '.[0].number // empty')
+          if [ -n "$open_pr" ]; then
+            echo "Open review PR #$open_pr already exists; leaving new changes for the next run."
+            exit 0
+          fi
+          branch="automation/filter-overlap-${GITHUB_RUN_ID}"
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git checkout -b "$branch"
+          git add v2/ad.txt v2/tracking.txt v2/strict.txt v2/evidence/current.json v2/evidence/overlap-audit-latest.json
+          git commit -m 'Review weekly EasyList and EasyPrivacy overlap'
+          git push origin "$branch"
+          gh pr create --base main --head "$branch" \
+            --title 'Weekly filter overlap review' \
+            --body 'Automated static overlap findings only. Review the evidence and run browser regression before any stable promotion. This workflow does not add rules or publish directly to stable lists.'
