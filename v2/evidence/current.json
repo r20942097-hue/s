@@ -1,0 +1,11 @@
+{
+  "schema": "adblock-promotion-evidence/v1",
+  "candidate_sha256": {
+    "ad.txt": "71d2161facd7578538940259b3137bd6dca78ed630fe394315d822cc4100c1ba",
+    "tracking.txt": "cf50825f879b923328254e5b086ed267535a9ca904a8d81e104db33c56501a16",
+    "strict.txt": "33abb4184af1bbf114599f73519436df7cb20fd67737f3a54be8b8f062a19f90"
+  },
+  "assessments": [],
+  "status": "UNVERIFIED",
+  "note": "Weekly EasyList/EasyPrivacy broad-host overlap review only; see overlap-audit-latest.json. Retained-rule provenance, full-list overlap, browser regression, canary, and rollback remain unverified."
+}
