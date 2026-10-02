@@ -1,16 +1,17 @@
 [Adblock Plus 2.0]
-! Title: Universal Web Tracking Filter v2 (Optional)
-! Version: 20261002.1
+! Title: Universal Web Tracking Filter v2 (Global Optional)
+! Version: 20261002.2
 ! Expires: 5 days
 ! Homepage: https://github.com/r20942097-hue/s
 ! Subscription: https://raw.githubusercontent.com/r20942097-hue/s/main/v2/tracking.txt
-! Description: Optional third-party analytics, session replay, telemetry, and measurement blocking.
+! Description: Global third-party analytics, session replay, telemetry, RUM, and advertising-measurement supplement.
 ! Policy: Third-party network blocking only. This list may disable analytics, feedback, or measurement features.
 ! Compatibility: uBlock Origin / AdGuard / ABP-compatible syntax where supported.
-! Sources reviewed: EasyPrivacy policy and AdGuard Tracking Protection sources.
+! Last reviewed: 2026-10-02
+! Sources reviewed: EasyPrivacy, AdGuard Tracking Protection, uBlock Origin privacy filters.
 ! License: GPL-3.0-only
 !
-! General analytics / measurement
+! Analytics / session replay / RUM
 ||google-analytics.com^$third-party
 ||analytics.google.com^$third-party
 ||scorecardresearch.com^$third-party
@@ -22,26 +23,36 @@
 ||clarity.ms^$third-party
 ||mouseflow.com^$third-party
 ||luckyorange.com^$third-party
+||luckyorange.net^$third-party
 ||heapanalytics.com^$third-party
+||heatmap.com^$third-party
+||contentsquare.net^$third-party
+||logrocket.com^$third-party
+||logrocket.io^$third-party
+||smartlook.com^$third-party
+||crazyegg.com^$third-party
+||matomo.cloud^$third-party
 ||segment.io^$third-party
 ||segment.com^$third-party
+||mparticle.com^$third-party
 ||nr-data.net^$third-party
 ||newrelic.com^$third-party
 ||sentry.io^$third-party
-||yandexmetrica.com^$third-party
-||telemetrydeck.com^$third-party
+||sentry-cdn.com^$third-party
+||browser-intake-datadoghq.com^$third-party
+||cloudflareinsights.com^$third-party
+||quantummetric.com^$third-party
+||crashlytics.com^$third-party
 ||rudderstack.com^$third-party
-||adbeacon.com^$third-party
-||mirabelanalytics.com^$third-party
-||heatmap.com^$third-party
+||yandexmetrica.com^$third-party
 !
-! Advertising-platform measurement endpoints
+! Advertising-platform measurement
 ||bat.bing.com^$third-party
 ||analytics.tiktok.com^$third-party
 ||tr.snapchat.com^$third-party
 ||px.ads.linkedin.com^$third-party
 ||static.ads-twitter.com^$third-party
 !
-! Japanese measurement / tracker endpoints with ad-tech linkage
+! Regional / ad-tech measurement
 ||beacon.geniee.jp^$third-party
 ||genieedmp.com^$third-party
