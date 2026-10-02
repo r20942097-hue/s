@@ -1,6 +1,6 @@
 [Adblock Plus 2.0]
 ! Title: Universal Web Ad Filter v2 (Global Balanced)
-! Version: 20261002.2
+! Version: 20261002.4
 ! Expires: 5 days
 ! Homepage: https://github.com/r20942097-hue/s
 ! Subscription: https://raw.githubusercontent.com/r20942097-hue/s/main/v2/ad.txt
@@ -14,55 +14,27 @@
 ! Global advertising / programmatic
 ||doubleclick.net^$third-party
 ||googlesyndication.com^$third-party
-||googleadservices.com^$third-party
 ||adservice.google.com^$third-party
-||partner.googleadservices.com^$third-party
 ||adnxs.com^$third-party
-||criteo.com^$third-party
-||criteo.net^$third-party
-||taboola.com^$third-party
-||outbrain.com^$third-party
 ||rubiconproject.com^$third-party
 ||openx.net^$third-party
 ||pubmatic.com^$third-party
-||adsrvr.org^$third-party
 ||smartadserver.com^$third-party
 ||casalemedia.com^$third-party
-||sharethrough.com^$third-party
-||yieldmo.com^$third-party
 ||adform.net^$third-party
 ||teads.tv^$third-party
-||triplelift.com^$third-party
-||33across.com^$third-party
 ||indexww.com^$third-party
-||sovrn.com^$third-party
-||lijit.com^$third-party
 ||contextweb.com^$third-party
 ||bidswitch.net^$third-party
-||rtbhouse.com^$third-party
-||gumgum.com^$third-party
 ||yieldlab.net^$third-party
 ||amazon-adsystem.com^$third-party
-||media.net^$third-party
-||adroll.com^$third-party
-||doubleverify.com^$third-party
-||onetag-sys.com^$third-party
-||optidigital.com^$third-party
-||improvedigital.com^$third-party
-||adition.com^$third-party
-||e-planning.net^$third-party
 ||revcontent.com^$third-party
 ||mgid.com^$third-party
 ||adbutler.com^$third-party
-||adpushup.com^$third-party
-||adperfect.com^$third-party
-||adpnut.com^$third-party
 !
 ! High-friction / popunder advertising
-||adsterra.com^$third-party
 ||propellerads.com^$third-party
 ||exoclick.com^$third-party
-||popads.net^$third-party
 ||popcash.net^$third-party
 ||adcash.com^$third-party
 ||monetag.com^$third-party
@@ -70,7 +42,6 @@
 ||hilltopads.net^$third-party
 ||juicyads.com^$third-party
 ||trafficjunky.net^$third-party
-||trafficstars.com^$third-party
 ||ad-maven.com^$third-party
 ||purpleads.io^$third-party
 ||trafficshop.com^$third-party
@@ -78,38 +49,23 @@
 !
 ! Selected regional advertising infrastructure
 ||adgebra.co.in^$third-party
-||indianbannerexchange.com^$third-party
-||indianlinkexchange.com^$third-party
 ||an.yandex.ru^$third-party
 ||cpro.baidu.com^$third-party
 !
 ! Japan / East Asia advertising infrastructure
-||geniee.jp^$third-party
 ||nend.net^$third-party
-||amoad.com^$third-party
 ||ad-stir.com^$third-party
 ||ad-generation.jp^$third-party
-||gsspcln.jp^$third-party
 ||mobee2.jp^$third-party
 ||mttag.com^$third-party
 ||adfurikun.jp^$third-party
-||adingo.jp^$third-party
-||i-mobile.co.jp^$third-party
-||microad.jp^$third-party
 ||zucks.net^$third-party
-||genieesspv.jp^$third-party
-||gmossp-sp.jp^$third-party
-||fout.jp^$third-party
 ||adflare.jp^$third-party
 ||advision-adnw.jp^$third-party
 ||ad-spire.net^$third-party
-||ad-track.jp^$third-party
-||ad.adpon.jp^$third-party
 ||primead.jp^$third-party
-||adtechjp.com^$third-party
 ||liveads.jp^$third-party
 ||textad.net^$third-party
 ||valueclick.jp^$third-party
 ||myiads.com^$third-party
-||deqwas.net^$third-party
 ||fivecdm.com^$third-party

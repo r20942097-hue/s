@@ -1,6 +1,6 @@
 [Adblock Plus 2.0]
 ! Title: Universal Web Tracking Filter v2 (Global Optional)
-! Version: 20261002.2
+! Version: 20261002.3
 ! Expires: 5 days
 ! Homepage: https://github.com/r20942097-hue/s
 ! Subscription: https://raw.githubusercontent.com/r20942097-hue/s/main/v2/tracking.txt
@@ -13,36 +13,10 @@
 !
 ! Analytics / session replay / RUM
 ||google-analytics.com^$third-party
-||analytics.google.com^$third-party
-||scorecardresearch.com^$third-party
 ||quantserve.com^$third-party
-||hotjar.com^$third-party
-||fullstory.com^$third-party
-||mixpanel.com^$third-party
-||amplitude.com^$third-party
 ||clarity.ms^$third-party
-||mouseflow.com^$third-party
-||luckyorange.com^$third-party
-||luckyorange.net^$third-party
-||heapanalytics.com^$third-party
-||heatmap.com^$third-party
-||contentsquare.net^$third-party
-||logrocket.com^$third-party
-||logrocket.io^$third-party
-||smartlook.com^$third-party
-||crazyegg.com^$third-party
-||matomo.cloud^$third-party
-||segment.io^$third-party
-||segment.com^$third-party
-||mparticle.com^$third-party
-||nr-data.net^$third-party
-||newrelic.com^$third-party
-||sentry.io^$third-party
 ||sentry-cdn.com^$third-party
 ||browser-intake-datadoghq.com^$third-party
-||cloudflareinsights.com^$third-party
-||quantummetric.com^$third-party
-||crashlytics.com^$third-party
 ||rudderstack.com^$third-party
 ||yandexmetrica.com^$third-party
 !
@@ -54,5 +28,4 @@
 ||static.ads-twitter.com^$third-party
 !
 ! Regional / ad-tech measurement
-||beacon.geniee.jp^$third-party
 ||genieedmp.com^$third-party

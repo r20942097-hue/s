@@ -1,0 +1,675 @@
+{
+  "audit": "anchored-host full-request overlap against active user profile lists",
+  "retrieved_at_utc": "2026-10-02T09:22:59+00:00",
+  "profile_context": "uBlock Origin 1.75.0 backup dated 2026-10-02; EasyList and EasyPrivacy selected",
+  "method": "Removed only custom ||host^$third-party rules for which a downloaded selected upstream list contains an anchored ||domain^ rule with no resource-type or site restriction; a matching parent domain also counts. No path rules, exceptions, or constrained upstream rules count. This is a narrow static overlap check, not proof of effectiveness or safe behavior.",
+  "sources": {
+    "EasyList": {
+      "url": "https://easylist.to/easylist/easylist.txt",
+      "sha256": "371d70a9bd700f23fa4740ad81ea4e003cb7d48cdcb48f977f6ba3fea5349a08",
+      "bytes": 2075457
+    },
+    "EasyPrivacy": {
+      "url": "https://easylist.to/easylist/easyprivacy.txt",
+      "sha256": "f6f15ac0acf250d46662e47a323c956afd1aec18e3d171b93b573e1d9fc2dd40",
+      "bytes": 1507228
+    }
+  },
+  "removed_count": {
+    "ad.txt": 43,
+    "tracking.txt": 27,
+    "strict.txt": 1
+  },
+  "removed_rules": {
+    "ad.txt": [
+      {
+        "rule": "||googleadservices.com^$third-party",
+        "covered_by": [
+          {
+            "source": "EasyPrivacy",
+            "matched_domain": "googleadservices.com"
+          }
+        ]
+      },
+      {
+        "rule": "||partner.googleadservices.com^$third-party",
+        "covered_by": [
+          {
+            "source": "EasyList",
+            "matched_domain": "partner.googleadservices.com"
+          },
+          {
+            "source": "EasyPrivacy",
+            "matched_domain": "googleadservices.com"
+          }
+        ]
+      },
+      {
+        "rule": "||criteo.com^$third-party",
+        "covered_by": [
+          {
+            "source": "EasyPrivacy",
+            "matched_domain": "criteo.com"
+          }
+        ]
+      },
+      {
+        "rule": "||criteo.net^$third-party",
+        "covered_by": [
+          {
+            "source": "EasyPrivacy",
+            "matched_domain": "criteo.net"
+          }
+        ]
+      },
+      {
+        "rule": "||taboola.com^$third-party",
+        "covered_by": [
+          {
+            "source": "EasyPrivacy",
+            "matched_domain": "taboola.com"
+          }
+        ]
+      },
+      {
+        "rule": "||outbrain.com^$third-party",
+        "covered_by": [
+          {
+            "source": "EasyPrivacy",
+            "matched_domain": "outbrain.com"
+          }
+        ]
+      },
+      {
+        "rule": "||adsrvr.org^$third-party",
+        "covered_by": [
+          {
+            "source": "EasyList",
+            "matched_domain": "adsrvr.org"
+          }
+        ]
+      },
+      {
+        "rule": "||sharethrough.com^$third-party",
+        "covered_by": [
+          {
+            "source": "EasyList",
+            "matched_domain": "sharethrough.com"
+          }
+        ]
+      },
+      {
+        "rule": "||yieldmo.com^$third-party",
+        "covered_by": [
+          {
+            "source": "EasyList",
+            "matched_domain": "yieldmo.com"
+          }
+        ]
+      },
+      {
+        "rule": "||triplelift.com^$third-party",
+        "covered_by": [
+          {
+            "source": "EasyList",
+            "matched_domain": "triplelift.com"
+          }
+        ]
+      },
+      {
+        "rule": "||33across.com^$third-party",
+        "covered_by": [
+          {
+            "source": "EasyList",
+            "matched_domain": "33across.com"
+          }
+        ]
+      },
+      {
+        "rule": "||sovrn.com^$third-party",
+        "covered_by": [
+          {
+            "source": "EasyList",
+            "matched_domain": "sovrn.com"
+          }
+        ]
+      },
+      {
+        "rule": "||lijit.com^$third-party",
+        "covered_by": [
+          {
+            "source": "EasyList",
+            "matched_domain": "lijit.com"
+          }
+        ]
+      },
+      {
+        "rule": "||rtbhouse.com^$third-party",
+        "covered_by": [
+          {
+            "source": "EasyList",
+            "matched_domain": "rtbhouse.com"
+          }
+        ]
+      },
+      {
+        "rule": "||gumgum.com^$third-party",
+        "covered_by": [
+          {
+            "source": "EasyList",
+            "matched_domain": "gumgum.com"
+          }
+        ]
+      },
+      {
+        "rule": "||media.net^$third-party",
+        "covered_by": [
+          {
+            "source": "EasyPrivacy",
+            "matched_domain": "media.net"
+          }
+        ]
+      },
+      {
+        "rule": "||adroll.com^$third-party",
+        "covered_by": [
+          {
+            "source": "EasyList",
+            "matched_domain": "adroll.com"
+          }
+        ]
+      },
+      {
+        "rule": "||doubleverify.com^$third-party",
+        "covered_by": [
+          {
+            "source": "EasyList",
+            "matched_domain": "doubleverify.com"
+          }
+        ]
+      },
+      {
+        "rule": "||onetag-sys.com^$third-party",
+        "covered_by": [
+          {
+            "source": "EasyList",
+            "matched_domain": "onetag-sys.com"
+          }
+        ]
+      },
+      {
+        "rule": "||optidigital.com^$third-party",
+        "covered_by": [
+          {
+            "source": "EasyList",
+            "matched_domain": "optidigital.com"
+          }
+        ]
+      },
+      {
+        "rule": "||improvedigital.com^$third-party",
+        "covered_by": [
+          {
+            "source": "EasyList",
+            "matched_domain": "improvedigital.com"
+          }
+        ]
+      },
+      {
+        "rule": "||adition.com^$third-party",
+        "covered_by": [
+          {
+            "source": "EasyList",
+            "matched_domain": "adition.com"
+          }
+        ]
+      },
+      {
+        "rule": "||e-planning.net^$third-party",
+        "covered_by": [
+          {
+            "source": "EasyList",
+            "matched_domain": "e-planning.net"
+          }
+        ]
+      },
+      {
+        "rule": "||adpushup.com^$third-party",
+        "covered_by": [
+          {
+            "source": "EasyList",
+            "matched_domain": "adpushup.com"
+          }
+        ]
+      },
+      {
+        "rule": "||adperfect.com^$third-party",
+        "covered_by": [
+          {
+            "source": "EasyList",
+            "matched_domain": "adperfect.com"
+          }
+        ]
+      },
+      {
+        "rule": "||adpnut.com^$third-party",
+        "covered_by": [
+          {
+            "source": "EasyList",
+            "matched_domain": "adpnut.com"
+          }
+        ]
+      },
+      {
+        "rule": "||adsterra.com^$third-party",
+        "covered_by": [
+          {
+            "source": "EasyList",
+            "matched_domain": "adsterra.com"
+          }
+        ]
+      },
+      {
+        "rule": "||trafficstars.com^$third-party",
+        "covered_by": [
+          {
+            "source": "EasyList",
+            "matched_domain": "trafficstars.com"
+          }
+        ]
+      },
+      {
+        "rule": "||indianbannerexchange.com^$third-party",
+        "covered_by": [
+          {
+            "source": "EasyList",
+            "matched_domain": "indianbannerexchange.com"
+          }
+        ]
+      },
+      {
+        "rule": "||indianlinkexchange.com^$third-party",
+        "covered_by": [
+          {
+            "source": "EasyList",
+            "matched_domain": "indianlinkexchange.com"
+          }
+        ]
+      },
+      {
+        "rule": "||geniee.jp^$third-party",
+        "covered_by": [
+          {
+            "source": "EasyPrivacy",
+            "matched_domain": "geniee.jp"
+          }
+        ]
+      },
+      {
+        "rule": "||amoad.com^$third-party",
+        "covered_by": [
+          {
+            "source": "EasyPrivacy",
+            "matched_domain": "amoad.com"
+          }
+        ]
+      },
+      {
+        "rule": "||gsspcln.jp^$third-party",
+        "covered_by": [
+          {
+            "source": "EasyPrivacy",
+            "matched_domain": "gsspcln.jp"
+          }
+        ]
+      },
+      {
+        "rule": "||adingo.jp^$third-party",
+        "covered_by": [
+          {
+            "source": "EasyList",
+            "matched_domain": "adingo.jp"
+          }
+        ]
+      },
+      {
+        "rule": "||i-mobile.co.jp^$third-party",
+        "covered_by": [
+          {
+            "source": "EasyPrivacy",
+            "matched_domain": "i-mobile.co.jp"
+          }
+        ]
+      },
+      {
+        "rule": "||microad.jp^$third-party",
+        "covered_by": [
+          {
+            "source": "EasyList",
+            "matched_domain": "microad.jp"
+          }
+        ]
+      },
+      {
+        "rule": "||genieesspv.jp^$third-party",
+        "covered_by": [
+          {
+            "source": "EasyPrivacy",
+            "matched_domain": "genieesspv.jp"
+          }
+        ]
+      },
+      {
+        "rule": "||gmossp-sp.jp^$third-party",
+        "covered_by": [
+          {
+            "source": "EasyPrivacy",
+            "matched_domain": "gmossp-sp.jp"
+          }
+        ]
+      },
+      {
+        "rule": "||fout.jp^$third-party",
+        "covered_by": [
+          {
+            "source": "EasyPrivacy",
+            "matched_domain": "fout.jp"
+          }
+        ]
+      },
+      {
+        "rule": "||ad-track.jp^$third-party",
+        "covered_by": [
+          {
+            "source": "EasyPrivacy",
+            "matched_domain": "ad-track.jp"
+          }
+        ]
+      },
+      {
+        "rule": "||ad.adpon.jp^$third-party",
+        "covered_by": [
+          {
+            "source": "EasyPrivacy",
+            "matched_domain": "adpon.jp"
+          }
+        ]
+      },
+      {
+        "rule": "||adtechjp.com^$third-party",
+        "covered_by": [
+          {
+            "source": "EasyList",
+            "matched_domain": "adtechjp.com"
+          }
+        ]
+      },
+      {
+        "rule": "||deqwas.net^$third-party",
+        "covered_by": [
+          {
+            "source": "EasyPrivacy",
+            "matched_domain": "deqwas.net"
+          }
+        ]
+      }
+    ],
+    "tracking.txt": [
+      {
+        "rule": "||analytics.google.com^$third-party",
+        "covered_by": [
+          {
+            "source": "EasyPrivacy",
+            "matched_domain": "analytics.google.com"
+          }
+        ]
+      },
+      {
+        "rule": "||scorecardresearch.com^$third-party",
+        "covered_by": [
+          {
+            "source": "EasyPrivacy",
+            "matched_domain": "scorecardresearch.com"
+          }
+        ]
+      },
+      {
+        "rule": "||hotjar.com^$third-party",
+        "covered_by": [
+          {
+            "source": "EasyPrivacy",
+            "matched_domain": "hotjar.com"
+          }
+        ]
+      },
+      {
+        "rule": "||fullstory.com^$third-party",
+        "covered_by": [
+          {
+            "source": "EasyPrivacy",
+            "matched_domain": "fullstory.com"
+          }
+        ]
+      },
+      {
+        "rule": "||mixpanel.com^$third-party",
+        "covered_by": [
+          {
+            "source": "EasyPrivacy",
+            "matched_domain": "mixpanel.com"
+          }
+        ]
+      },
+      {
+        "rule": "||amplitude.com^$third-party",
+        "covered_by": [
+          {
+            "source": "EasyPrivacy",
+            "matched_domain": "amplitude.com"
+          }
+        ]
+      },
+      {
+        "rule": "||mouseflow.com^$third-party",
+        "covered_by": [
+          {
+            "source": "EasyPrivacy",
+            "matched_domain": "mouseflow.com"
+          }
+        ]
+      },
+      {
+        "rule": "||luckyorange.com^$third-party",
+        "covered_by": [
+          {
+            "source": "EasyPrivacy",
+            "matched_domain": "luckyorange.com"
+          }
+        ]
+      },
+      {
+        "rule": "||luckyorange.net^$third-party",
+        "covered_by": [
+          {
+            "source": "EasyPrivacy",
+            "matched_domain": "luckyorange.net"
+          }
+        ]
+      },
+      {
+        "rule": "||heapanalytics.com^$third-party",
+        "covered_by": [
+          {
+            "source": "EasyPrivacy",
+            "matched_domain": "heapanalytics.com"
+          }
+        ]
+      },
+      {
+        "rule": "||heatmap.com^$third-party",
+        "covered_by": [
+          {
+            "source": "EasyPrivacy",
+            "matched_domain": "heatmap.com"
+          }
+        ]
+      },
+      {
+        "rule": "||contentsquare.net^$third-party",
+        "covered_by": [
+          {
+            "source": "EasyPrivacy",
+            "matched_domain": "contentsquare.net"
+          }
+        ]
+      },
+      {
+        "rule": "||logrocket.com^$third-party",
+        "covered_by": [
+          {
+            "source": "EasyPrivacy",
+            "matched_domain": "logrocket.com"
+          }
+        ]
+      },
+      {
+        "rule": "||logrocket.io^$third-party",
+        "covered_by": [
+          {
+            "source": "EasyPrivacy",
+            "matched_domain": "logrocket.io"
+          }
+        ]
+      },
+      {
+        "rule": "||smartlook.com^$third-party",
+        "covered_by": [
+          {
+            "source": "EasyPrivacy",
+            "matched_domain": "smartlook.com"
+          }
+        ]
+      },
+      {
+        "rule": "||crazyegg.com^$third-party",
+        "covered_by": [
+          {
+            "source": "EasyPrivacy",
+            "matched_domain": "crazyegg.com"
+          }
+        ]
+      },
+      {
+        "rule": "||matomo.cloud^$third-party",
+        "covered_by": [
+          {
+            "source": "EasyPrivacy",
+            "matched_domain": "matomo.cloud"
+          }
+        ]
+      },
+      {
+        "rule": "||segment.io^$third-party",
+        "covered_by": [
+          {
+            "source": "EasyPrivacy",
+            "matched_domain": "segment.io"
+          }
+        ]
+      },
+      {
+        "rule": "||segment.com^$third-party",
+        "covered_by": [
+          {
+            "source": "EasyPrivacy",
+            "matched_domain": "segment.com"
+          }
+        ]
+      },
+      {
+        "rule": "||mparticle.com^$third-party",
+        "covered_by": [
+          {
+            "source": "EasyPrivacy",
+            "matched_domain": "mparticle.com"
+          }
+        ]
+      },
+      {
+        "rule": "||nr-data.net^$third-party",
+        "covered_by": [
+          {
+            "source": "EasyPrivacy",
+            "matched_domain": "nr-data.net"
+          }
+        ]
+      },
+      {
+        "rule": "||newrelic.com^$third-party",
+        "covered_by": [
+          {
+            "source": "EasyPrivacy",
+            "matched_domain": "newrelic.com"
+          }
+        ]
+      },
+      {
+        "rule": "||sentry.io^$third-party",
+        "covered_by": [
+          {
+            "source": "EasyPrivacy",
+            "matched_domain": "sentry.io"
+          }
+        ]
+      },
+      {
+        "rule": "||cloudflareinsights.com^$third-party",
+        "covered_by": [
+          {
+            "source": "EasyPrivacy",
+            "matched_domain": "cloudflareinsights.com"
+          }
+        ]
+      },
+      {
+        "rule": "||quantummetric.com^$third-party",
+        "covered_by": [
+          {
+            "source": "EasyPrivacy",
+            "matched_domain": "quantummetric.com"
+          }
+        ]
+      },
+      {
+        "rule": "||crashlytics.com^$third-party",
+        "covered_by": [
+          {
+            "source": "EasyPrivacy",
+            "matched_domain": "crashlytics.com"
+          }
+        ]
+      },
+      {
+        "rule": "||beacon.geniee.jp^$third-party",
+        "covered_by": [
+          {
+            "source": "EasyPrivacy",
+            "matched_domain": "geniee.jp"
+          }
+        ]
+      }
+    ],
+    "strict.txt": [
+      {
+        "rule": "||branch.io^$third-party",
+        "covered_by": [
+          {
+            "source": "EasyPrivacy",
+            "matched_domain": "branch.io"
+          }
+        ]
+      }
+    ]
+  },
+  "status": "STATIC_OVERLAP_ONLY; browser regression, provenance for retained rules, canary, and rollback remain unverified"
+}
