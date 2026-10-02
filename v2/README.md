@@ -49,7 +49,13 @@ python -m unittest discover -s v2/scripts -p 'test_*.py'
 python v2/scripts/validate_filters.py
 ```
 
-These checks verify declared metadata and policy only. They do not establish real-site effectiveness or safety; see `TESTING.md` before considering promotion.
+These checks verify declared metadata and policy only. They do not establish real-site effectiveness or safety. The promotion gate is separate and remains blocked until evidence exists:
+
+```sh
+python v2/scripts/validate_promotion.py --target canary --evidence evidence/current.json
+```
+
+See `TESTING.md` before considering promotion.
 
 ## Status
 
