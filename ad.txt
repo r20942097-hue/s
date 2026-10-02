@@ -1,0 +1,32 @@
+[Adblock Plus 2.0]
+! Title: Universal Web Ad Filter (Supplement)
+! Version: 20261002.1
+! Expires: 5 days
+! Homepage: https://github.com/r20942097-hue/s
+! Subscription: https://raw.githubusercontent.com/r20942097-hue/s/main/ad.txt
+! Description: Compact, language-neutral third-party ad-network supplement.
+! Reference: https://easylist.to/
+! Policy: Network blocking only; rules target third-party requests.
+! No cosmetic, cookie-banner, anti-adblock, paywall, or URL-rewrite rules.
+! Use with a maintained general-purpose list such as EasyList; this file is not a replacement.
+! Report site breakage by disabling this list first, then report the matching domain/rule.
+! License: CC0-1.0
+!
+! International ad delivery and programmatic advertising
+||doubleclick.net^$third-party
+||googlesyndication.com^$third-party
+||googleadservices.com^$third-party
+||adservice.google.com^$third-party
+||adnxs.com^$third-party
+||criteo.com^$third-party
+||taboola.com^$third-party
+||outbrain.com^$third-party
+||rubiconproject.com^$third-party
+||openx.net^$third-party
+||pubmatic.com^$third-party
+||adsrvr.org^$third-party
+||smartadserver.com^$third-party
+||casalemedia.com^$third-party
+||sharethrough.com^$third-party
+||yieldmo.com^$third-party
+||adform.net^$third-party
