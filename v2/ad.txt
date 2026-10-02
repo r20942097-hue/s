@@ -1,0 +1,73 @@
+[Adblock Plus 2.0]
+! Title: Universal Web Ad Filter v2 (Balanced)
+! Version: 20261002.1
+! Expires: 5 days
+! Homepage: https://github.com/r20942097-hue/s
+! Subscription: https://raw.githubusercontent.com/r20942097-hue/s/main/v2/ad.txt
+! Description: Conservative third-party ad-network supplement with expanded Japanese coverage.
+! Policy: Third-party network blocking only. No cosmetic filters, first-party blocking, anti-adblock bypass, paywall bypass, or URL rewriting.
+! Compatibility: uBlock Origin / AdGuard / ABP-compatible syntax where supported.
+! Sources reviewed: EasyList policy, AdGuard Japanese filter, AdGuard filter syntax.
+! License: GPL-3.0-only
+!
+! International ad delivery and programmatic advertising
+||doubleclick.net^$third-party
+||googlesyndication.com^$third-party
+||googleadservices.com^$third-party
+||adservice.google.com^$third-party
+||adnxs.com^$third-party
+||criteo.com^$third-party
+||taboola.com^$third-party
+||outbrain.com^$third-party
+||rubiconproject.com^$third-party
+||openx.net^$third-party
+||pubmatic.com^$third-party
+||adsrvr.org^$third-party
+||smartadserver.com^$third-party
+||casalemedia.com^$third-party
+||sharethrough.com^$third-party
+||yieldmo.com^$third-party
+||adform.net^$third-party
+||teads.tv^$third-party
+||triplelift.com^$third-party
+||33across.com^$third-party
+||indexww.com^$third-party
+||sovrn.com^$third-party
+||lijit.com^$third-party
+||contextweb.com^$third-party
+||bidswitch.net^$third-party
+||rtbhouse.com^$third-party
+||gumgum.com^$third-party
+||yieldlab.net^$third-party
+||amazon-adsystem.com^$third-party
+||media.net^$third-party
+!
+! Japanese ad networks / SSP / ad delivery
+||geniee.jp^$third-party
+||nend.net^$third-party
+||amoad.com^$third-party
+||ad-generation.jp^$third-party
+||gsspcln.jp^$third-party
+||mobee2.jp^$third-party
+||mttag.com^$third-party
+||adfurikun.jp^$third-party
+||adingo.jp^$third-party
+||i-mobile.co.jp^$third-party
+||microad.jp^$third-party
+||zucks.net^$third-party
+||genieesspv.jp^$third-party
+||gmossp-sp.jp^$third-party
+||fout.jp^$third-party
+||adflare.jp^$third-party
+||advision-adnw.jp^$third-party
+||ad-spire.net^$third-party
+||ad-track.jp^$third-party
+||ad.adpon.jp^$third-party
+||primead.jp^$third-party
+||adtechjp.com^$third-party
+||liveads.jp^$third-party
+||textad.net^$third-party
+||valueclick.jp^$third-party
+||myiads.com^$third-party
+||deqwas.net^$third-party
+||fivecdm.com^$third-party
