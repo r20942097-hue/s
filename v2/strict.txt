@@ -1,0 +1,26 @@
+[Adblock Plus 2.0]
+! Title: Universal Web Strict Privacy v2 (Opt-in)
+! Version: 20261002.1
+! Expires: 5 days
+! Homepage: https://github.com/r20942097-hue/s
+! Subscription: https://raw.githubusercontent.com/r20942097-hue/s/main/v2/strict.txt
+! Description: Aggressive privacy supplement for users willing to accept higher breakage risk.
+! Warning: May break login widgets, tag-manager-driven site features, attribution, embedded support, and analytics-dependent components.
+! Policy: Third-party network blocking only. Keep disabled unless stricter privacy is desired.
+! Compatibility: uBlock Origin / AdGuard / ABP-compatible syntax where supported.
+! License: GPL-3.0-only
+!
+! Tag managers and telemetry frameworks
+||googletagmanager.com^$third-party
+||tags.tiqcdn.com^$third-party,script
+||assets.adobedtm.com^$third-party,script
+||demdex.net^$third-party
+||omtrdc.net^$third-party
+||app-measurement.com^$third-party
+!
+! Social / identity-linked measurement
+||connect.facebook.net^$third-party,script
+||snap.licdn.com^$third-party,script
+!
+! Attribution / deep-link measurement
+||cdn.branch.io^$third-party
