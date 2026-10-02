@@ -1,6 +1,6 @@
 [Adblock Plus 2.0]
 ! Title: Universal Web Strict Privacy v2 (Global Opt-in)
-! Version: 20261002.2
+! Version: 20261002.3
 ! Expires: 5 days
 ! Homepage: https://github.com/r20942097-hue/s
 ! Subscription: https://raw.githubusercontent.com/r20942097-hue/s/main/v2/strict.txt
@@ -26,5 +26,4 @@
 ||snap.licdn.com^$third-party,script
 !
 ! Attribution / deep-link measurement
-||branch.io^$third-party
 ||adjust.com^$third-party,script
