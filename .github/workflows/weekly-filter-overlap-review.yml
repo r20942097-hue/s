@@ -31,7 +31,8 @@ jobs:
             echo 'No filter or evidence changes.'
             exit 0
           fi
-          open_pr=$(gh pr list --state open --base main --json number --jq '.[0].number // empty')
+          open_pr=$(gh pr list --state open --base main --json number,headRefName \
+            --jq '[.[] | select(.headRefName | startswith("automation/filter-overlap-"))] | first | .number // empty')
           if [ -n "$open_pr" ]; then
             echo "Open review PR #$open_pr already exists; leaving new changes for the next run."
             exit 0
