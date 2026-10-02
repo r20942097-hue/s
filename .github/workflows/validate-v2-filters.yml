@@ -1,0 +1,27 @@
+name: Validate v2 filters
+
+on:
+  push:
+    paths:
+      - "v2/**"
+      - ".github/workflows/validate-v2-filters.yml"
+  pull_request:
+    paths:
+      - "v2/**"
+      - ".github/workflows/validate-v2-filters.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  static-validation:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Validate filter metadata and policy
+        run: |
+          python -m unittest discover -s v2/scripts -p 'test_*.py'
+          python v2/scripts/validate_filters.py
