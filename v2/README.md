@@ -40,6 +40,17 @@ Subscribe to all three lists. `strict.txt` additionally blocks tag managers, ide
 - https://raw.githubusercontent.com/r20942097-hue/s/main/v2/tracking.txt
 - https://raw.githubusercontent.com/r20942097-hue/s/main/v2/strict.txt
 
+## Static checks
+
+Run these from the repository root:
+
+```sh
+python -m unittest discover -s v2/scripts -p 'test_*.py'
+python v2/scripts/validate_filters.py
+```
+
+These checks verify declared metadata and policy only. They do not establish real-site effectiveness or safety; see `TESTING.md` before considering promotion.
+
 ## Status
 
 Candidate. Public retrieval is verified. Upstream freshness was reviewed on 2026-10-02. Real-site regression testing is still required before promoting v2 over the root stable lists.
