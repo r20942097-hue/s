@@ -1,0 +1,47 @@
+[Adblock Plus 2.0]
+! Title: Universal Web Tracking Filter v2 (Optional)
+! Version: 20261002.1
+! Expires: 5 days
+! Homepage: https://github.com/r20942097-hue/s
+! Subscription: https://raw.githubusercontent.com/r20942097-hue/s/main/v2/tracking.txt
+! Description: Optional third-party analytics, session replay, telemetry, and measurement blocking.
+! Policy: Third-party network blocking only. This list may disable analytics, feedback, or measurement features.
+! Compatibility: uBlock Origin / AdGuard / ABP-compatible syntax where supported.
+! Sources reviewed: EasyPrivacy policy and AdGuard Tracking Protection sources.
+! License: GPL-3.0-only
+!
+! General analytics / measurement
+||google-analytics.com^$third-party
+||analytics.google.com^$third-party
+||scorecardresearch.com^$third-party
+||quantserve.com^$third-party
+||hotjar.com^$third-party
+||fullstory.com^$third-party
+||mixpanel.com^$third-party
+||amplitude.com^$third-party
+||clarity.ms^$third-party
+||mouseflow.com^$third-party
+||luckyorange.com^$third-party
+||heapanalytics.com^$third-party
+||segment.io^$third-party
+||segment.com^$third-party
+||nr-data.net^$third-party
+||newrelic.com^$third-party
+||sentry.io^$third-party
+||yandexmetrica.com^$third-party
+||telemetrydeck.com^$third-party
+||rudderstack.com^$third-party
+||adbeacon.com^$third-party
+||mirabelanalytics.com^$third-party
+||heatmap.com^$third-party
+!
+! Advertising-platform measurement endpoints
+||bat.bing.com^$third-party
+||analytics.tiktok.com^$third-party
+||tr.snapchat.com^$third-party
+||px.ads.linkedin.com^$third-party
+||static.ads-twitter.com^$third-party
+!
+! Japanese measurement / tracker endpoints with ad-tech linkage
+||beacon.geniee.jp^$third-party
+||genieedmp.com^$third-party
