@@ -2,6 +2,10 @@
 
 The automated validator checks metadata, subscription URLs, duplicate hosts, rule syntax, third-party scope, and disallowed modifiers. It does not verify that a host is currently serving ads or tracking, and it cannot measure false positives.
 
+The promotion gate binds evidence to SHA-256 hashes of the exact candidate filter bytes. For every rule it requires two immutable upstream snapshots with matching local bytes, a recorded source-independence review, a no-overlap audit, exception review, site regression, canary, and rollback evidence. Stable promotion additionally requires at least 14 elapsed days of recorded soak evidence. Evidence references must resolve to files inside the repository.
+
+Run `python v2/scripts/validate_promotion.py --target canary --evidence evidence/current.json` to evaluate canary readiness. The current manifest intentionally returns `BLOCKED`: all 146 active rules lack per-rule evidence. This is the honest current status, not a CI failure.
+
 ## Required before promotion
 
 Run the three lists separately in a disposable browser profile with the user's normal base filter lists enabled. Record the browser, operating system, extension and version, list URL and fetched revision, test date, and evidence for each case.
