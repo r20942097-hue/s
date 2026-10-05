@@ -1,0 +1,31 @@
+[Adblock Plus 2.0]
+! Title: Universal Web Ad Filter - uBlock Origin Extensions
+! Version: 20261005.4
+! Expires: 5 days
+! Homepage: https://github.com/r20942097-hue/s
+! Description: uBlock Origin-only cosmetic and scriptlet extensions loaded by ad.txt.
+! Requires: uBlock Origin with !#include support.
+! Keep this file in the same repository directory as ad.txt.
+! License: CC0-1.0
+!
+! NoSub (nosubapp.com)
+! Exact translated sponsor labels observed on the site's supported locales.
+! Procedural filter is intentionally narrow so player/chat/VOD/download functions remain untouched.
+nosubapp.com##a:has-text(/^(Sponsored offer|Oferta patrocinada|Offre sponsorisée|Gesponsertes Angebot|Спонсорское предложение|عرض مموّل|スポンサー広告|Sponsorlu içerik|Offerta sponsorizzata)$/)
+
+! Twitch - VOD/client-side ad decision request
+! Current Brave/uBO-compatible approach uses no-fetch-if against edge.ads.twitch.tv.
+twitch.tv##+js(no-fetch-if, edge.ads.twitch.tv)
+
+! Twitch - visible ad/promotional UI
+! Narrow selectors only; absent selectors are harmless.
+twitch.tv##.disclosure-card
+twitch.tv##.prime-offer
+twitch.tv##.prime-offers-upsell
+www.twitch.tv###directory-banner
+www.twitch.tv###directory-rectangle
+
+! Twitch - live stream stitched ads
+! Requires a matching twitch-videoad user resource in uBO userResourcesLocation.
+! Do not combine multiple Twitch-specific ad-blocking scripts/resources.
+twitch.tv##+js(twitch-videoad)
