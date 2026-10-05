@@ -1,13 +1,12 @@
 [Adblock Plus 2.0]
 ! Title: Universal Web Ad Filter (Supplement)
-! Version: 20261002.1
+! Version: 20261005.3
 ! Expires: 5 days
 ! Homepage: https://github.com/r20942097-hue/s
 ! Subscription: https://raw.githubusercontent.com/r20942097-hue/s/main/ad.txt
-! Description: Compact, language-neutral third-party ad-network supplement.
+! Description: Compact ad-network supplement with narrowly scoped Twitch/NoSub additions.
 ! Reference: https://easylist.to/
-! Policy: Network blocking only; rules target third-party requests.
-! No cosmetic, cookie-banner, anti-adblock, paywall, or URL-rewrite rules.
+! Policy: Network blocking by default; site-specific cosmetic/scriptlet hooks are explicitly marked.
 ! Use with a maintained general-purpose list such as EasyList; this file is not a replacement.
 ! Report site breakage by disabling this list first, then report the matching domain/rule.
 ! License: CC0-1.0
@@ -30,3 +29,34 @@
 ||sharethrough.com^$third-party
 ||yieldmo.com^$third-party
 ||adform.net^$third-party
+
+! A-Ads delivery and click domains (observed in a GoFile ad slot; block third-party use across sites)
+||a-ads.com^$third-party
+||click.a-ads.com^$third-party
+
+! NoSub (nosubapp.com)
+! 2026-10-05: current EN/JA pages expose a sponsored-offer link.
+! Exact-text procedural filters avoid touching player, chat, VOD/CDN, download, or archive functionality.
+nosubapp.com##a:has-text(/^(Sponsored offer|スポンサー広告)$/)
+
+! Twitch - VOD/client-side advertising
+! Current VOD advertising uses edge.ads.twitch.tv; scope to Twitch only.
+||edge.ads.twitch.tv^$domain=twitch.tv
+||imasdk.googleapis.com^$domain=twitch.tv
+||securepubads.g.doubleclick.net^$domain=twitch.tv
+||pubads.g.doubleclick.net^$domain=twitch.tv
+! uBO fetch-level fallback for the Twitch ad endpoint.
+twitch.tv##+js(no-fetch-if, edge.ads.twitch.tv)
+
+! Twitch - visible ad/promotional UI
+! Narrow selectors only; absent selectors are harmless.
+twitch.tv##.disclosure-card
+twitch.tv##.prime-offer
+twitch.tv##.prime-offers-upsell
+www.twitch.tv###directory-banner
+www.twitch.tv###directory-rectangle
+
+! Twitch - live stream stitched ads
+! Optional external resource hook. This requires the companion userResourcesLocation setup.
+! Do not combine multiple Twitch-specific ad-blocking scripts/resources.
+twitch.tv##+js(twitch-videoad)
