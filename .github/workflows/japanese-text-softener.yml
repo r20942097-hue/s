@@ -1,0 +1,30 @@
+name: Japanese Text Softener checks
+
+on:
+  push:
+    paths:
+      - 'japanese-text-softener*.txt'
+      - 'tests/test_japanese_text_softener.py'
+      - '.github/workflows/japanese-text-softener.yml'
+  pull_request:
+    paths:
+      - 'japanese-text-softener*.txt'
+      - 'tests/test_japanese_text_softener.py'
+      - '.github/workflows/japanese-text-softener.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.13'
+      - name: Run filter regression tests
+        run: python -m unittest discover -s tests -p 'test_japanese_text_softener.py' -v
