@@ -1,7 +1,7 @@
 [Adblock Plus 2.0]
 ! Title: Japanese Text Softener
 ! Title-ja: 日本語本文軟化
-! Version: 20261007.2
+! Version: 20261007.3
 ! Expires: 7 days
 ! Homepage: https://github.com/r20942097-hue/s
 ! Subscription: https://raw.githubusercontent.com/r20942097-hue/s/main/japanese-text-softener.txt
@@ -25,11 +25,11 @@
 ! Fast path: explicit inline legacy Japanese font declarations
 ! ---------------------------------------------------------------------------
 
-##:is(body,main,article,section,p,li,dd,dt,td,th,a,strong,em,label,button,input,textarea,select)[style*="MS PGothic" i]:style(font-family: system-ui, "Yu Gothic UI", "Yu Gothic", Meiryo, "Noto Sans JP", "Noto Sans CJK JP", sans-serif !important;)
-##:is(body,main,article,section,p,li,dd,dt,td,th,a,strong,em,label,button,input,textarea,select)[style*="MS P Gothic" i]:style(font-family: system-ui, "Yu Gothic UI", "Yu Gothic", Meiryo, "Noto Sans JP", "Noto Sans CJK JP", sans-serif !important;)
-##:is(body,main,article,section,p,li,dd,dt,td,th,a,strong,em,label,button,input,textarea,select)[style*="ＭＳ Ｐゴシック" i]:style(font-family: system-ui, "Yu Gothic UI", "Yu Gothic", Meiryo, "Noto Sans JP", "Noto Sans CJK JP", sans-serif !important;)
-##:is(body,main,article,section,p,li,dd,dt,td,th,a,strong,em,label,button,input,textarea,select)[style*="MS UI Gothic" i]:style(font-family: system-ui, "Yu Gothic UI", "Yu Gothic", Meiryo, "Noto Sans JP", "Noto Sans CJK JP", sans-serif !important;)
-##:is(body,main,article,section,p,li,dd,dt,td,th,a,strong,em,label,button,input,textarea,select)[style*="ＭＳ ＵＩゴシック" i]:style(font-family: system-ui, "Yu Gothic UI", "Yu Gothic", Meiryo, "Noto Sans JP", "Noto Sans CJK JP", sans-serif !important;)
+##:is(body,main,article,section,div,p,span,h1,h2,h3,h4,h5,h6,blockquote,li,dd,dt,td,th,caption,figcaption,a,strong,em,label,button,input,textarea,select)[style*="MS PGothic" i]:style(font-family: system-ui, "Yu Gothic UI", "Yu Gothic", Meiryo, "Noto Sans JP", "Noto Sans CJK JP", sans-serif !important;)
+##:is(body,main,article,section,div,p,span,h1,h2,h3,h4,h5,h6,blockquote,li,dd,dt,td,th,caption,figcaption,a,strong,em,label,button,input,textarea,select)[style*="MS P Gothic" i]:style(font-family: system-ui, "Yu Gothic UI", "Yu Gothic", Meiryo, "Noto Sans JP", "Noto Sans CJK JP", sans-serif !important;)
+##:is(body,main,article,section,div,p,span,h1,h2,h3,h4,h5,h6,blockquote,li,dd,dt,td,th,caption,figcaption,a,strong,em,label,button,input,textarea,select)[style*="ＭＳ Ｐゴシック" i]:style(font-family: system-ui, "Yu Gothic UI", "Yu Gothic", Meiryo, "Noto Sans JP", "Noto Sans CJK JP", sans-serif !important;)
+##:is(body,main,article,section,div,p,span,h1,h2,h3,h4,h5,h6,blockquote,li,dd,dt,td,th,caption,figcaption,a,strong,em,label,button,input,textarea,select)[style*="MS UI Gothic" i]:style(font-family: system-ui, "Yu Gothic UI", "Yu Gothic", Meiryo, "Noto Sans JP", "Noto Sans CJK JP", sans-serif !important;)
+##:is(body,main,article,section,div,p,span,h1,h2,h3,h4,h5,h6,blockquote,li,dd,dt,td,th,caption,figcaption,a,strong,em,label,button,input,textarea,select)[style*="ＭＳ ＵＩゴシック" i]:style(font-family: system-ui, "Yu Gothic UI", "Yu Gothic", Meiryo, "Noto Sans JP", "Noto Sans CJK JP", sans-serif !important;)
 
 ! Legacy HTML font face declarations. These are cheap native-selector matches.
 ##font[face*="MS PGothic" i]:style(font-family: system-ui, "Yu Gothic UI", "Yu Gothic", Meiryo, "Noto Sans JP", "Noto Sans CJK JP", sans-serif !important;)
@@ -50,7 +50,7 @@
 ! Keep the standard profile conservative to reduce procedural DOM scans.
 ! ---------------------------------------------------------------------------
 
-##html:lang(ja) :is(p,li,dd,dt,td,th,label):matches-css(font-family: /(?:MS\s*P\s*Gothic|ＭＳ\s*Ｐゴシック|MS\s*UI\s*Gothic|ＭＳ\s*ＵＩゴシック)/i):style(font-family: system-ui, "Yu Gothic UI", "Yu Gothic", Meiryo, "Noto Sans JP", "Noto Sans CJK JP", sans-serif !important;)
+##html:lang(ja) :is(h1,h2,h3,h4,h5,h6,blockquote,p,li,dd,dt,td,th,caption,figcaption,label):matches-css(font-family: /(?:MS\s*P\s*Gothic|ＭＳ\s*Ｐゴシック|MS\s*UI\s*Gothic|ＭＳ\s*ＵＩゴシック)/i):style(font-family: system-ui, "Yu Gothic UI", "Yu Gothic", Meiryo, "Noto Sans JP", "Noto Sans CJK JP", sans-serif !important;)
 
 ! ---------------------------------------------------------------------------
 ! Intentional exclusions
