@@ -59,6 +59,11 @@ class JapaneseTextSoftenerTests(unittest.TestCase):
             for forbidden in (",div", " div", "span", "svg", ":is(i,"):
                 self.assertNotIn(forbidden, subject, rule)
 
+    def test_fast_path_covers_common_inline_text_containers(self):
+        text = STANDARD.read_text(encoding="utf-8")
+        self.assertIn(":is(body,main,article,section,div,p,span,h1,h2,h3,h4,h5,h6,blockquote", text)
+        self.assertIn("caption,figcaption", text)
+
     def test_standard_has_legacy_font_face_fast_path(self):
         text = STANDARD.read_text(encoding="utf-8")
         self.assertIn('font[face*="MS PGothic" i]', text)
