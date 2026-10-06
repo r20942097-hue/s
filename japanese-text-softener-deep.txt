@@ -1,0 +1,16 @@
+[Adblock Plus 2.0]
+! Title: Japanese Text Softener - Deep
+! Title-ja: 日本語本文軟化 - Deep
+! Version: 20261007.2
+! Expires: 7 days
+! Homepage: https://github.com/r20942097-hue/s
+! Subscription: https://raw.githubusercontent.com/r20942097-hue/s/main/japanese-text-softener-deep.txt
+! Description: Optional deeper uBlock Origin profile for Japanese pages whose descendant elements still force legacy MS PGothic / MS UI Gothic fonts.
+! Target: uBlock Origin
+! License: CC0-1.0
+!
+! Includes the standard profile first. uBO requires included files to be in the same directory.
+!#include japanese-text-softener.txt
+
+! Deep Japanese-only descendant scan. Use only if the standard profile misses text.
+##html:lang(ja) :is(section,p,li,dd,dt,td,th,a,strong,em,label,button,input,textarea,select,span):matches-css(font-family: /(?:MS\s*P\s*Gothic|ＭＳ\s*Ｐゴシック|MS\s*UI\s*Gothic|ＭＳ\s*ＵＩゴシック)/i):style(font-family: system-ui, "Yu Gothic UI", "Yu Gothic", Meiryo, "Noto Sans JP", "Noto Sans CJK JP", sans-serif !important;)
