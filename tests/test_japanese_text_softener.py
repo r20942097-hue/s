@@ -6,7 +6,7 @@ ROOT = Path(__file__).resolve().parents[1]
 STANDARD = ROOT / "japanese-text-softener.txt"
 DEEP = ROOT / "japanese-text-softener-deep.txt"
 LEGACY_RE = re.compile(
-    r"(?:MS\\s*P\\s*Gothic|ＭＳ\\s*Ｐゴシック|MS\\s*UI\\s*Gothic|ＭＳ\\s*ＵＩゴシック)",
+    r"(?:MS\s*P\s*Gothic|ＭＳ\s*Ｐゴシック|MS\s*UI\s*Gothic|ＭＳ\s*ＵＩゴシック)",
     re.I,
 )
 
