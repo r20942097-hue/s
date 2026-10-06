@@ -1,47 +1,56 @@
 [Adblock Plus 2.0]
 ! Title: Japanese Text Softener
 ! Title-ja: 日本語本文軟化
-! Version: 20261007.1
+! Version: 20261007.2
 ! Expires: 7 days
 ! Homepage: https://github.com/r20942097-hue/s
 ! Subscription: https://raw.githubusercontent.com/r20942097-hue/s/main/japanese-text-softener.txt
-! Description: Softens legacy Japanese web typography by replacing MS PGothic / MS UI Gothic on text content while minimizing icon and UI breakage.
+! Deep profile: https://raw.githubusercontent.com/r20942097-hue/s/main/japanese-text-softener-deep.txt
+! Description: Softens legacy Japanese web typography by replacing MS PGothic / MS UI Gothic on text content while minimizing layout, icon, and UI breakage.
 ! Description-ja: MS Pゴシック / MS UI Gothic 系の古い本文フォント指定を、Windows向けの読みやすい日本語フォントスタックへ置換します。
 ! Target: uBlock Origin
 ! License: CC0-1.0
 !
 ! Design:
-! - Fast path: inline legacy-font declarations.
+! - Fast path: inline style and legacy <font face> declarations.
 ! - Low-cost global fallback: body/main/article only.
-! - Japanese-language fallback: common text elements only.
-! - Avoids generic span/i/svg/icon rewriting.
+! - Conservative Japanese fallback: text-heavy semantic elements only.
+! - No generic div/span/i/svg/icon scan in the standard profile.
+! - Use the Deep profile only for stubborn sites with descendant-level font rules.
 !
 ! Replacement stack:
-! system-ui, "Yu Gothic UI", "Yu Gothic", Meiryo, "Noto Sans CJK JP", sans-serif
+! system-ui, "Yu Gothic UI", "Yu Gothic", Meiryo, "Noto Sans JP", "Noto Sans CJK JP", sans-serif
 !
 ! ---------------------------------------------------------------------------
 ! Fast path: explicit inline legacy Japanese font declarations
 ! ---------------------------------------------------------------------------
 
-##:is(body,main,article,section,p,li,dd,dt,td,th,a,strong,em,label,button,input,textarea,select)[style*="MS PGothic" i]:style(font-family: system-ui, "Yu Gothic UI", "Yu Gothic", Meiryo, "Noto Sans CJK JP", sans-serif !important;)
-##:is(body,main,article,section,p,li,dd,dt,td,th,a,strong,em,label,button,input,textarea,select)[style*="MS P Gothic" i]:style(font-family: system-ui, "Yu Gothic UI", "Yu Gothic", Meiryo, "Noto Sans CJK JP", sans-serif !important;)
-##:is(body,main,article,section,p,li,dd,dt,td,th,a,strong,em,label,button,input,textarea,select)[style*="ＭＳ Ｐゴシック" i]:style(font-family: system-ui, "Yu Gothic UI", "Yu Gothic", Meiryo, "Noto Sans CJK JP", sans-serif !important;)
-##:is(body,main,article,section,p,li,dd,dt,td,th,a,strong,em,label,button,input,textarea,select)[style*="MS UI Gothic" i]:style(font-family: system-ui, "Yu Gothic UI", "Yu Gothic", Meiryo, "Noto Sans CJK JP", sans-serif !important;)
-##:is(body,main,article,section,p,li,dd,dt,td,th,a,strong,em,label,button,input,textarea,select)[style*="ＭＳ ＵＩゴシック" i]:style(font-family: system-ui, "Yu Gothic UI", "Yu Gothic", Meiryo, "Noto Sans CJK JP", sans-serif !important;)
+##:is(body,main,article,section,p,li,dd,dt,td,th,a,strong,em,label,button,input,textarea,select)[style*="MS PGothic" i]:style(font-family: system-ui, "Yu Gothic UI", "Yu Gothic", Meiryo, "Noto Sans JP", "Noto Sans CJK JP", sans-serif !important;)
+##:is(body,main,article,section,p,li,dd,dt,td,th,a,strong,em,label,button,input,textarea,select)[style*="MS P Gothic" i]:style(font-family: system-ui, "Yu Gothic UI", "Yu Gothic", Meiryo, "Noto Sans JP", "Noto Sans CJK JP", sans-serif !important;)
+##:is(body,main,article,section,p,li,dd,dt,td,th,a,strong,em,label,button,input,textarea,select)[style*="ＭＳ Ｐゴシック" i]:style(font-family: system-ui, "Yu Gothic UI", "Yu Gothic", Meiryo, "Noto Sans JP", "Noto Sans CJK JP", sans-serif !important;)
+##:is(body,main,article,section,p,li,dd,dt,td,th,a,strong,em,label,button,input,textarea,select)[style*="MS UI Gothic" i]:style(font-family: system-ui, "Yu Gothic UI", "Yu Gothic", Meiryo, "Noto Sans JP", "Noto Sans CJK JP", sans-serif !important;)
+##:is(body,main,article,section,p,li,dd,dt,td,th,a,strong,em,label,button,input,textarea,select)[style*="ＭＳ ＵＩゴシック" i]:style(font-family: system-ui, "Yu Gothic UI", "Yu Gothic", Meiryo, "Noto Sans JP", "Noto Sans CJK JP", sans-serif !important;)
+
+! Legacy HTML font face declarations. These are cheap native-selector matches.
+##font[face*="MS PGothic" i]:style(font-family: system-ui, "Yu Gothic UI", "Yu Gothic", Meiryo, "Noto Sans JP", "Noto Sans CJK JP", sans-serif !important;)
+##font[face*="MS P Gothic" i]:style(font-family: system-ui, "Yu Gothic UI", "Yu Gothic", Meiryo, "Noto Sans JP", "Noto Sans CJK JP", sans-serif !important;)
+##font[face*="ＭＳ Ｐゴシック" i]:style(font-family: system-ui, "Yu Gothic UI", "Yu Gothic", Meiryo, "Noto Sans JP", "Noto Sans CJK JP", sans-serif !important;)
+##font[face*="MS UI Gothic" i]:style(font-family: system-ui, "Yu Gothic UI", "Yu Gothic", Meiryo, "Noto Sans JP", "Noto Sans CJK JP", sans-serif !important;)
+##font[face*="ＭＳ ＵＩゴシック" i]:style(font-family: system-ui, "Yu Gothic UI", "Yu Gothic", Meiryo, "Noto Sans JP", "Noto Sans CJK JP", sans-serif !important;)
 
 ! ---------------------------------------------------------------------------
 ! Global computed-style fallback
-! Restrict to high-level text containers to keep procedural cost low.
+! Only inspect a few high-level containers on every site.
 ! ---------------------------------------------------------------------------
 
-##:is(body,main,article):matches-css(font-family: /(?:MS\s*P\s*Gothic|ＭＳ\s*Ｐゴシック|MS\s*UI\s*Gothic|ＭＳ\s*ＵＩゴシック)/i):style(font-family: system-ui, "Yu Gothic UI", "Yu Gothic", Meiryo, "Noto Sans CJK JP", sans-serif !important;)
+##:is(body,main,article):matches-css(font-family: /(?:MS\s*P\s*Gothic|ＭＳ\s*Ｐゴシック|MS\s*UI\s*Gothic|ＭＳ\s*ＵＩゴシック)/i):style(font-family: system-ui, "Yu Gothic UI", "Yu Gothic", Meiryo, "Noto Sans JP", "Noto Sans CJK JP", sans-serif !important;)
 
 ! ---------------------------------------------------------------------------
 ! Japanese-language computed-style fallback
-! Expands detection only when the document is explicitly Japanese.
+! Keep the standard profile conservative to reduce procedural DOM scans.
 ! ---------------------------------------------------------------------------
 
-##html:lang(ja) :is(section,p,li,dd,dt,td,th,a,strong,em,label,button,input,textarea,select):matches-css(font-family: /(?:MS\s*P\s*Gothic|ＭＳ\s*Ｐゴシック|MS\s*UI\s*Gothic|ＭＳ\s*ＵＩゴシック)/i):style(font-family: system-ui, "Yu Gothic UI", "Yu Gothic", Meiryo, "Noto Sans CJK JP", sans-serif !important;)
+##html:lang(ja) :is(p,li,dd,dt,td,th,label):matches-css(font-family: /(?:MS\s*P\s*Gothic|ＭＳ\s*Ｐゴシック|MS\s*UI\s*Gothic|ＭＳ\s*ＵＩゴシック)/i):style(font-family: system-ui, "Yu Gothic UI", "Yu Gothic", Meiryo, "Noto Sans JP", "Noto Sans CJK JP", sans-serif !important;)
 
 ! ---------------------------------------------------------------------------
 ! Intentional exclusions
@@ -50,5 +59,4 @@
 ! MS Gothic / ＭＳ ゴシック is not globally replaced because it can be
 ! intentionally used for fixed-width tables, ASCII layouts, or code-like text.
 ! MS Mincho / MS PMincho are also left unchanged to preserve serif typography.
-!
-! Icon/symbol elements are intentionally not targeted by broad span/i/svg rules.
+! Generic div/span/i/svg/icon selectors are not scanned in this standard list.
