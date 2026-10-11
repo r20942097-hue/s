@@ -1,0 +1,16 @@
+[Adblock Plus 2.0]
+! Title: Twitch Custom Resource (Optional)
+! Version: 20261011.1
+! Expires: 5 days
+! Homepage: https://github.com/r20942097-hue/s
+! Subscription: https://raw.githubusercontent.com/r20942097-hue/s/main/twitch-custom-optional.txt
+! Description: Optional activation rule for an independently reviewed twitch-videoad user resource; not included by ad.txt.
+! Status: optional-external
+! Target: uBlock Origin
+! License: CC0-1.0
+!
+! This resource is not included in uBO's built-in scriptlet library.
+! Enable only after installing and reviewing a matching external resource yourself.
+! This repository does not distribute or select that external JavaScript resource.
+! Do not combine multiple Twitch-specific video scripts. Live video ad blocking is not guaranteed.
+twitch.tv##+js(twitch-videoad)
