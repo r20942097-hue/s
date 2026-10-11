@@ -1,0 +1,27 @@
+{
+  "schema": "filter-engine-lock/v1",
+  "ublock": {
+    "repository": "gorhill/uBlock",
+    "commit": "846934ee9a815263f1c425df9939f56783fda0df",
+    "archive_url": "https://codeload.github.com/gorhill/uBlock/tar.gz/846934ee9a815263f1c425df9939f56783fda0df",
+    "sha256": "7d4854c7b5147acb492abcc3a0a40f71ef56188d9d1ef339dc08bb5b75267a9d"
+  },
+  "public_suffix": {
+    "repository": "publicsuffix/list",
+    "commit": "3929462652695bad04f0a27afb600974014a3c8b",
+    "path": "public_suffix_list.dat",
+    "url": "https://raw.githubusercontent.com/publicsuffix/list/3929462652695bad04f0a27afb600974014a3c8b/public_suffix_list.dat",
+    "sha256": "2919eb9803c91a3f73a507cc6fedc934de005543c22c4016f72e3343de5dd6e7"
+  },
+  "optional_scriptlets": {
+    "twitch-custom-optional.txt": [
+      "twitch-videoad"
+    ]
+  },
+  "secondary_engine": {
+    "version": "2.20.1",
+    "package": "@ghostery/adblocker",
+    "integrity": "sha512-1ghCrMnWRf/CWQ5PMw7ZxL4W0U390gmko8kPXhwm7zi+4GDOR49JlHVvmCke90E2hCpBIoNdS5jtNlIKalp2Ww==",
+    "tarball": "https://registry.npmjs.org/@ghostery/adblocker/-/adblocker-2.20.1.tgz"
+  }
+}
