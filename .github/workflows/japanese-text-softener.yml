@@ -1,16 +1,26 @@
-name: Japanese Text Softener checks
+name: Filter list checks
 
 on:
   push:
     paths:
-      - 'japanese-text-softener*.txt'
-      - 'tests/test_japanese_text_softener.py'
+      - '*.txt'
+      - 'v2/**'
+      - 'scripts/**'
+      - 'tests/**'
+      - 'filter-profiles.json'
+      - 'verification/**'
       - '.github/workflows/japanese-text-softener.yml'
   pull_request:
     paths:
-      - 'japanese-text-softener*.txt'
-      - 'tests/test_japanese_text_softener.py'
+      - '*.txt'
+      - 'v2/**'
+      - 'scripts/**'
+      - 'tests/**'
+      - 'filter-profiles.json'
+      - 'verification/**'
       - '.github/workflows/japanese-text-softener.yml'
+
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -27,4 +37,27 @@ jobs:
         with:
           python-version: '3.13'
       - name: Run filter regression tests
-        run: python -m unittest discover -s tests -p 'test_japanese_text_softener.py' -v
+        run: python -m unittest discover -s tests -p 'test_*.py' -v
+      - name: Validate all filter lists
+        run: python scripts/validate_lists.py
+      - name: Check generated network lists
+        run: python scripts/generate_lists.py --check
+  engine:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.13'
+      - uses: actions/setup-node@2028fbc5c25fe9cf00d9f06a71cc4710d4507903 # v6.0.0
+        with:
+          node-version: '24'
+      - name: Prepare pinned, hash-verified engine
+        run: python scripts/prepare_engine.py --directory "$RUNNER_TEMP/filter-engine"
+      - name: Install locked optional secondary engine
+        run: npm ci --prefix verification/ghostery --ignore-scripts --no-audit --no-fund
+      - name: Check with uBlock Origin and Ghostery engines
+        run: node scripts/check_engine.mjs --engine-dir "$RUNNER_TEMP/filter-engine" --ghostery-entry verification/ghostery/node_modules/@ghostery/adblocker/dist/esm/index.js

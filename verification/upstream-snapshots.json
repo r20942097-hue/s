@@ -1,0 +1,167 @@
+{
+  "reviewed_at": "2026-10-11",
+  "files": [
+    {
+      "repository": "AdguardTeam/AdguardFilters",
+      "path": "BaseFilter/sections/adservers.txt",
+      "commit": "93e2053f5aa91f07225aeadcb9a7da33cfa347f4",
+      "sha256": "79db753396c9b42f783139de8e25f0bae5f054bda7c6ccddc90560d5acdfc768",
+      "bytes": 37493,
+      "url": "https://github.com/AdguardTeam/AdguardFilters/blob/93e2053f5aa91f07225aeadcb9a7da33cfa347f4/BaseFilter/sections/adservers.txt"
+    },
+    {
+      "repository": "AdguardTeam/AdguardFilters",
+      "path": "BaseFilter/sections/adservers_firstparty.txt",
+      "commit": "93e2053f5aa91f07225aeadcb9a7da33cfa347f4",
+      "sha256": "60c9f852cdf6bc8b163bafb2143560bb87eaef776277f7724d40f42c980156e5",
+      "bytes": 9667,
+      "url": "https://github.com/AdguardTeam/AdguardFilters/blob/93e2053f5aa91f07225aeadcb9a7da33cfa347f4/BaseFilter/sections/adservers_firstparty.txt"
+    },
+    {
+      "repository": "AdguardTeam/AdguardFilters",
+      "path": "BaseFilter/sections/allowlist.txt",
+      "commit": "93e2053f5aa91f07225aeadcb9a7da33cfa347f4",
+      "sha256": "1c81dceecdd0de85e6bc8e6cb7acf22d21ec69480b25e399ee975aca2a8cabbb",
+      "bytes": 328701,
+      "url": "https://github.com/AdguardTeam/AdguardFilters/blob/93e2053f5aa91f07225aeadcb9a7da33cfa347f4/BaseFilter/sections/allowlist.txt"
+    },
+    {
+      "repository": "AdguardTeam/AdguardFilters",
+      "path": "BaseFilter/sections/allowlist_stealth.txt",
+      "commit": "93e2053f5aa91f07225aeadcb9a7da33cfa347f4",
+      "sha256": "1a656607e8fdfc21e1954c70e1658305b9c0a90262844dc94768c3be6a2ca041",
+      "bytes": 208892,
+      "url": "https://github.com/AdguardTeam/AdguardFilters/blob/93e2053f5aa91f07225aeadcb9a7da33cfa347f4/BaseFilter/sections/allowlist_stealth.txt"
+    },
+    {
+      "repository": "AdguardTeam/AdguardFilters",
+      "path": "SpywareFilter/sections/allowlist.txt",
+      "commit": "93e2053f5aa91f07225aeadcb9a7da33cfa347f4",
+      "sha256": "9d44880990912f0b52745a7b6b3898dcf18068f6681a879438c6c85a5b578cea",
+      "bytes": 299871,
+      "url": "https://github.com/AdguardTeam/AdguardFilters/blob/93e2053f5aa91f07225aeadcb9a7da33cfa347f4/SpywareFilter/sections/allowlist.txt"
+    },
+    {
+      "repository": "AdguardTeam/AdguardFilters",
+      "path": "SpywareFilter/sections/tracking_servers.txt",
+      "commit": "93e2053f5aa91f07225aeadcb9a7da33cfa347f4",
+      "sha256": "e51c53b6dc2d753e2e913588888cc951ebb395633fa568c41aeb29c70d662d6a",
+      "bytes": 125539,
+      "url": "https://github.com/AdguardTeam/AdguardFilters/blob/93e2053f5aa91f07225aeadcb9a7da33cfa347f4/SpywareFilter/sections/tracking_servers.txt"
+    },
+    {
+      "repository": "easylist/easylist",
+      "path": "easylist/easylist_adservers.txt",
+      "commit": "cb852423c6371c789f2b2ea855f6dbb56a49f7a9",
+      "sha256": "72a8f32071e2fadb06533bc72d677f1be4a10e2c5b8043ac07eb4cb5e09e8f84",
+      "bytes": 1054181,
+      "url": "https://github.com/easylist/easylist/blob/cb852423c6371c789f2b2ea855f6dbb56a49f7a9/easylist/easylist_adservers.txt"
+    },
+    {
+      "repository": "easylist/easylist",
+      "path": "easylist/easylist_allowlist.txt",
+      "commit": "cb852423c6371c789f2b2ea855f6dbb56a49f7a9",
+      "sha256": "89186dfaad8e732bff48a77d5520c53b2f2019f919423ff7656fe39b5a3bf5f1",
+      "bytes": 44690,
+      "url": "https://github.com/easylist/easylist/blob/cb852423c6371c789f2b2ea855f6dbb56a49f7a9/easylist/easylist_allowlist.txt"
+    },
+    {
+      "repository": "easylist/easylist",
+      "path": "easyprivacy/easyprivacy_allowlist.txt",
+      "commit": "cb852423c6371c789f2b2ea855f6dbb56a49f7a9",
+      "sha256": "148c78af962a282b72812a7f02218fc02d09d6585875272871f8dab47c0f1967",
+      "bytes": 51856,
+      "url": "https://github.com/easylist/easylist/blob/cb852423c6371c789f2b2ea855f6dbb56a49f7a9/easyprivacy/easyprivacy_allowlist.txt"
+    },
+    {
+      "repository": "easylist/easylist",
+      "path": "easyprivacy/easyprivacy_allowlist_international.txt",
+      "commit": "cb852423c6371c789f2b2ea855f6dbb56a49f7a9",
+      "sha256": "c7bd824da6c48718d75737a917d6154cb87afdcd235bef4d880191b9bd3e0f8a",
+      "bytes": 20637,
+      "url": "https://github.com/easylist/easylist/blob/cb852423c6371c789f2b2ea855f6dbb56a49f7a9/easyprivacy/easyprivacy_allowlist_international.txt"
+    },
+    {
+      "repository": "easylist/easylist",
+      "path": "easyprivacy/easyprivacy_trackingservers_general.txt",
+      "commit": "cb852423c6371c789f2b2ea855f6dbb56a49f7a9",
+      "sha256": "636234e02e76ac6f63905dc4a54a289619d2b911337d87e5215b7a2f8546f797",
+      "bytes": 9485,
+      "url": "https://github.com/easylist/easylist/blob/cb852423c6371c789f2b2ea855f6dbb56a49f7a9/easyprivacy/easyprivacy_trackingservers_general.txt"
+    },
+    {
+      "repository": "uBlockOrigin/uAssets",
+      "path": "filters/filters.txt",
+      "commit": "ecaadbee6a35c60b597121330ef002391c0e28f0",
+      "sha256": "998bbf5a93077463a7121f4e8e36d53fa2e1659d8dd84596c873850e5c123484",
+      "bytes": 473227,
+      "url": "https://github.com/uBlockOrigin/uAssets/blob/ecaadbee6a35c60b597121330ef002391c0e28f0/filters/filters.txt"
+    },
+    {
+      "repository": "uBlockOrigin/uAssets",
+      "path": "filters/privacy.txt",
+      "commit": "ecaadbee6a35c60b597121330ef002391c0e28f0",
+      "sha256": "270a10cbfe73b96c4ced49dc8933f39f1f8d06e81cd80e3020743e7dda7666c7",
+      "bytes": 183674,
+      "url": "https://github.com/uBlockOrigin/uAssets/blob/ecaadbee6a35c60b597121330ef002391c0e28f0/filters/privacy.txt"
+    },
+    {
+      "repository": "uBlockOrigin/uAssets",
+      "path": "filters/unbreak.txt",
+      "commit": "ecaadbee6a35c60b597121330ef002391c0e28f0",
+      "sha256": "83317122bc17fc57e0c41e434b64b6c51c32746a6bf0a9f95fff003424762867",
+      "bytes": 280589,
+      "url": "https://github.com/uBlockOrigin/uAssets/blob/ecaadbee6a35c60b597121330ef002391c0e28f0/filters/unbreak.txt"
+    },
+    {
+      "repository": "AdguardTeam/AdguardFilters",
+      "path": "ChineseFilter/sections/adservers.txt",
+      "commit": "93e2053f5aa91f07225aeadcb9a7da33cfa347f4",
+      "sha256": "af8a46c7d44f1e558d3ccc5fba02606aff6bcc1ad0a1534a9083ce8276154e95",
+      "bytes": 6592,
+      "url": "https://github.com/AdguardTeam/AdguardFilters/blob/93e2053f5aa91f07225aeadcb9a7da33cfa347f4/ChineseFilter/sections/adservers.txt"
+    },
+    {
+      "repository": "AdguardTeam/AdguardFilters",
+      "path": "JapaneseFilter/sections/allowlist.txt",
+      "commit": "93e2053f5aa91f07225aeadcb9a7da33cfa347f4",
+      "sha256": "663ca3adda0689db0144968d3775e94aa64bf02d88a01aef9d8fd0a57eb44b59",
+      "bytes": 37550,
+      "url": "https://github.com/AdguardTeam/AdguardFilters/blob/93e2053f5aa91f07225aeadcb9a7da33cfa347f4/JapaneseFilter/sections/allowlist.txt"
+    },
+    {
+      "repository": "AdguardTeam/AdguardFilters",
+      "path": "JapaneseFilter/sections/adservers_firstparty.txt",
+      "commit": "93e2053f5aa91f07225aeadcb9a7da33cfa347f4",
+      "sha256": "5445cfbf7ba10a86917b6ae2eb70d69ebc21a323c65f718b89bbe77229f055ae",
+      "bytes": 900,
+      "url": "https://github.com/AdguardTeam/AdguardFilters/blob/93e2053f5aa91f07225aeadcb9a7da33cfa347f4/JapaneseFilter/sections/adservers_firstparty.txt"
+    },
+    {
+      "repository": "AdguardTeam/AdguardFilters",
+      "path": "JapaneseFilter/sections/adservers.txt",
+      "commit": "93e2053f5aa91f07225aeadcb9a7da33cfa347f4",
+      "sha256": "0d42136bf342f9d5f50a9c3ef9af095a962999b4ef6b890098d647227dc6dbd6",
+      "bytes": 9959,
+      "url": "https://github.com/AdguardTeam/AdguardFilters/blob/93e2053f5aa91f07225aeadcb9a7da33cfa347f4/JapaneseFilter/sections/adservers.txt"
+    },
+    {
+      "repository": "AdguardTeam/AdguardFilters",
+      "path": "ChineseFilter/sections/allowlist.txt",
+      "commit": "93e2053f5aa91f07225aeadcb9a7da33cfa347f4",
+      "sha256": "0100f2e54ececb5990e46fe4461482a2516665fcecf47e19dedbeb1aaf9ac41d",
+      "bytes": 17162,
+      "url": "https://github.com/AdguardTeam/AdguardFilters/blob/93e2053f5aa91f07225aeadcb9a7da33cfa347f4/ChineseFilter/sections/allowlist.txt"
+    },
+    {
+      "repository": "AdguardTeam/AdguardFilters",
+      "path": "SpywareFilter/sections/tracking_servers_firstparty.txt",
+      "commit": "93e2053f5aa91f07225aeadcb9a7da33cfa347f4",
+      "sha256": "9d68bfcee76d3528339d6796007ab4812959a3630aa6d685f6876e247043a092",
+      "bytes": 87480,
+      "url": "https://github.com/AdguardTeam/AdguardFilters/blob/93e2053f5aa91f07225aeadcb9a7da33cfa347f4/SpywareFilter/sections/tracking_servers_firstparty.txt"
+    }
+  ],
+  "scope": "Selected maintained classification and exception files; not a complete upstream corpus",
+  "automatic_promotion": false
+}

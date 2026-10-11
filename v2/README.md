@@ -1,12 +1,12 @@
 # Filter v2 global candidate
 
-This directory contains the global next-generation candidate set. The root `ad.txt` and `tracking.txt` remain unchanged while v2 is evaluated.
+This directory contains the global next-generation candidate set. The root stable profiles remain the default recommendation while v2 is evaluated. Both are generated from the canonical profile registry, with licenses kept separate.
 
 ## Scope
 
 v2 is no longer Japan-focused. It combines a compact global supplement for widely used advertising and tracking infrastructure with selected regional rules. Japanese rules remain included as one regional subset.
 
-Upstream projects reviewed on 2026-10-02:
+Upstream projects reviewed on 2026-10-11:
 - EasyList / EasyPrivacy
 - AdGuard Base, Tracking Protection, and regional filters
 - uBlock Origin uAssets
@@ -42,4 +42,6 @@ Subscribe to all three lists. `strict.txt` additionally blocks tag managers, ide
 
 ## Status
 
-Candidate. Public retrieval is verified. Upstream freshness was reviewed on 2026-10-02. Real-site regression testing is still required before promoting v2 over the root stable lists.
+Candidate. The 20261011.1 update is local and has not been published. The advertising profile has 93 network rules; privacy has 38; Strict has 13. Amazon's broad advertising domain was removed after exception review. Broad New Relic and Sentry SDK domains were isolated in Strict.
+
+Pinned upstream references and actual uBO/Ghostery engines were checked. Public-page network smoke checks and synthetic DOM tests do not establish login, form or video-playback compatibility. v2 is not automatically promoted over the root stable lists.

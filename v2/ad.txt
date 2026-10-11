@@ -1,22 +1,22 @@
 [Adblock Plus 2.0]
 ! Title: Universal Web Ad Filter v2 (Global Balanced)
-! Version: 20261002.2
+! Version: 20261011.1
 ! Expires: 5 days
 ! Homepage: https://github.com/r20942097-hue/s
 ! Subscription: https://raw.githubusercontent.com/r20942097-hue/s/main/v2/ad.txt
 ! Description: Global third-party advertising-network supplement, curated for low breakage.
 ! Policy: Third-party network blocking only. No broad cosmetic filters, first-party blocking, anti-adblock bypass, paywall bypass, or URL rewriting.
 ! Compatibility: uBlock Origin / AdGuard / ABP-compatible syntax where supported.
-! Last reviewed: 2026-10-02
+! Last reviewed: 2026-10-11
 ! Sources reviewed: EasyList, EasyPrivacy policy, AdGuard Base/Regional filters, uBlock Origin uAssets.
 ! License: GPL-3.0-only
+! Generated: filter-profiles.json via scripts/generate_lists.py
 !
-! Global advertising / programmatic
+! Global and regional advertising supplement (candidate)
 ||doubleclick.net^$third-party
 ||googlesyndication.com^$third-party
 ||googleadservices.com^$third-party
 ||adservice.google.com^$third-party
-||partner.googleadservices.com^$third-party
 ||adnxs.com^$third-party
 ||criteo.com^$third-party
 ||criteo.net^$third-party
@@ -42,7 +42,6 @@
 ||rtbhouse.com^$third-party
 ||gumgum.com^$third-party
 ||yieldlab.net^$third-party
-||amazon-adsystem.com^$third-party
 ||media.net^$third-party
 ||adroll.com^$third-party
 ||doubleverify.com^$third-party
@@ -57,8 +56,6 @@
 ||adpushup.com^$third-party
 ||adperfect.com^$third-party
 ||adpnut.com^$third-party
-!
-! High-friction / popunder advertising
 ||adsterra.com^$third-party
 ||propellerads.com^$third-party
 ||exoclick.com^$third-party
@@ -75,15 +72,11 @@
 ||purpleads.io^$third-party
 ||trafficshop.com^$third-party
 ||ero-advertising.com^$third-party
-!
-! Selected regional advertising infrastructure
 ||adgebra.co.in^$third-party
 ||indianbannerexchange.com^$third-party
 ||indianlinkexchange.com^$third-party
 ||an.yandex.ru^$third-party
 ||cpro.baidu.com^$third-party
-!
-! Japan / East Asia advertising infrastructure
 ||geniee.jp^$third-party
 ||nend.net^$third-party
 ||amoad.com^$third-party
@@ -113,3 +106,4 @@
 ||myiads.com^$third-party
 ||deqwas.net^$third-party
 ||fivecdm.com^$third-party
+!

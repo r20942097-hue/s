@@ -1,0 +1,210 @@
+"""Generate network lists from filter-profiles.json; mirror export is explicit."""
+import argparse
+from datetime import datetime
+import difflib
+import json
+import os
+from pathlib import Path
+import re
+import sys
+import tempfile
+
+ROOT = Path(__file__).resolve().parents[1]
+PROFILE_PATH = ROOT / "filter-profiles.json"
+RULE_RE = re.compile(r"^\|\|([a-z0-9.-]+)(?:\^|/[^$]*)\$third-party(?:,script)?$")
+
+
+def reject_duplicate_keys(pairs):
+    result = {}
+    for key, value in pairs:
+        if key in result:
+            raise ValueError(f"duplicate JSON key: {key}")
+        result[key] = value
+    return result
+
+
+def valid_relative(value):
+    return (isinstance(value, str) and bool(value) and not Path(value).is_absolute()
+            and ".." not in Path(value).parts and "\\" not in value)
+
+
+def validate_profiles(data):
+    errors = []
+    if not isinstance(data, dict) or data.get("schema") != "filter-profiles/v1":
+        return ["unsupported profile schema"]
+    version = data.get("version", "")
+    if not isinstance(version, str) or not re.fullmatch(r"\d{8}\.\d+", version):
+        errors.append("version must use YYYYMMDD.N")
+    else:
+        try:
+            datetime.strptime(version[:8], "%Y%m%d")
+        except ValueError:
+            errors.append("invalid version date")
+    reviewed = data.get("reviewed_at")
+    try:
+        if not isinstance(reviewed, str) or datetime.strptime(reviewed, "%Y-%m-%d").date().isoformat() != reviewed:
+            raise ValueError()
+    except ValueError:
+        errors.append("reviewed_at must use YYYY-MM-DD")
+    sets = data.get("rule_sets")
+    if not isinstance(sets, dict) or not sets:
+        return errors + ["rule_sets must be a nonempty object"]
+    for key, entry in sets.items():
+        if not isinstance(entry, dict):
+            errors.append(f"{key}: rule set must be an object")
+            continue
+        label = entry.get('label')
+        if not isinstance(label, str) or not label.strip() or '\n' in label:
+            errors.append(f"{key}: label must be a nonempty single line")
+        rules = entry.get("rules")
+        if not isinstance(rules, list) or not rules:
+            errors.append(f"{key}: rules must be a nonempty array")
+            continue
+        seen = set()
+        for rule in rules:
+            match = RULE_RE.fullmatch(rule) if isinstance(rule, str) else None
+            if match is None:
+                errors.append(f"{key}: unsupported rule: {rule!r}")
+                continue
+            host = match.group(1)
+            if "." not in host or any(not re.fullmatch(r"[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?", part) for part in host.split('.')):
+                errors.append(f"{key}: invalid hostname: {host}")
+            if rule in seen:
+                errors.append(f"{key}: duplicate rule: {rule}")
+            seen.add(rule)
+        if not isinstance(entry.get('license'), str) or entry.get("license") not in {"CC0-1.0", "GPL-3.0-only"}:
+            errors.append(f"{key}: unsupported license")
+    outputs = data.get("outputs")
+    if not isinstance(outputs, list) or not outputs:
+        return errors + ["outputs must be a nonempty array"]
+    seen_outputs = set()
+    for output in outputs:
+        if not isinstance(output, dict):
+            errors.append("output must be an object")
+            continue
+        path, scope = output.get("path"), output.get("scope")
+        if scope not in {"s", "faaff"} or not valid_relative(path) or not path.endswith('.txt'):
+            errors.append("invalid output scope or path")
+            continue
+        identity = (scope, path)
+        if identity in seen_outputs:
+            errors.append(f"duplicate output: {scope}/{path}")
+        seen_outputs.add(identity)
+        headers = output.get("headers")
+        if not isinstance(headers, list) or any(not isinstance(line, str) or not line.startswith('! ') or '\n' in line for line in headers):
+            errors.append(f"{path}: invalid headers")
+            continue
+        values = {}
+        for key in ("Title", "Version", "Expires", "Homepage", "Subscription", "Description", "License"):
+            matching = [line[len(key)+3:].strip() for line in headers if line.startswith(f'! {key}:')]
+            if len(matching) != 1 or not matching[0]:
+                errors.append(f"{path}: expected one nonempty {key}")
+            else:
+                values[key] = matching[0]
+        keys = output.get("rule_sets")
+        if not isinstance(keys, list) or not keys or any(not isinstance(key, str) or key not in sets for key in keys):
+            errors.append(f"{path}: unknown rule set")
+            continue
+        active, licenses = [], set()
+        for key in keys:
+            if not isinstance(sets[key], dict) or not isinstance(sets[key].get('rules'), list):
+                continue
+            active.extend(rule for rule in sets[key]['rules'] if isinstance(rule, str))
+            value = sets[key].get('license')
+            if isinstance(value, str):
+                licenses.add(value)
+        if len(active) != len(set(active)):
+            errors.append(f"{path}: duplicate rules across rule sets")
+        if licenses != {values.get('License')}:
+            errors.append(f"{path}: output license must match all source rule sets")
+        includes = output.get('includes', [])
+        if not isinstance(includes, list) or any(not valid_relative(name) or len(Path(name).parts) != 1 for name in includes):
+            errors.append(f"{path}: includes must be same-directory filenames")
+    return errors
+
+
+def render(data, output):
+    lines = ['[Adblock Plus 2.0]']
+    for header in output['headers']:
+        lines.append(header.replace('{version}', data['version']).replace('{reviewed_at}', data['reviewed_at']))
+    lines += ['! Generated: filter-profiles.json via scripts/generate_lists.py', '!']
+    for key in output['rule_sets']:
+        entry = data['rule_sets'][key]
+        lines += ['! ' + entry['label']] + entry['rules'] + ['!']
+    if output.get('includes'):
+        lines += ['! uBlock Origin extensions; other blockers ignore include directives.']
+        lines += ['!#include ' + name for name in output['includes']]
+    return '\n'.join(lines).rstrip() + '\n'
+
+
+def output_path(root, relative):
+    if not valid_relative(relative):
+        raise ValueError('unsafe output path')
+    target = root / relative
+    if not target.resolve().is_relative_to(root.resolve()):
+        raise ValueError('output escapes root')
+    for part in [target, *target.parents]:
+        if part == root.parent:
+            break
+        if part.is_symlink():
+            raise ValueError(f'symlink output is forbidden: {relative}')
+    return target
+
+
+def generate(data, roots, check=False, dry_run=False):
+    errors = validate_profiles(data)
+    if errors:
+        return errors
+    pending = []
+    for output in data['outputs']:
+        if output['scope'] not in roots:
+            continue
+        root = roots[output['scope']]
+        target = output_path(root, output['path'])
+        content = render(data, output)
+        current = target.read_text(encoding='utf-8') if target.is_file() else ''
+        if current == content:
+            continue
+        if check:
+            errors.append(f"stale generated filter: {output['scope']}/{output['path']}")
+        elif dry_run:
+            sys.stdout.writelines(difflib.unified_diff(current.splitlines(True), content.splitlines(True), fromfile=str(target), tofile=str(target)+' (generated)'))
+        else:
+            pending.append((target, content))
+    # Prepare the full plan before replacing any file, so bad paths cannot cause a partial update.
+    for target, content in pending:
+        target.parent.mkdir(parents=True, exist_ok=True)
+        with tempfile.NamedTemporaryFile(mode='w', encoding='utf-8', dir=target.parent, delete=False) as handle:
+            handle.write(content)
+            temporary = Path(handle.name)
+        try:
+            os.replace(temporary, target)
+        finally:
+            temporary.unlink(missing_ok=True)
+    return errors
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--check', action='store_true')
+    parser.add_argument('--dry-run', action='store_true')
+    parser.add_argument('--mirror-root', type=Path, help='explicit faaff checkout for compatibility exports')
+    args = parser.parse_args()
+    roots = {'s': ROOT}
+    if args.mirror_root:
+        if not args.mirror_root.is_dir():
+            parser.error('mirror root must be an existing directory')
+        roots['faaff'] = args.mirror_root.resolve()
+    try:
+        data = json.loads(PROFILE_PATH.read_text(encoding='utf-8'), object_pairs_hook=reject_duplicate_keys)
+        errors = generate(data, roots, check=args.check, dry_run=args.dry_run)
+    except (OSError, ValueError, TypeError) as exc:
+        errors = [str(exc)]
+    for error in errors:
+        print('ERROR:', error)
+    print('GENERATION FAILED' if errors else 'GENERATION CHECK PASSED' if args.check else 'GENERATION PLAN SHOWN' if args.dry_run else 'GENERATION PASSED')
+    return bool(errors)
+
+
+if __name__ == '__main__':
+    sys.exit(main())

@@ -1,17 +1,18 @@
 [Adblock Plus 2.0]
 ! Title: Universal Web Tracking Filter v2 (Global Optional)
-! Version: 20261002.2
+! Version: 20261011.1
 ! Expires: 5 days
 ! Homepage: https://github.com/r20942097-hue/s
 ! Subscription: https://raw.githubusercontent.com/r20942097-hue/s/main/v2/tracking.txt
 ! Description: Global third-party analytics, session replay, telemetry, RUM, and advertising-measurement supplement.
 ! Policy: Third-party network blocking only. This list may disable analytics, feedback, or measurement features.
 ! Compatibility: uBlock Origin / AdGuard / ABP-compatible syntax where supported.
-! Last reviewed: 2026-10-02
+! Last reviewed: 2026-10-11
 ! Sources reviewed: EasyPrivacy, AdGuard Tracking Protection, uBlock Origin privacy filters.
 ! License: GPL-3.0-only
+! Generated: filter-profiles.json via scripts/generate_lists.py
 !
-! Analytics / session replay / RUM
+! Analytics, session replay and measurement (optional candidate)
 ||google-analytics.com^$third-party
 ||analytics.google.com^$third-party
 ||scorecardresearch.com^$third-party
@@ -36,8 +37,6 @@
 ||segment.com^$third-party
 ||mparticle.com^$third-party
 ||nr-data.net^$third-party
-||newrelic.com^$third-party
-||sentry.io^$third-party
 ||sentry-cdn.com^$third-party
 ||browser-intake-datadoghq.com^$third-party
 ||cloudflareinsights.com^$third-party
@@ -45,14 +44,11 @@
 ||crashlytics.com^$third-party
 ||rudderstack.com^$third-party
 ||yandexmetrica.com^$third-party
-!
-! Advertising-platform measurement
 ||bat.bing.com^$third-party
 ||analytics.tiktok.com^$third-party
 ||tr.snapchat.com^$third-party
 ||px.ads.linkedin.com^$third-party
 ||static.ads-twitter.com^$third-party
-!
-! Regional / ad-tech measurement
 ||beacon.geniee.jp^$third-party
 ||genieedmp.com^$third-party
+!
