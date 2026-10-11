@@ -1,0 +1,358 @@
+{
+  "schema": "filter-profiles/v1",
+  "version": "20261011.1",
+  "reviewed_at": "2026-10-11",
+  "notes": "Common rules are generated into existing subscription paths. No upstream candidates are automatically promoted. v2 remains candidate; broad SDK domains are isolated in Strict.",
+  "rule_sets": {
+    "ads-core": {
+      "label": "International ad delivery and programmatic advertising",
+      "license": "CC0-1.0",
+      "rules": [
+        "||doubleclick.net^$third-party",
+        "||googlesyndication.com^$third-party",
+        "||googleadservices.com^$third-party",
+        "||adservice.google.com^$third-party",
+        "||adnxs.com^$third-party",
+        "||criteo.com^$third-party",
+        "||taboola.com^$third-party",
+        "||outbrain.com^$third-party",
+        "||rubiconproject.com^$third-party",
+        "||openx.net^$third-party",
+        "||pubmatic.com^$third-party",
+        "||adsrvr.org^$third-party",
+        "||smartadserver.com^$third-party",
+        "||casalemedia.com^$third-party",
+        "||sharethrough.com^$third-party",
+        "||yieldmo.com^$third-party",
+        "||adform.net^$third-party"
+      ]
+    },
+    "ads-extra": {
+      "label": "A-Ads third-party delivery; parent block includes all subdomains",
+      "license": "CC0-1.0",
+      "rules": [
+        "||a-ads.com^$third-party"
+      ]
+    },
+    "privacy-core": {
+      "label": "Cross-site analytics and measurement",
+      "license": "CC0-1.0",
+      "rules": [
+        "||google-analytics.com^$third-party",
+        "||analytics.google.com^$third-party",
+        "||scorecardresearch.com^$third-party",
+        "||quantserve.com^$third-party",
+        "||hotjar.com^$third-party",
+        "||fullstory.com^$third-party",
+        "||mixpanel.com^$third-party",
+        "||amplitude.com^$third-party",
+        "||clarity.ms^$third-party"
+      ]
+    },
+    "ads-v2": {
+      "label": "Global and regional advertising supplement (candidate)",
+      "license": "GPL-3.0-only",
+      "rules": [
+        "||doubleclick.net^$third-party",
+        "||googlesyndication.com^$third-party",
+        "||googleadservices.com^$third-party",
+        "||adservice.google.com^$third-party",
+        "||adnxs.com^$third-party",
+        "||criteo.com^$third-party",
+        "||criteo.net^$third-party",
+        "||taboola.com^$third-party",
+        "||outbrain.com^$third-party",
+        "||rubiconproject.com^$third-party",
+        "||openx.net^$third-party",
+        "||pubmatic.com^$third-party",
+        "||adsrvr.org^$third-party",
+        "||smartadserver.com^$third-party",
+        "||casalemedia.com^$third-party",
+        "||sharethrough.com^$third-party",
+        "||yieldmo.com^$third-party",
+        "||adform.net^$third-party",
+        "||teads.tv^$third-party",
+        "||triplelift.com^$third-party",
+        "||33across.com^$third-party",
+        "||indexww.com^$third-party",
+        "||sovrn.com^$third-party",
+        "||lijit.com^$third-party",
+        "||contextweb.com^$third-party",
+        "||bidswitch.net^$third-party",
+        "||rtbhouse.com^$third-party",
+        "||gumgum.com^$third-party",
+        "||yieldlab.net^$third-party",
+        "||media.net^$third-party",
+        "||adroll.com^$third-party",
+        "||doubleverify.com^$third-party",
+        "||onetag-sys.com^$third-party",
+        "||optidigital.com^$third-party",
+        "||improvedigital.com^$third-party",
+        "||adition.com^$third-party",
+        "||e-planning.net^$third-party",
+        "||revcontent.com^$third-party",
+        "||mgid.com^$third-party",
+        "||adbutler.com^$third-party",
+        "||adpushup.com^$third-party",
+        "||adperfect.com^$third-party",
+        "||adpnut.com^$third-party",
+        "||adsterra.com^$third-party",
+        "||propellerads.com^$third-party",
+        "||exoclick.com^$third-party",
+        "||popads.net^$third-party",
+        "||popcash.net^$third-party",
+        "||adcash.com^$third-party",
+        "||monetag.com^$third-party",
+        "||hilltopads.com^$third-party",
+        "||hilltopads.net^$third-party",
+        "||juicyads.com^$third-party",
+        "||trafficjunky.net^$third-party",
+        "||trafficstars.com^$third-party",
+        "||ad-maven.com^$third-party",
+        "||purpleads.io^$third-party",
+        "||trafficshop.com^$third-party",
+        "||ero-advertising.com^$third-party",
+        "||adgebra.co.in^$third-party",
+        "||indianbannerexchange.com^$third-party",
+        "||indianlinkexchange.com^$third-party",
+        "||an.yandex.ru^$third-party",
+        "||cpro.baidu.com^$third-party",
+        "||geniee.jp^$third-party",
+        "||nend.net^$third-party",
+        "||amoad.com^$third-party",
+        "||ad-stir.com^$third-party",
+        "||ad-generation.jp^$third-party",
+        "||gsspcln.jp^$third-party",
+        "||mobee2.jp^$third-party",
+        "||mttag.com^$third-party",
+        "||adfurikun.jp^$third-party",
+        "||adingo.jp^$third-party",
+        "||i-mobile.co.jp^$third-party",
+        "||microad.jp^$third-party",
+        "||zucks.net^$third-party",
+        "||genieesspv.jp^$third-party",
+        "||gmossp-sp.jp^$third-party",
+        "||fout.jp^$third-party",
+        "||adflare.jp^$third-party",
+        "||advision-adnw.jp^$third-party",
+        "||ad-spire.net^$third-party",
+        "||ad-track.jp^$third-party",
+        "||ad.adpon.jp^$third-party",
+        "||primead.jp^$third-party",
+        "||adtechjp.com^$third-party",
+        "||liveads.jp^$third-party",
+        "||textad.net^$third-party",
+        "||valueclick.jp^$third-party",
+        "||myiads.com^$third-party",
+        "||deqwas.net^$third-party",
+        "||fivecdm.com^$third-party"
+      ]
+    },
+    "privacy-v2": {
+      "label": "Analytics, session replay and measurement (optional candidate)",
+      "license": "GPL-3.0-only",
+      "rules": [
+        "||google-analytics.com^$third-party",
+        "||analytics.google.com^$third-party",
+        "||scorecardresearch.com^$third-party",
+        "||quantserve.com^$third-party",
+        "||hotjar.com^$third-party",
+        "||fullstory.com^$third-party",
+        "||mixpanel.com^$third-party",
+        "||amplitude.com^$third-party",
+        "||clarity.ms^$third-party",
+        "||mouseflow.com^$third-party",
+        "||luckyorange.com^$third-party",
+        "||luckyorange.net^$third-party",
+        "||heapanalytics.com^$third-party",
+        "||heatmap.com^$third-party",
+        "||contentsquare.net^$third-party",
+        "||logrocket.com^$third-party",
+        "||logrocket.io^$third-party",
+        "||smartlook.com^$third-party",
+        "||crazyegg.com^$third-party",
+        "||matomo.cloud^$third-party",
+        "||segment.io^$third-party",
+        "||segment.com^$third-party",
+        "||mparticle.com^$third-party",
+        "||nr-data.net^$third-party",
+        "||sentry-cdn.com^$third-party",
+        "||browser-intake-datadoghq.com^$third-party",
+        "||cloudflareinsights.com^$third-party",
+        "||quantummetric.com^$third-party",
+        "||crashlytics.com^$third-party",
+        "||rudderstack.com^$third-party",
+        "||yandexmetrica.com^$third-party",
+        "||bat.bing.com^$third-party",
+        "||analytics.tiktok.com^$third-party",
+        "||tr.snapchat.com^$third-party",
+        "||px.ads.linkedin.com^$third-party",
+        "||static.ads-twitter.com^$third-party",
+        "||beacon.geniee.jp^$third-party",
+        "||genieedmp.com^$third-party"
+      ]
+    },
+    "strict-v2": {
+      "label": "Higher-risk tag managers, attribution and broad SDK domains",
+      "license": "GPL-3.0-only",
+      "rules": [
+        "||googletagmanager.com^$third-party",
+        "||tags.tiqcdn.com^$third-party,script",
+        "||assets.adobedtm.com^$third-party,script",
+        "||demdex.net^$third-party",
+        "||omtrdc.net^$third-party",
+        "||app-measurement.com^$third-party",
+        "||connect.facebook.net^$third-party,script",
+        "||www.facebook.com/tr/$third-party",
+        "||snap.licdn.com^$third-party,script",
+        "||branch.io^$third-party",
+        "||adjust.com^$third-party,script",
+        "||newrelic.com^$third-party",
+        "||sentry.io^$third-party"
+      ]
+    }
+  },
+  "outputs": [
+    {
+      "scope": "s",
+      "path": "ad.txt",
+      "headers": [
+        "! Title: Universal Web Ad Filter (Supplement)",
+        "! Version: {version}",
+        "! Expires: 5 days",
+        "! Homepage: https://github.com/r20942097-hue/s",
+        "! Subscription: https://raw.githubusercontent.com/r20942097-hue/s/main/ad.txt",
+        "! Description: Compact, language-neutral third-party ad-network supplement.",
+        "! Reference: https://easylist.to/",
+        "! Policy: Main list uses portable network filters; uBlock Origin-only cosmetic/scriptlet rules are loaded from ad-ubo.txt via !#include.",
+        "! License: CC0-1.0"
+      ],
+      "rule_sets": [
+        "ads-core",
+        "ads-extra"
+      ],
+      "includes": [
+        "ad-ubo.txt"
+      ]
+    },
+    {
+      "scope": "s",
+      "path": "tracking.txt",
+      "headers": [
+        "! Title: Universal Web Tracking Filter (Optional)",
+        "! Version: {version}",
+        "! Expires: 5 days",
+        "! Homepage: https://github.com/r20942097-hue/s",
+        "! Subscription: https://raw.githubusercontent.com/r20942097-hue/s/main/tracking.txt",
+        "! Description: Optional third-party analytics and session-measurement blocking.",
+        "! Policy: Network blocking only; rules target third-party requests.",
+        "! License: CC0-1.0"
+      ],
+      "rule_sets": [
+        "privacy-core"
+      ],
+      "includes": []
+    },
+    {
+      "scope": "s",
+      "path": "v2/ad.txt",
+      "headers": [
+        "! Title: Universal Web Ad Filter v2 (Global Balanced)",
+        "! Version: {version}",
+        "! Expires: 5 days",
+        "! Homepage: https://github.com/r20942097-hue/s",
+        "! Subscription: https://raw.githubusercontent.com/r20942097-hue/s/main/v2/ad.txt",
+        "! Description: Global third-party advertising-network supplement, curated for low breakage.",
+        "! Policy: Third-party network blocking only. No broad cosmetic filters, first-party blocking, anti-adblock bypass, paywall bypass, or URL rewriting.",
+        "! Compatibility: uBlock Origin / AdGuard / ABP-compatible syntax where supported.",
+        "! Last reviewed: {reviewed_at}",
+        "! Sources reviewed: EasyList, EasyPrivacy policy, AdGuard Base/Regional filters, uBlock Origin uAssets.",
+        "! License: GPL-3.0-only"
+      ],
+      "rule_sets": [
+        "ads-v2"
+      ],
+      "includes": []
+    },
+    {
+      "scope": "s",
+      "path": "v2/tracking.txt",
+      "headers": [
+        "! Title: Universal Web Tracking Filter v2 (Global Optional)",
+        "! Version: {version}",
+        "! Expires: 5 days",
+        "! Homepage: https://github.com/r20942097-hue/s",
+        "! Subscription: https://raw.githubusercontent.com/r20942097-hue/s/main/v2/tracking.txt",
+        "! Description: Global third-party analytics, session replay, telemetry, RUM, and advertising-measurement supplement.",
+        "! Policy: Third-party network blocking only. This list may disable analytics, feedback, or measurement features.",
+        "! Compatibility: uBlock Origin / AdGuard / ABP-compatible syntax where supported.",
+        "! Last reviewed: {reviewed_at}",
+        "! Sources reviewed: EasyPrivacy, AdGuard Tracking Protection, uBlock Origin privacy filters.",
+        "! License: GPL-3.0-only"
+      ],
+      "rule_sets": [
+        "privacy-v2"
+      ],
+      "includes": []
+    },
+    {
+      "scope": "s",
+      "path": "v2/strict.txt",
+      "headers": [
+        "! Title: Universal Web Strict Privacy v2 (Global Opt-in)",
+        "! Version: {version}",
+        "! Expires: 5 days",
+        "! Homepage: https://github.com/r20942097-hue/s",
+        "! Subscription: https://raw.githubusercontent.com/r20942097-hue/s/main/v2/strict.txt",
+        "! Description: Aggressive global privacy supplement for users willing to accept higher site-breakage risk.",
+        "! Warning: May break login widgets, tag-manager-driven features, attribution, embedded support, and analytics-dependent components.",
+        "! Policy: Third-party network blocking only. Keep disabled unless stricter privacy is desired.",
+        "! Compatibility: uBlock Origin / AdGuard / ABP-compatible syntax where supported.",
+        "! Last reviewed: {reviewed_at}",
+        "! Sources reviewed: EasyPrivacy, AdGuard Tracking Protection, uBlock Origin privacy filters.",
+        "! License: GPL-3.0-only"
+      ],
+      "rule_sets": [
+        "strict-v2"
+      ],
+      "includes": []
+    },
+    {
+      "scope": "faaff",
+      "path": "browser_filter_lists/filters/universal-web-ad-filter.txt",
+      "headers": [
+        "! Title: Universal Web Ad Filter (Supplement)",
+        "! Version: {version}",
+        "! Expires: 5 days",
+        "! Homepage: https://github.com/r20942097-hue/faaff/tree/main/browser_filter_lists",
+        "! Subscription: https://raw.githubusercontent.com/r20942097-hue/faaff/main/browser_filter_lists/filters/universal-web-ad-filter.txt",
+        "! Description: Compact, language-neutral third-party ad-network supplement.",
+        "! Reference: https://easylist.to/",
+        "! Policy: Network blocking only; rules target third-party requests.",
+        "! License: CC0-1.0"
+      ],
+      "rule_sets": [
+        "ads-core"
+      ],
+      "includes": []
+    },
+    {
+      "scope": "faaff",
+      "path": "browser_filter_lists/filters/universal-web-tracking-filter.txt",
+      "headers": [
+        "! Title: Universal Web Tracking Filter (Optional)",
+        "! Version: {version}",
+        "! Expires: 5 days",
+        "! Homepage: https://github.com/r20942097-hue/faaff/tree/main/browser_filter_lists",
+        "! Subscription: https://raw.githubusercontent.com/r20942097-hue/faaff/main/browser_filter_lists/filters/universal-web-tracking-filter.txt",
+        "! Description: Optional third-party analytics and session-measurement blocking.",
+        "! Policy: Network blocking only; rules target third-party requests.",
+        "! License: CC0-1.0"
+      ],
+      "rule_sets": [
+        "privacy-core"
+      ],
+      "includes": []
+    }
+  ]
+}
