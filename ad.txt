@@ -1,15 +1,14 @@
 [Adblock Plus 2.0]
 ! Title: Universal Web Ad Filter (Supplement)
-! Version: 20261005.4
+! Version: 20261011.1
 ! Expires: 5 days
 ! Homepage: https://github.com/r20942097-hue/s
 ! Subscription: https://raw.githubusercontent.com/r20942097-hue/s/main/ad.txt
 ! Description: Compact, language-neutral third-party ad-network supplement.
 ! Reference: https://easylist.to/
 ! Policy: Main list uses portable network filters; uBlock Origin-only cosmetic/scriptlet rules are loaded from ad-ubo.txt via !#include.
-! Use with a maintained general-purpose list such as EasyList; this file is not a replacement.
-! Report site breakage by disabling this list first, then report the matching domain/rule.
 ! License: CC0-1.0
+! Generated: filter-profiles.json via scripts/generate_lists.py
 !
 ! International ad delivery and programmatic advertising
 ||doubleclick.net^$third-party
@@ -29,11 +28,9 @@
 ||sharethrough.com^$third-party
 ||yieldmo.com^$third-party
 ||adform.net^$third-party
-
-! A-Ads delivery and click domains (observed in a GoFile ad slot; block third-party use across sites)
+!
+! A-Ads third-party delivery; parent block includes all subdomains
 ||a-ads.com^$third-party
-||click.a-ads.com^$third-party
-
-! uBlock Origin extensions
-! Other blockers treat this directive as a comment; uBO loads the same-directory sub-list.
+!
+! uBlock Origin extensions; other blockers ignore include directives.
 !#include ad-ubo.txt
