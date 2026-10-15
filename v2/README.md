@@ -40,6 +40,23 @@ Subscribe to all three lists. `strict.txt` additionally blocks tag managers, ide
 - https://raw.githubusercontent.com/r20942097-hue/s/main/v2/tracking.txt
 - https://raw.githubusercontent.com/r20942097-hue/s/main/v2/strict.txt
 
+## Static checks
+
+Run these from the repository root:
+
+```sh
+python -m unittest discover -s v2/scripts -p 'test_*.py'
+python v2/scripts/validate_filters.py
+```
+
+These checks verify declared metadata and policy only. They do not establish real-site effectiveness or safety. The promotion gate is separate and remains blocked until evidence exists:
+
+```sh
+python v2/scripts/validate_promotion.py --target canary --evidence evidence/current.json
+```
+
+See `TESTING.md` before considering promotion.
+
 ## Status
 
 Candidate. The 20261011.1 update is local and has not been published. The advertising profile has 93 network rules; privacy has 38; Strict has 13. Amazon's broad advertising domain was removed after exception review. Broad New Relic and Sentry SDK domains were isolated in Strict.
