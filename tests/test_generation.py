@@ -1,3 +1,4 @@
+import copy
 import json
 from pathlib import Path
 import sys
@@ -18,6 +19,78 @@ class GenerationTests(unittest.TestCase):
 
     def test_profiles_are_valid(self):
         self.assertEqual(generation.validate_profiles(self.data), [])
+
+    def test_embedded_line_breaks_cannot_inject_rules_through_metadata(self):
+        for separator in ['\r', '\n', '\v', '\f', '\x85', '\u2028', '\u2029', '\x00']:
+            for field in ['label', 'header']:
+                with self.subTest(separator=repr(separator), field=field), TemporaryDirectory() as tmp:
+                    data = copy.deepcopy(self.data)
+                    injected = 'fixture' + separator + '||unreviewed.example^$third-party'
+                    if field == 'label':
+                        data['rule_sets']['ads-core']['label'] = injected
+                    else:
+                        data['outputs'][0]['headers'].append('! Note: ' + injected)
+                    root = Path(tmp)
+                    (root / 'ad.txt').write_text('keep')
+                    self.assertTrue(generation.generate(data, {'s': root}))
+                    self.assertEqual((root / 'ad.txt').read_text(), 'keep')
+
+    def test_nonportable_and_aliased_paths_are_rejected_before_writes(self):
+        for path in ['./ad.txt', 'v2//ad.txt', 'C:/ad.txt', '.git/ad.txt',
+                     'bad\u0000name.txt', 'bad\nname.txt', '../ad.txt', '/ad.txt']:
+            with self.subTest(path=path), TemporaryDirectory() as tmp:
+                data = copy.deepcopy(self.data)
+                data['outputs'][0]['path'] = path
+                self.assertTrue(generation.generate(data, {'s': Path(tmp)}))
+                self.assertEqual(list(Path(tmp).iterdir()), [])
+
+    def test_colliding_outputs_are_rejected_before_any_file_is_changed(self):
+        for path in ['Ad.txt', 'ad.txt/nested.txt']:
+            with self.subTest(path=path), TemporaryDirectory() as tmp:
+                data = copy.deepcopy(self.data)
+                output = copy.deepcopy(data['outputs'][0])
+                output['path'] = path
+                data['outputs'].append(output)
+                root = Path(tmp)
+                (root / 'ad.txt').write_text('keep')
+                errors = generation.generate(data, {'s': root})
+                self.assertTrue(any('conflicting' in error for error in errors))
+                self.assertEqual((root / 'ad.txt').read_text(), 'keep')
+
+    def test_existing_path_conflicts_are_detected_before_any_output_is_written(self):
+        for conflict in ['parent-file', 'target-directory']:
+            with self.subTest(conflict=conflict), TemporaryDirectory() as tmp:
+                root = Path(tmp)
+                (root / 'ad.txt').write_text('keep')
+                if conflict == 'parent-file':
+                    (root / 'v2').write_text('keep parent')
+                else:
+                    (root / 'v2/ad.txt').mkdir(parents=True)
+                with self.assertRaisesRegex(ValueError, 'not a regular'):
+                    generation.generate(self.data, {'s': root})
+                self.assertEqual((root / 'ad.txt').read_text(), 'keep')
+                self.assertFalse((root / 'tracking.txt').exists())
+
+    def test_scope_and_hostname_types_are_validation_errors(self):
+        for scope in [[], {}, None, True]:
+            data = copy.deepcopy(self.data)
+            data['outputs'][0]['scope'] = scope
+            with self.subTest(scope=scope):
+                self.assertTrue(generation.validate_profiles(data))
+        for host in ['127.0.0.1', '.'.join(['a'*63]*4), 'invalid..example']:
+            data = copy.deepcopy(self.data)
+            data['rule_sets']['ads-core']['rules'] = [f'||{host}^$third-party']
+            with self.subTest(host=host):
+                self.assertTrue(any('invalid hostname' in e for e in generation.validate_profiles(data)))
+
+    def test_invalid_output_metadata_is_rejected(self):
+        for old, new in [('! Version: {version}', '! Version: 20000101.1'),
+                         ('! Expires: 5 days', '! Expires: 0 days'),
+                         ('! Homepage: https://', '! Homepage: http://')]:
+            data = copy.deepcopy(self.data)
+            data['outputs'][0]['headers'] = [line.replace(old, new) for line in data['outputs'][0]['headers']]
+            with self.subTest(new=new):
+                self.assertTrue(generation.validate_profiles(data))
 
     def test_checked_in_outputs_are_current(self):
         self.assertEqual(generation.generate(self.data, {'s': generation.ROOT}, check=True), [])
