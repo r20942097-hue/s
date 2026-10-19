@@ -35,6 +35,44 @@ class GenerationTests(unittest.TestCase):
                     self.assertTrue(generation.generate(data, {'s': root}))
                     self.assertEqual((root / 'ad.txt').read_text(), 'keep')
 
+    def test_rule_paths_cannot_inject_a_second_line_or_controls(self):
+        for separator in ['\n', '\r', '\t', '\0', '\x7f', '\x80', '\x85', '\x9f', '\u2028', '\u2029']:
+            with self.subTest(separator=repr(separator)), TemporaryDirectory() as tmp:
+                data = copy.deepcopy(self.data)
+                data['rule_sets']['ads-core']['rules'][0] = '||doubleclick.net/path' + separator + '||unreviewed.example^$third-party'
+                root = Path(tmp)
+                (root / 'ad.txt').write_text('keep')
+                self.assertTrue(generation.generate(data, {'s':root}))
+                self.assertEqual((root / 'ad.txt').read_text(), 'keep')
+                self.assertEqual(len(list(root.iterdir())), 1)
+
+    def test_c1_controls_are_invalid_in_labels_and_headers(self):
+        for character in ['\x80', '\x90', '\x9f']:
+            for field in ['label', 'header']:
+                with self.subTest(character=repr(character), field=field):
+                    data = copy.deepcopy(self.data)
+                    if field == 'label':
+                        data['rule_sets']['ads-core']['label'] = 'fixture' + character
+                    else:
+                        data['outputs'][0]['headers'].append('! Note: fixture' + character)
+                    self.assertTrue(generation.validate_profiles(data))
+
+    def test_components_over_255_characters_are_rejected_before_writes(self):
+        self.assertTrue(generation.valid_relative('a'*251+'.txt'))
+        for path in ['a'*252+'.txt', 'a'*256+'/file.txt']:
+            with self.subTest(path=path), TemporaryDirectory() as tmp:
+                data = copy.deepcopy(self.data)
+                data['outputs'][-1]['scope'] = 's'
+                data['outputs'][-1]['path'] = path
+                root = Path(tmp)
+                (root / 'ad.txt').write_text('keep')
+                self.assertTrue(generation.generate(data, {'s':root}))
+                self.assertEqual((root / 'ad.txt').read_text(), 'keep')
+                self.assertEqual(len(list(root.iterdir())), 1)
+        data = copy.deepcopy(self.data)
+        data['outputs'][0]['includes'] = ['a'*252+'.txt']
+        self.assertTrue(generation.validate_profiles(data))
+
     def test_nonportable_and_aliased_paths_are_rejected_before_writes(self):
         for path in ['./ad.txt', 'v2//ad.txt', 'C:/ad.txt', '.git/ad.txt',
                      'bad\u0000name.txt', 'bad\nname.txt', '../ad.txt', '/ad.txt',

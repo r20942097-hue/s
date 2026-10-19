@@ -28,12 +28,12 @@ def reject_duplicate_keys(pairs):
 def valid_relative(value):
     return (isinstance(value, str) and bool(value)
             and all(re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9._-]*', part)
-                    and not part.endswith('.') and part.split('.')[0].upper() not in WINDOWS_RESERVED
+                    and len(part) <= 255 and not part.endswith('.') and part.split('.')[0].upper() not in WINDOWS_RESERVED
                     for part in value.split('/')))
 
 
 def single_line(value):
-    return isinstance(value, str) and not any(ord(c) < 32 or c in '\x7f\x85\u2028\u2029' for c in value)
+    return isinstance(value, str) and not any(ord(c) < 32 or 0x7f <= ord(c) < 0xa0 or c in '\u2028\u2029' for c in value)
 
 
 def valid_hostname(host):
@@ -81,7 +81,7 @@ def validate_profiles(data):
             continue
         seen = set()
         for rule in rules:
-            match = RULE_RE.fullmatch(rule) if isinstance(rule, str) else None
+            match = RULE_RE.fullmatch(rule) if single_line(rule) else None
             if match is None:
                 errors.append(f"{key}: unsupported rule: {rule!r}")
                 continue
