@@ -37,7 +37,8 @@ class GenerationTests(unittest.TestCase):
 
     def test_nonportable_and_aliased_paths_are_rejected_before_writes(self):
         for path in ['./ad.txt', 'v2//ad.txt', 'C:/ad.txt', '.git/ad.txt',
-                     'bad\u0000name.txt', 'bad\nname.txt', '../ad.txt', '/ad.txt']:
+                     'bad\u0000name.txt', 'bad\nname.txt', '../ad.txt', '/ad.txt',
+                     'CON.txt', 'aux/report.txt', 'folder./ad.txt']:
             with self.subTest(path=path), TemporaryDirectory() as tmp:
                 data = copy.deepcopy(self.data)
                 data['outputs'][0]['path'] = path

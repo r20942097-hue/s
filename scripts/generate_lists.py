@@ -13,6 +13,7 @@ import tempfile
 ROOT = Path(__file__).resolve().parents[1]
 PROFILE_PATH = ROOT / "filter-profiles.json"
 RULE_RE = re.compile(r"^\|\|([a-z0-9.-]+)(?:\^|/[^$]*)\$third-party(?:,script)?$")
+WINDOWS_RESERVED = {'CON', 'PRN', 'AUX', 'NUL'} | {prefix + str(i) for prefix in ('COM', 'LPT') for i in range(1, 10)}
 
 
 def reject_duplicate_keys(pairs):
@@ -27,6 +28,7 @@ def reject_duplicate_keys(pairs):
 def valid_relative(value):
     return (isinstance(value, str) and bool(value)
             and all(re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9._-]*', part)
+                    and not part.endswith('.') and part.split('.')[0].upper() not in WINDOWS_RESERVED
                     for part in value.split('/')))
 
 
