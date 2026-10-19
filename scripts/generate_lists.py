@@ -2,6 +2,7 @@
 import argparse
 from datetime import datetime
 import difflib
+import ipaddress
 import json
 import os
 from pathlib import Path
@@ -12,6 +13,7 @@ import tempfile
 ROOT = Path(__file__).resolve().parents[1]
 PROFILE_PATH = ROOT / "filter-profiles.json"
 RULE_RE = re.compile(r"^\|\|([a-z0-9.-]+)(?:\^|/[^$]*)\$third-party(?:,script)?$")
+WINDOWS_RESERVED = {'CON', 'PRN', 'AUX', 'NUL'} | {prefix + str(i) for prefix in ('COM', 'LPT') for i in range(1, 10)}
 
 
 def reject_duplicate_keys(pairs):
@@ -24,8 +26,25 @@ def reject_duplicate_keys(pairs):
 
 
 def valid_relative(value):
-    return (isinstance(value, str) and bool(value) and not Path(value).is_absolute()
-            and ".." not in Path(value).parts and "\\" not in value)
+    return (isinstance(value, str) and bool(value)
+            and all(re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9._-]*', part)
+                    and len(part) <= 255 and not part.endswith('.') and part.split('.')[0].upper() not in WINDOWS_RESERVED
+                    for part in value.split('/')))
+
+
+def single_line(value):
+    return isinstance(value, str) and not any(ord(c) < 32 or 0x7f <= ord(c) < 0xa0 or 0xd800 <= ord(c) <= 0xdfff or c in '\u2028\u2029' for c in value)
+
+
+def valid_hostname(host):
+    if len(host) > 253 or '.' not in host:
+        return False
+    try:
+        ipaddress.ip_address(host)
+        return False
+    except ValueError:
+        return all(re.fullmatch(r'[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?', part)
+                   for part in host.split('.'))
 
 
 def validate_profiles(data):
@@ -54,7 +73,7 @@ def validate_profiles(data):
             errors.append(f"{key}: rule set must be an object")
             continue
         label = entry.get('label')
-        if not isinstance(label, str) or not label.strip() or '\n' in label:
+        if not single_line(label) or not label.strip():
             errors.append(f"{key}: label must be a nonempty single line")
         rules = entry.get("rules")
         if not isinstance(rules, list) or not rules:
@@ -62,12 +81,12 @@ def validate_profiles(data):
             continue
         seen = set()
         for rule in rules:
-            match = RULE_RE.fullmatch(rule) if isinstance(rule, str) else None
+            match = RULE_RE.fullmatch(rule) if single_line(rule) else None
             if match is None:
                 errors.append(f"{key}: unsupported rule: {rule!r}")
                 continue
             host = match.group(1)
-            if "." not in host or any(not re.fullmatch(r"[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?", part) for part in host.split('.')):
+            if not valid_hostname(host):
                 errors.append(f"{key}: invalid hostname: {host}")
             if rule in seen:
                 errors.append(f"{key}: duplicate rule: {rule}")
@@ -83,15 +102,17 @@ def validate_profiles(data):
             errors.append("output must be an object")
             continue
         path, scope = output.get("path"), output.get("scope")
-        if scope not in {"s", "faaff"} or not valid_relative(path) or not path.endswith('.txt'):
+        if not isinstance(scope, str) or scope not in {"s", "faaff"} or not valid_relative(path) or not path.endswith('.txt'):
             errors.append("invalid output scope or path")
             continue
-        identity = (scope, path)
-        if identity in seen_outputs:
-            errors.append(f"duplicate output: {scope}/{path}")
+        identity = (scope, path.casefold())
+        if any(old_scope == scope and (old_path == identity[1]
+               or old_path.startswith(identity[1] + '/') or identity[1].startswith(old_path + '/'))
+               for old_scope, old_path in seen_outputs):
+            errors.append(f"duplicate output or conflicting file/directory path: {scope}/{path}")
         seen_outputs.add(identity)
         headers = output.get("headers")
-        if not isinstance(headers, list) or any(not isinstance(line, str) or not line.startswith('! ') or '\n' in line for line in headers):
+        if not isinstance(headers, list) or any(not single_line(line) or not line.startswith('! ') for line in headers):
             errors.append(f"{path}: invalid headers")
             continue
         values = {}
@@ -101,6 +122,13 @@ def validate_profiles(data):
                 errors.append(f"{path}: expected one nonempty {key}")
             else:
                 values[key] = matching[0]
+        if isinstance(version, str) and values.get('Version', '').replace('{version}', version) != version:
+            errors.append(f"{path}: output Version must match the profile version")
+        if not re.fullmatch(r'[1-9]\d* days?', values.get('Expires', '')):
+            errors.append(f"{path}: Expires must be a positive number of days")
+        for key in ('Homepage', 'Subscription'):
+            if not values.get(key, '').startswith('https://'):
+                errors.append(f"{path}: {key} must use HTTPS")
         keys = output.get("rule_sets")
         if not isinstance(keys, list) or not keys or any(not isinstance(key, str) or key not in sets for key in keys):
             errors.append(f"{path}: unknown rule set")
@@ -148,6 +176,8 @@ def output_path(root, relative):
             break
         if part.is_symlink():
             raise ValueError(f'symlink output is forbidden: {relative}')
+        if part.exists() and (not part.is_file() if part == target else not part.is_dir()):
+            raise ValueError(f'output path is not a regular file or directory: {relative}')
     return target
 
 
