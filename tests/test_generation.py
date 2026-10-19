@@ -57,6 +57,23 @@ class GenerationTests(unittest.TestCase):
                         data['outputs'][0]['headers'].append('! Note: fixture' + character)
                     self.assertTrue(generation.validate_profiles(data))
 
+    def test_unpaired_unicode_surrogates_cannot_fail_during_output_encoding(self):
+        for character in ['\ud800', '\udfff']:
+            for field in ['label', 'header', 'rule']:
+                with self.subTest(character=repr(character), field=field), TemporaryDirectory() as tmp:
+                    data = copy.deepcopy(self.data)
+                    if field == 'label':
+                        data['rule_sets']['ads-core']['label'] = 'fixture' + character
+                    elif field == 'header':
+                        data['outputs'][-1]['headers'].append('! Note: ' + character)
+                    else:
+                        data['rule_sets']['privacy-core']['rules'][0] = '||example.test/path' + character + '$third-party'
+                    root = Path(tmp)
+                    (root / 'ad.txt').write_text('keep')
+                    self.assertTrue(generation.generate(data, {'s':root}))
+                    self.assertEqual((root / 'ad.txt').read_text(), 'keep')
+                    self.assertEqual(len(list(root.iterdir())), 1)
+
     def test_components_over_255_characters_are_rejected_before_writes(self):
         self.assertTrue(generation.valid_relative('a'*251+'.txt'))
         for path in ['a'*252+'.txt', 'a'*256+'/file.txt']:

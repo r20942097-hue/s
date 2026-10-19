@@ -33,7 +33,7 @@ def valid_relative(value):
 
 
 def single_line(value):
-    return isinstance(value, str) and not any(ord(c) < 32 or 0x7f <= ord(c) < 0xa0 or c in '\u2028\u2029' for c in value)
+    return isinstance(value, str) and not any(ord(c) < 32 or 0x7f <= ord(c) < 0xa0 or 0xd800 <= ord(c) <= 0xdfff or c in '\u2028\u2029' for c in value)
 
 
 def valid_hostname(host):
