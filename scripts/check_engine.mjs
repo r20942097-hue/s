@@ -55,6 +55,9 @@ for (const file of files) {
         parser.parse(line);
         assert.ok(parser.isFilter() && !parser.hasError() && !parser.isUnsupported(), `${file}:${index + 1}: ${line}`);
         parsed++;
+        if (parser.isCosmeticFilter() && !parser.hasOptions() && parser.result.compiled?.startsWith('{')) {
+            assert.fail(`${file}:${index + 1}: generic procedural/style filter is not applied with default uBO settings; specify hostname scope`);
+        }
         if (parser.isNetworkFilter()) networkRules.push(line);
         if (parser.isScriptletFilter()) {
             const scriptletArgs = parser.getScriptletArgs();
