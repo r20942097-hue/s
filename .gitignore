@@ -4,3 +4,19 @@ __pycache__/
 .venv/
 .cache/
 node_modules/
+
+# Build/verification work areas (keep outside the repo; ignore if created inside)
+work/
+.work/
+*.log
+# Release/archive artifacts must not be committed (already-tracked files are unaffected)
+*.zip
+*.7z
+*.tar.gz
+# OS/editor/local secrets
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+.env
+.env.*
