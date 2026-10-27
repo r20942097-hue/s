@@ -36,6 +36,11 @@ class JapaneseTextSoftenerTests(unittest.TestCase):
             for rule in active_rules(path):
                 self.assertIn("##", rule, f"{path.name}: {rule}")
 
+    def test_style_rules_have_explicit_hostname_scope_for_default_settings(self):
+        for path in (STANDARD, DEEP):
+            for rule in active_rules(path):
+                self.assertTrue(rule.startswith('*##'), f'{path.name}: default uBO rejects generic procedural/style rules')
+
     def test_procedural_rules_end_in_style_action(self):
         for path in (STANDARD, DEEP):
             for rule in active_rules(path):
