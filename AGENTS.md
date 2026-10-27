@@ -34,7 +34,7 @@ CI: `.github/workflows/japanese-text-softener.yml`（Filter list checks）。サ
 - 状態は **PASS / FAIL / BLOCKED / NOT_RUN / NEEDS_HUMAN / PARTIAL** を区別して報告します。実行していない検査（実ブラウザ・ログイン・動画再生・実機）をPASSと書かないでください。合成テストの成功は実サイトE2Eの成功ではありません。
 - 上流監査の結果だけでルールを自動採用しないでください。v2を安定版へ自動昇格しないでください。
 - 認証情報・トークン・Cookie・個人データ・録画・ZIP成果物・キャッシュをコミットしないでください。
-- ルートにある `RPLAY_*.zip` 等はフィルター配布と無関係で、扱いは所有者判断待ち（NEEDS_HUMAN）です。AIが削除・移動・展開・再配布しないでください。`index.html` も本リポジトリの配布物ではありません。
+- 以前ルートにあった `RPLAY_*.zip` 等（フィルター配布と無関係）は、所有者判断により 2026-10-28 に `main` から外しました（Google Drive `制作物管理/99_保全・確認待ち/RPLAY_ZIP退避_2026-10-28` に退避済み、git 履歴には残存）。ZIP を再追加しないでください。`index.html` も本リポジトリの配布物ではありません。
 
 ## 詳細な共通ルール・プロジェクト台帳
 - AI作業環境 統合マスター入口（Google Drive、要アクセス権）: https://docs.google.com/document/d/1ajeph-Kynrpmza3cn06SdKrCYkW-FF3x1ZgRaTzbrkE/edit
