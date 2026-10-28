@@ -1,0 +1,393 @@
+--- a/src/export_host.js
++++ b/src/export_host.js
+@@ -2,21 +2,26 @@
+ (function(root){
+ 'use strict';
+ function create(env){
+- const entries=new Map(), jobs=new Set();let busy=0,errors=0;
++ const entries=new Map(), jobs=new Set();let busy=0,errors=0,activeSessionKey=null;
++ const SESSION_KEY=/^[a-f0-9]{32}$/; // In-memory only, never a filename or URL.
++
+  const safe=n=>{const name=String(n||'part.bin').replace(/[\\/:*?"<>|\x00-\x1f]/g,'_');const match=name.match(/(\.[^.]+)$/);const ext=match?match[1]:'.bin';return name.slice(0,name.length-(match?ext.length:0)).slice(0,80)+ext;};
+  const id=()=>env.crypto.randomUUID().replace(/-/g,'');
+  async function directory(){const root=await env.navigator.storage.getDirectory();return root.getDirectoryHandle('rsp_rec',{create:true});}
+  async function offer(entry,retry=false){
+   if(!entry.url){const file=entry.blob||await (await (await directory()).getFileHandle(entry.name)).getFile();entry.url=env.URL.createObjectURL(file);}
+   try{
+-   const r=await env.send({type:'export.offer',partId:entry.id,name:entry.name,size:entry.size,url:entry.url,retry});
++   const r=await env.send({type:'export.offer',partId:entry.id,name:entry.name,size:entry.size,url:entry.url,retry,sessionKey:entry.sessionKey});
+    if(!r||!r.ok)throw Error('EXPORT_OFFER_FAILED');entry.status=r.status;return r;
+   }catch(e){entry.status='unverified';errors++;throw e;}
+  }
+  function track(p){jobs.add(p);p.then(()=>jobs.delete(p),()=>jobs.delete(p));return p;}
+  return {
++  // A null key explicitly marks un-attributable recovery/staging artifacts.
++  // Changing the active key never changes already-staged entries.
++  setSessionKey(key){if(key!==null&&(!SESSION_KEY.test(key)))throw Error('BAD_SESSION_KEY');activeSessionKey=key;},
+   save(blob,name){
+-   const partId='p'+id(),filename=partId+'_'+safe(name);const entry={id:partId,name:filename,size:blob.size,blob,status:'staging',url:null};entries.set(partId,entry);
++   const partId='p'+id(),filename=partId+'_'+safe(name);const entry={id:partId,name:filename,size:blob.size,blob,status:'staging',url:null,sessionKey:activeSessionKey};entries.set(partId,entry);
+    const job=(async()=>{busy++;let w;
+     try{const dir=await directory();const fh=await dir.getFileHandle(filename,{create:true});w=await fh.createWritable();await w.write(blob);await w.close();entry.blob=null;entry.status='staged';
+      // Local staged bytes are confirmed; export is independently tracked.
+@@ -42,7 +47,7 @@
+      if(h.kind!=='file'||!/\.(ts|flv|mp4|json|csv)$/i.test(name))continue;
+      let e=[...entries.values()].find(x=>x.name===name);
+      if(!e){const file=await h.getFile();const m=name.match(/^(p[a-f0-9]{32})_/);let partId=m?m[1]:'legacy'+Array.from(new Uint8Array(await env.crypto.subtle.digest('SHA-256',new TextEncoder().encode(name)))).map(x=>x.toString(16).padStart(2,'0')).join('');
+-      e={id:partId,name,size:file.size,blob:null,status:file.size?'staged':'stage_incomplete',url:null};entries.set(e.id,e);}
++      e={id:partId,name,size:file.size,blob:null,status:file.size?'staged':'stage_incomplete',url:null,sessionKey:null};entries.set(e.id,e);}
+      // Failed in-memory staging is retried below, never export a possibly partial OPFS file.
+      if(!['stage_failed','staging'].includes(e.status)&&e.size>0)try{await offer(e,retry);}catch(ignored){}
+     }
+--- a/src/export_manager.js
++++ b/src/export_manager.js
+@@ -3,6 +3,10 @@
+ 'use strict';
+ function create(api, sendHost, now=Date.now) {
+  const KEY='rsp_exports_v211'; let serial=Promise.resolve(); let ready=false, records=[],evictedVerified=null;
++ const SESSION_KEY=/^[a-f0-9]{32}$/;
++ const SESSION_LEDGER=(typeof RspSessionExportLedger!=='undefined'?RspSessionExportLedger:
++   typeof module!=='undefined'&&module.exports?require('./session_export_ledger.js'):null);
++
+  const tx=fn=>{const p=serial.then(fn);serial=p.catch(()=>{});return p;};
+  const safe=n=>typeof n==='string'&&n.length<=180&&!/[\\/\x00-\x1f]/.test(n)&&/\.(ts|flv|mp4|json|csv)$/i.test(n);
+  function call(obj,method,arg){return new Promise((resolve,reject)=>{try{obj[method](arg,r=>{const e=api.runtime.lastError;if(e)reject(Error('BROWSER_API_ERROR'));else resolve(r);});}catch(e){reject(Error('BROWSER_API_ERROR'));}});}
+@@ -19,7 +23,8 @@
+       (c.verifiedEvictions!==true&&c.verifiedEvictions!==false&&c.verifiedEvictions!==null))throw Error('EXPORT_JOURNAL_INVALID');
+     evictedVerified=c.verifiedEvictions;
+   }
+-  if(records.length>512||records.some(r=>!r||!/^[a-zA-Z0-9_-]{8,100}$/.test(r.partId)||!safe(r.name)||!safe(r.stageName)||!Number.isSafeInteger(r.size)||r.size<0||!['requested','unverified','complete_unknown','verified','interrupted','size_mismatch','request_failed'].includes(r.status)||!Number.isSafeInteger(r.attempt)||r.attempt<1||!Number.isSafeInteger(r.requestedAt)||!(r.downloadId===null||(Number.isSafeInteger(r.downloadId)&&r.downloadId>=0))))throw Error('EXPORT_JOURNAL_INVALID');
++  if(records.length>512||records.some(r=>!r||!/^[a-zA-Z0-9_-]{8,100}$/.test(r.partId)||!safe(r.name)||!safe(r.stageName)||!Number.isSafeInteger(r.size)||r.size<0||!['requested','unverified','complete_unknown','verified','interrupted','size_mismatch','request_failed'].includes(r.status)||!Number.isSafeInteger(r.attempt)||r.attempt<1||!Number.isSafeInteger(r.requestedAt)||!(r.downloadId===null||(Number.isSafeInteger(r.downloadId)&&r.downloadId>=0))||
++    (r.sessionKey!==undefined&&r.sessionKey!==null&&!SESSION_KEY.test(r.sessionKey))))throw Error('EXPORT_JOURNAL_INVALID');
+   if(new Set(records.map(r=>r.partId)).size!==records.length)throw Error('EXPORT_JOURNAL_INVALID');
+   ready=true;
+  }
+@@ -30,6 +35,23 @@
+   records=next;evictedVerified=nextCoverage;
+  }
+  function summary(){const count=s=>records.filter(r=>r.status===s).length;return {requested:count('requested'),verified:count('verified'),unknown:count('unverified')+count('complete_unknown'),failed:count('interrupted')+count('size_mismatch')+count('request_failed'),cleanupPending:records.filter(r=>r.cleanupPending).length,retained:records.length,capacity:512,verifiedEvictions:evictedVerified,items:records.slice(-100).reverse().map(r=>({name:r.name,size:r.size,status:r.status,requestedAt:r.requestedAt}))};}
++ // Project only retained, journal-committed events; observed-only, never a
++ // lifetime success total or a decoded/verified media count. No key is returned.
++ function sessionSummary(key){
++  if(!SESSION_KEY.test(key)||!SESSION_LEDGER)throw Error('SESSION_AUDIT_UNAVAILABLE');
++  let ledger=SESSION_LEDGER.empty(key);
++  for(const r of records){
++   if(r.sessionKey!==key)continue;
++   let stage='unknown';
++   if(r.status==='requested')stage='requested';
++   else if(r.status==='verified')stage='verified';
++   else if(['interrupted','size_mismatch','request_failed'].includes(r.status))stage='failed';
++   ledger=SESSION_LEDGER.record(ledger,{partId:r.partId,attempt:r.attempt,stage});
++  }
++  const result=SESSION_LEDGER.summary(ledger);
++  return Object.freeze({...result,source:'retained-export-journal',
++    historicalCoverage:'incomplete',verifiedEvictions:evictedVerified});
++ }
+  async function finish(r){
+   const response=await sendHost({type:'export.finish',partId:r.partId,name:r.stageName,status:r.status,remove:r.status==='verified'});
+   if(r.status==='verified'&&response&&response.ok){const next=records.map(x=>x.partId===r.partId?{...x,cleanupPending:false}:x);await persist(next);}
+@@ -56,7 +78,8 @@
+  }
+  return {
+   offer:msg=>tx(async()=>{
+-   await load();if(!msg||!/^[a-zA-Z0-9_-]{8,100}$/.test(msg.partId)||!safe(msg.name)||!Number.isSafeInteger(msg.size)||msg.size<0||typeof msg.url!=='string'||!msg.url.startsWith('blob:'))throw Error('BAD_EXPORT');
++   await load();if(!msg||!/^[a-zA-Z0-9_-]{8,100}$/.test(msg.partId)||!safe(msg.name)||!Number.isSafeInteger(msg.size)||msg.size<0||typeof msg.url!=='string'||!msg.url.startsWith('blob:')||
++      (msg.sessionKey!==undefined&&msg.sessionKey!==null&&!SESSION_KEY.test(msg.sessionKey)))throw Error('BAD_EXPORT');
+    const existing=records.find(r=>r.partId===msg.partId);
+    if(existing&&!(msg.retry===true&&['interrupted','size_mismatch','request_failed'].includes(existing.status))){await reconcileOne(existing);return {ok:true,status:records.find(r=>r.partId===msg.partId).status};}
+    const attempt=existing?existing.attempt+1:1;
+@@ -70,7 +93,8 @@
+      if(eligible.length){next=next.filter(r=>!(r.status==='verified'&&!r.cleanupPending));nextCoverage=true;}
+    }
+    if(next.length>=512)throw Error('EXPORT_JOURNAL_FULL');
+-   const record={partId:msg.partId,name,stageName:msg.name,size:msg.size,attempt,status:'requested',downloadId:null,requestedAt:now(),cleanupPending:false};
++   const record={partId:msg.partId,name,stageName:msg.name,size:msg.size,attempt,status:'requested',downloadId:null,requestedAt:now(),cleanupPending:false,
++     sessionKey:msg.sessionKey||null};
+    await persist(next.concat(record),nextCoverage);
+    let id;
+    try{id=await call(api.downloads,'download',{url:msg.url,filename:'RPLAY/'+name,conflictAction:'uniquify'});}catch(e){await persist(records.map(r=>r.partId===msg.partId?{...r,status:'request_failed'}:r));await finish(records.find(r=>r.partId===msg.partId));return {ok:false,error:'REQUEST_FAILED'};}
+@@ -82,6 +106,7 @@
+   changed:delta=>tx(async()=>{await load();if(!records.some(r=>r.downloadId===delta.id))return;const items=await call(api.downloads,'search',{id:delta.id});if(items.length===1)await apply(items[0]);}),
+   reconcile:()=>tx(async()=>{await load();for(const r of [...records])if(['requested','unverified','complete_unknown'].includes(r.status)||r.cleanupPending)await reconcileOne(r);return summary();}),
+   status:()=>tx(async()=>{await load();return summary();}),
++  sessionStatus:key=>tx(async()=>{await load();return sessionSummary(key);}),
+   pending:()=>tx(async()=>{await load();return records.some(r=>r.status!=='verified'||r.cleanupPending);})
+  };
+ }
+--- a/src/offscreen_post.js
++++ b/src/offscreen_post.js
+@@ -376,6 +376,10 @@
+     if(!admission.ok)return admission;
+     if(admission.existing)return {ok:true,existing:true,...CONTROL_GATE.status(owner,oid)};
+     const binding=admission.binding;
++    // Independent random audit key: do NOT persist or derive the control gate's
++    // authorizing sessionId. A new recovery epoch gets a new attribution key.
++    try { EXPORT_HOST.setSessionKey(crypto.randomUUID().replace(/-/g,'')); }
++    catch(e){CONTROL_GATE.end(binding);return {ok:false,error:'session-attribution-unavailable'};}
+     try {
+     STATE.pageUrl = p.pageUrl || ('https://rplay.live/live/' + oid);
+     /* v2.40.0: URL録画セッションの状態(rec.startでは常にfalseへ戻す) */
+@@ -422,7 +426,7 @@
+     return { ok: true, ...CONTROL_GATE.status(owner,oid) };
+     } catch(e) {
+       if(STATE.recorder && STATE.recorder.recording) {try{await STATE.recorder.stop(false);}catch(ignored){}}
+-      CONTROL_GATE.end(binding);return {ok:false,error:'recording-start-failed'};
++      EXPORT_HOST.setSessionKey(null);CONTROL_GATE.end(binding);return {ok:false,error:'recording-start-failed'};
+     }
+   }
+ 
+@@ -481,6 +485,7 @@
+       } catch (e) {}
+     }
+     STATE.recorder = null; /* 次回開始は新規インスタンス(セッションは正常停止で消去済み) */
++    EXPORT_HOST.setSessionKey(null); // Future orphan/MP4 exports are explicitly unattributed.
+     if (!rec.failedSaves && !(rec.audio && rec.audio.failedSaves) && !EXPORT_HOST.status().stageFailed) markBackupClean();
+     STATE.recoveredParts = [];
+     return { ok: true };
+--- a/src/background.js
++++ b/src/background.js
+@@ -1,4 +1,4 @@
+-if (typeof importScripts === 'function') importScripts('export_manager.js', 'creator_registry.js', 'media_catalog.js');
++if (typeof importScripts === 'function') importScripts('session_export_ledger.js', 'export_manager.js', 'creator_registry.js', 'media_catalog.js');
+ /* =====================================================================
+    RPLAY Stable Player — Background Router & Event Page Host v2.3.1
+    =====================================================================
+--- a/scripts/build.py
++++ b/scripts/build.py
+@@ -13,7 +13,7 @@
+ (R/'rplay-stable-player.user.js').write_text(s)
+ for ext in ['rplay-stable-player-extension','rplay-stable-player-extension-firefox']:
+  (R/ext/'content.js').write_text(s);(R/ext/'offscreen.js').write_text(off)
+- for n in ['export_host.js','export_manager.js','session_gate.js','hls_transport.js','background.js','ext_glue.js','recovery_core.js','recovery.js','recovery.html','rplay_ui.css','rplay_view_preferences.js','sha256.js','mp4_convert.html','mp4_convert.js','mp4_convert_core.js','mp4_codec_core.js','mp4_browser_io.js','mp4_convert_worker.js','media_inspect.html','media_inspect.js','media_inspect_core.js','hls_shadow_inspect.js','dashboard.html','dashboard.js','creator_directory.js','creator_registry.js','creator_meta.js','dashboard_settings.js','media_catalog.js','cross_site_compat.js','cross_site_core.js','mp4_handoff.js','segment_store.js','segment_acquire.js','segment_pipeline.js','segment_assemble.js','hls_window.js','http_resume.js','quality_audit.js','fmp4_audit.js','artifact_pick.js','preview_diag.js','popup.html','popup.css','popup.js','popup_state.js']:shutil.copy2(R/'src'/n,R/ext/n)
++ for n in ['session_export_ledger.js','export_host.js','export_manager.js','session_gate.js','hls_transport.js','background.js','ext_glue.js','recovery_core.js','recovery.js','recovery.html','rplay_ui.css','rplay_view_preferences.js','sha256.js','mp4_convert.html','mp4_convert.js','mp4_convert_core.js','mp4_codec_core.js','mp4_browser_io.js','mp4_convert_worker.js','media_inspect.html','media_inspect.js','media_inspect_core.js','hls_shadow_inspect.js','dashboard.html','dashboard.js','creator_directory.js','creator_registry.js','creator_meta.js','dashboard_settings.js','media_catalog.js','cross_site_compat.js','cross_site_core.js','mp4_handoff.js','segment_store.js','segment_acquire.js','segment_pipeline.js','segment_assemble.js','hls_window.js','http_resume.js','quality_audit.js','fmp4_audit.js','artifact_pick.js','preview_diag.js','popup.html','popup.css','popup.js','popup_state.js']:shutil.copy2(R/'src'/n,R/ext/n)
+ print(json.dumps({'shared_core_sha256':hashlib.sha256(core.encode()).hexdigest(),'version':'2.56.0'}))
+ 
+ (R/'rplay_dl.py').write_text((R/'src/cli.py').read_text().replace('# RSP_HLS_PY_MODULE',(R/'src/hls_transport.py').read_text()))
+--- a/scripts/validate.py
++++ b/scripts/validate.py
+@@ -45,7 +45,7 @@
+  for html in ext.glob('*.html'):
+   for name in re.findall(r'<script[^>]*src="([^"]+)"',html.read_text()):assert(ext/name).is_file(),name
+   for name in re.findall(r'<link[^>]*rel="stylesheet"[^>]*href="([^"]+)"',html.read_text()):assert(ext/name).is_file(),name
+-for name in ['background.js','offscreen.js','content.js','ext_glue.js','export_host.js','export_manager.js','session_gate.js','hls_transport.js','rec_worker.js','libs/hls.min.js','libs/flv.min.js']:
++for name in ['background.js','offscreen.js','content.js','ext_glue.js','session_export_ledger.js','export_host.js','export_manager.js','session_gate.js','hls_transport.js','rec_worker.js','libs/hls.min.js','libs/flv.min.js']:
+  assert digest(exts[0]/name)==digest(exts[1]/name),name
+ # Every derived local tool must match its source in both extensions and the root.
+ for name in ['recovery_core.js','recovery.js','recovery.html','rplay_ui.css','rplay_view_preferences.js','sha256.js','mp4_convert.html','mp4_convert.js','mp4_convert_core.js','mp4_codec_core.js','mp4_browser_io.js','mp4_convert_worker.js','media_inspect.html','media_inspect.js','media_inspect_core.js','hls_shadow_inspect.js','dashboard.html','dashboard.js','creator_registry.js','creator_meta.js','dashboard_settings.js','media_catalog.js','cross_site_compat.js','cross_site_core.js','mp4_handoff.js','segment_store.js','segment_acquire.js','segment_pipeline.js','segment_assemble.js','hls_window.js','http_resume.js','quality_audit.js','fmp4_audit.js','artifact_pick.js','preview_diag.js','popup.html','popup.css','popup.js','popup_state.js']:
+--- a/rplay-stable-player-extension-firefox/manifest.json
++++ b/rplay-stable-player-extension-firefox/manifest.json
+@@ -27,6 +27,7 @@
+       "mp4_browser_io.js",
+       "mp4_handoff.js",
+       "offscreen.js",
++      "session_export_ledger.js",
+       "export_manager.js",
+       "creator_registry.js",
+       "media_catalog.js",
+--- a/tests/test_mp4_autohandoff_safety.cjs
++++ b/tests/test_mp4_autohandoff_safety.cjs
+@@ -1,7 +1,7 @@
+ 'use strict';
+ const {test}=require('node:test'),a=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
+ const src=fs.readFileSync(require.resolve('../src/offscreen_post.js'),'utf8');
+-function setup(rec,group=null){const jobs=[];const c=vm.createContext({Date,Number,String,Array,Math,Promise,SET:{mp4AutoHandoff:true},STATE:{recorder:rec,recoveredParts:[]},MP4_HANDOFF:{enqueue:j=>jobs.push(j)},EXPORT_HOST:{drain:async()=>{},status:()=>({stageFailed:0})},markBackupClean(){},parseAudioGroups:()=>group||{},console});const p=src.slice(src.indexOf('  let lastParts = [];'),src.indexOf('  async function handleStop('));const s=src.slice(src.indexOf('  async function stopAndDrain() {'),src.indexOf('  /* ---- rec.status:',src.indexOf('  async function stopAndDrain() {')));vm.runInContext(p+s+';globalThis.run=stopAndDrain;',c);return {run:()=>c.run(),jobs};}
++function setup(rec,group=null){const jobs=[];const c=vm.createContext({Date,Number,String,Array,Math,Promise,SET:{mp4AutoHandoff:true},STATE:{recorder:rec,recoveredParts:[]},MP4_HANDOFF:{enqueue:j=>jobs.push(j)},EXPORT_HOST:{drain:async()=>{},status:()=>({stageFailed:0}),setSessionKey:()=>{}},markBackupClean(){},parseAudioGroups:()=>group||{},console});const p=src.slice(src.indexOf('  let lastParts = [];'),src.indexOf('  async function handleStop('));const s=src.slice(src.indexOf('  async function stopAndDrain() {'),src.indexOf('  /* ---- rec.status:',src.indexOf('  async function stopAndDrain() {')));vm.runInContext(p+s+';globalThis.run=stopAndDrain;',c);return {run:()=>c.run(),jobs};}
+ const mk=(name='video.ts')=>({file:name,bytes:20,saveState:'OPFS_STAGED',startedAt:'2026-01-01T00:00:00Z'});
+ test('actual stop path blocks separate audio and group-discovered audio',async()=>{for(const rec of [{partsLog:[mk()],audio:{uri:'',partsLog:[mk('audio.ts')]}},{partsLog:[mk()],selVariant:{audioGroup:'g'},masterUrl:'https://x.test/master',_masterTxt:'x',audio:null}]){const h=setup(rec,{g:{uri:'https://example.test/audio'}});await h.run();a.equal(h.jobs[0].preflightBlock,'separate-audio');}});
+ test('actual stop path blocks truncated history, failed parts and unsupported format',async()=>{for(const [rec,expected] of [[{partsLog:[mk()],_joinParts:[mk(),mk()]},'incomplete-history'],[{partsLog:[{...mk(),saveState:'failed'}]},'failed-part'],[{partsLog:[mk(),mk('other.mp4')]},'unsupported-part']]){const h=setup(rec);await h.run();a.equal(h.jobs[0].preflightBlock,expected);}});
+--- a/tests/test_v2380_sched_bg.cjs
++++ b/tests/test_v2380_sched_bg.cjs
+@@ -147,7 +147,7 @@
+   a.ok(post.includes('handleBgSchedScan(msg.payload || {})'));
+   const bg=fs.readFileSync(path.join(base,'src/background.js'),'utf8');
+   a.ok(bg.includes("fromDashboard && msg.type==='schedules.scan'"));
+-  a.ok(bg.includes("importScripts('export_manager.js', 'creator_registry.js', 'media_catalog.js')"));
++  a.ok(bg.includes("importScripts('session_export_ledger.js', 'export_manager.js', 'creator_registry.js', 'media_catalog.js')"));
+   const dash=fs.readFileSync(path.join(base,'src/dashboard.js'),'utf8');
+   a.ok(dash.includes("sendMessage({type:'schedules.scan',requestId})"));
+   a.ok(dash.includes('renderMeta'));
+--- a/tests/node_test_baseline.json
++++ b/tests/node_test_baseline.json
+@@ -891,6 +891,20 @@
+   "v0.27 session stage model is explicitly observed-only and never claims completion": 1,
+   "v0.27 verified eviction provenance survives router restart and retry": 1,
+   "v0.27 visible journal describes retained count and evictions, not lifetime total": 1,
++  "v0.28 SW manager restart replays persisted session identity and status": 1,
++  "v0.28 bounded journal explicitly leaves historical session coverage incomplete": 1,
++  "v0.28 failed atomic journal commit never claims attributed export": 1,
++  "v0.28 forged client session key is rejected before browser download": 1,
++  "v0.28 host stamps fresh OPFS export with active recording key, no media URL persists": 1,
++  "v0.28 invalid source key fails before OPFS or downloader mutation": 1,
++  "v0.28 malformed persisted attribution fails closed, not assumed legacy": 1,
++  "v0.28 recovered OPFS file is never retroactively assigned to active session": 1,
++  "v0.28 repeated completion does not double-count session verified": 1,
++  "v0.28 same part retry after new host key preserves first attribution": 1,
++  "v0.28 sessionStatus does not expose URLs, filenames, raw ids, or part identifiers": 1,
++  "v0.28 snapshot key cannot change while OPFS staging write awaits": 1,
++  "v0.28 two control epochs are isolated in retained journal projection": 1,
++  "v0.28 unknown or legacy export does not acquire a later active key": 1,
+   "v0.4 code is synchronized in root, Chrome and Firefox packages": 1,
+   "v0.4 combined LL-HLS with skipped segments reports suspicion not full availability": 1,
+   "v0.4 counts EXT-X-GAP only on next complete segment": 1,
+--- a/tests/node_test_file_baseline.json
++++ b/tests/node_test_file_baseline.json
+@@ -37,6 +37,7 @@
+   "test_mp4_convert.cjs",
+   "test_parts.cjs",
+   "test_selection_record_integration.cjs",
++  "test_session_export_wiring_v28.cjs",
+   "test_session_gate.cjs",
+   "test_sha256.cjs",
+   "test_streamharbor_hls_live_v04.cjs",
+--- a/tests/test_session_export_wiring_v28.cjs
++++ b/tests/test_session_export_wiring_v28.cjs
+@@ -0,0 +1,123 @@
++'use strict';
++const {test}=require('node:test');
++const a=require('node:assert/strict');
++const {webcrypto}=require('node:crypto');
++const Manager=require('../src/export_manager.js');
++const Host=require('../src/export_host.js');
++const KEY_A='a'.repeat(32), KEY_B='b'.repeat(32);
++function fixture(){
++ let mgr, host, downloads=[], currentId=0, failSet=false;
++ const store={}, files=new Map(), events=[];
++ const safeCopy=x=>structuredClone(x);
++ const api={runtime:{lastError:null},storage:{local:{
++  get:(key,cb)=>queueMicrotask(()=>cb(safeCopy(store))),
++  set:(o,cb)=>queueMicrotask(()=>{
++   if(failSet){api.runtime.lastError={message:'write failed'};cb();api.runtime.lastError=null;}
++   else{Object.assign(store,safeCopy(o));cb();}
++  })
++ }},downloads:{
++  download:(o,cb)=>{const id=++currentId;downloads.push({id,filename:'/Downloads/'+o.filename,state:'in_progress',startTime:new Date(1700000000000).toISOString()});cb(id);},
++  search:(q,cb)=>queueMicrotask(()=>cb(safeCopy(q.id===undefined?downloads:downloads.filter(d=>d.id===q.id))))
++ }};
++ const dir={
++  getFileHandle:async(name,options)=>{
++   if(!files.has(name)){
++    if(!options?.create)throw new DOMException('not found','NotFoundError');
++    files.set(name,new Blob([]));
++   }
++   return {getFile:async()=>files.get(name),createWritable:async()=>{
++    let blob;return {write:async b=>{blob=b;},close:async()=>files.set(name,blob),abort:async()=>{}};
++   }};
++  },removeEntry:async name=>{files.delete(name);},
++  async *entries(){for(const name of files.keys())yield [name,{kind:'file',getFile:async()=>files.get(name)}];}
++ };
++ const env={navigator:{storage:{getDirectory:async()=>({getDirectoryHandle:async()=>dir})}},crypto:webcrypto,
++  URL:{createObjectURL:()=> 'blob:dev/'+webcrypto.randomUUID(),revokeObjectURL:()=>{}},
++  send:async message=>{events.push({...message,url:undefined});return mgr.offer(message);}};
++ function restart(){mgr=Manager.create(api,async msg=>host.finish(msg),()=>1700000000000);host=Host.create(env);}
++ restart();
++ return {store,files,events,downloads,get manager(){return mgr;},get host(){return host;},restart,
++  save:()=>host.save(new Blob(['abc']),'RPLAY_video_p1.ts'),
++  async complete(id,fileSize=3){const d=downloads.find(x=>x.id===id);d.state='complete';d.fileSize=fileSize;await mgr.changed({id});},
++  failWrites:v=>{failSet=v;}};
++}
++
++test('v0.28 host stamps fresh OPFS export with active recording key, no media URL persists',async()=>{
++ const f=fixture();f.host.setSessionKey(KEY_A);await f.save();
++ a.equal(f.store.rsp_exports_v211.records[0].sessionKey,KEY_A);
++ a.equal(f.events[0].sessionKey,KEY_A);
++ a.equal(JSON.stringify(f.store).includes('blob:'),false);
++ const s=await f.manager.sessionStatus(KEY_A);
++ a.equal(s.requested,1);a.equal(s.complete,false);a.equal(s.historicalCoverage,'incomplete');
++ a.equal('key' in s,false);a.equal('items' in s,false);
++});
++test('v0.28 two control epochs are isolated in retained journal projection',async()=>{
++ const f=fixture();f.host.setSessionKey(KEY_A);await f.save();f.host.setSessionKey(KEY_B);await f.save();
++ await f.complete(2);const aa=await f.manager.sessionStatus(KEY_A),bb=await f.manager.sessionStatus(KEY_B);
++ a.equal(aa.requested,1);a.equal(aa.verified,0);a.equal(bb.verified,1);a.equal(bb.retained,1);
++});
++test('v0.28 unknown or legacy export does not acquire a later active key',async()=>{
++ const f=fixture();await f.save();f.host.setSessionKey(KEY_A);await f.save();
++ a.equal(f.store.rsp_exports_v211.records[0].sessionKey,null);
++ a.equal((await f.manager.sessionStatus(KEY_A)).retained,1);
++});
++test('v0.28 snapshot key cannot change while OPFS staging write awaits',async()=>{
++ const f=fixture();f.host.setSessionKey(KEY_A);const pending=f.save();f.host.setSessionKey(KEY_B);
++ await pending;a.equal(f.store.rsp_exports_v211.records[0].sessionKey,KEY_A);
++});
++test('v0.28 same part retry after new host key preserves first attribution',async()=>{
++ const f=fixture();f.host.setSessionKey(KEY_A);await f.save();
++ // Actual retry preserves the same per-entry key; downloaded-record retry too.
++ const entry=f.store.rsp_exports_v211.records[0];f.downloads[0].state='interrupted';await f.manager.changed({id:1});
++ f.host.setSessionKey(KEY_B);await f.host.sweep(true);
++ a.equal(f.store.rsp_exports_v211.records[0].sessionKey,KEY_A);
++ a.equal(f.store.rsp_exports_v211.records[0].attempt,2);
++ a.equal((await f.manager.sessionStatus(KEY_B)).retained,0);
++ a.equal((await f.manager.sessionStatus(KEY_A)).retained,1);
++});
++test('v0.28 SW manager restart replays persisted session identity and status',async()=>{
++ const f=fixture();f.host.setSessionKey(KEY_A);await f.save();await f.complete(1);
++ f.restart();const s=await f.manager.sessionStatus(KEY_A);a.equal(s.verified,1);a.equal(s.complete,false);
++});
++test('v0.28 recovered OPFS file is never retroactively assigned to active session',async()=>{
++ const f=fixture();f.files.set('p'+'f'.repeat(32)+'_RPLAY_video_p1.ts',new Blob(['abc']));
++ f.host.setSessionKey(KEY_B);await f.host.sweep();
++ a.equal(f.store.rsp_exports_v211.records[0].sessionKey,null);
++ a.equal((await f.manager.sessionStatus(KEY_B)).retained,0);
++});
++test('v0.28 invalid source key fails before OPFS or downloader mutation',async()=>{
++ const f=fixture();for(const bad of ['https://x/?token=secret','0'.repeat(31),'Z'.repeat(32),undefined]){
++  if(bad===undefined)continue;
++  a.throws(()=>f.host.setSessionKey(bad),/BAD_SESSION_KEY/);
++ }
++ a.equal(f.files.size,0);a.equal(f.downloads.length,0);
++ a.equal((await f.manager.sessionStatus(KEY_A)).retained,0);
++ await a.rejects(()=>f.manager.sessionStatus('token=test'),/SESSION_AUDIT_UNAVAILABLE/);
++});
++test('v0.28 forged client session key is rejected before browser download',async()=>{
++ const f=fixture();await a.rejects(()=>f.manager.offer({partId:'p'+'c'.repeat(32),name:'video.ts',size:3,url:'blob:test',sessionKey:'token=secret'}),/BAD_EXPORT/);
++ a.equal(f.downloads.length,0);a.equal(f.store.rsp_exports_v211,undefined);
++});
++test('v0.28 malformed persisted attribution fails closed, not assumed legacy',async()=>{
++ const f=fixture();f.host.setSessionKey(KEY_A);await f.save();f.store.rsp_exports_v211.records[0].sessionKey='invalid';f.restart();
++ await a.rejects(()=>f.manager.status(),/EXPORT_JOURNAL_INVALID/);
++});
++test('v0.28 failed atomic journal commit never claims attributed export',async()=>{
++ const f=fixture();f.host.setSessionKey(KEY_A);f.failWrites(true);await f.save();
++ a.equal(f.downloads.length,0);a.equal(f.store.rsp_exports_v211,undefined);
++ f.failWrites(false);a.equal((await f.manager.sessionStatus(KEY_A)).retained,0);
++});
++test('v0.28 repeated completion does not double-count session verified',async()=>{
++ const f=fixture();f.host.setSessionKey(KEY_A);await f.save();await f.complete(1);await f.complete(1);
++ a.equal((await f.manager.sessionStatus(KEY_A)).verified,1);
++});
++test('v0.28 bounded journal explicitly leaves historical session coverage incomplete',async()=>{
++ const f=fixture();f.host.setSessionKey(KEY_A);await f.save();const s=await f.manager.sessionStatus(KEY_A);
++ a.equal(s.observedOnly,true);a.equal(s.complete,false);a.equal(s.historicalCoverage,'incomplete');
++ a.equal(s.source,'retained-export-journal');
++});
++test('v0.28 sessionStatus does not expose URLs, filenames, raw ids, or part identifiers',async()=>{
++ const f=fixture();f.host.setSessionKey(KEY_A);await f.save();const s=JSON.stringify(await f.manager.sessionStatus(KEY_A));
++ a.equal(s.includes(KEY_A),false);a.equal(s.includes('p'+ 'a'.repeat(32)),false);
++ a.equal(s.includes('RPLAY_video'),false);a.equal(s.includes('blob:'),false);
++});
+--- a/CHANGELOG_V028.md
++++ b/CHANGELOG_V028.md
+@@ -0,0 +1,9 @@
++# StreamHarbor / RPLAY v0.28 — observed session attribution (CANDIDATE / NO_GO)
++
++- Attach independent random 32-hex session audit key to each NEW OPFS save; no identifier to popup or media URL.
++- Persist the audit key in the same export-journal write as the requested part; no separate, potentially inconsistent counter store.
++- Per-session observed-only projection over retained journal rows using the v0.27 reducer.
++- Host restarts, recovered OPFS orphans, MP4 handoffs after stop remain un-attributed.
++- Earlier export records without the key remain legacy/unknown. Attempt retries preserve the original key.
++- Security: malformed keys fail closed. Session-status API does not return the key or filenames.
++- Browser acceptance and durable cross-crash session attribution remain open.
+--- a/README_V028_QA.md
++++ b/README_V028_QA.md
+@@ -0,0 +1,11 @@
++# StreamHarbor v0.28 QA and design notes
++
++**Status: CANDIDATE / NO_GO.**
++
++This version wires observed session attribution into the existing save -> OPFS stage -> export.offer -> background journal -> downloads progress chain. It deliberately does not claim durable whole-session coverage after a host crash, successful media decode, or a lifetime saved-file count.
++
++The host starts with null attribution and sets an independent cryptographically random 32-hex key only for newly started or resumed host control epochs. Old OPFS orphan recovery is not assigned to any new session. Each entry snapshots its key when save() starts; retry and delayed completion do not change it. The export journal persists the key atomically with its part record. The sessionStatus(key) method projects only retained matching export records via the v0.27 reducer. It never returns the key, URLs, part names or byte payloads.
++
++The 512-entry bounded journal may evict verified records, so sessions are not complete histories. The reducer's 'verified' only confirms browser-download filesize equality, not decoding or playable A/V. A new identity on crash recovery is a **new observed attribution epoch**, not the original recording identity. This intentionally leaves a gap until durable session provenance is designed and approved.
++
++Real Chrome/Firefox/Floorp installs and actual live stream/long-run/crash/AV sync acceptance remain outstanding.
