@@ -1,0 +1,55 @@
+/* StreamHarbor v0.19 - browser-action compact shell. No third-party fonts. */
+:root {color-scheme:dark;--bg:#0d1422;--surface:#172438;--raised:#1e3047;--line:#405570;--ink:#eff6ff;--muted:#c1d1e4;--blue:#8cc9ff;--good:#86e6b1;--warn:#ffcf82;--bad:#ffadba}
+*{box-sizing:border-box}
+html{margin:0;background:var(--bg)}
+body{margin:0;padding:0;width:400px;min-width:320px;max-width:100%;max-height:570px;overflow-y:auto;background:var(--bg);color:var(--ink);font:400 13px/1.5 system-ui,-apple-system,"Segoe UI","Yu Gothic UI","Meiryo",sans-serif}
+.popup-shell{padding:16px;display:grid;gap:12px;min-width:0}
+.popup-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
+.popup-brand{display:flex;gap:11px;align-items:center;min-width:0}
+.brand-mark{display:grid;place-items:center;flex:none;width:39px;height:39px;border-radius:11px;border:1px solid #71a3cb;background:#21496a;color:#e9f6ff;font-size:14px;font-weight:800;letter-spacing:.05em}
+.eyebrow{margin:0;color:var(--muted);font-weight:700;font-size:10px;letter-spacing:.11em}
+h1{font-size:17px;line-height:1.25;letter-spacing:.015em;margin:2px 0 0}
+h2{margin:0 0 9px;font-size:13px}
+h2 span{display:block;margin-top:2px;font-size:11px;color:var(--muted);font-weight:400}
+.candidate-label{border:1px solid #687d97;border-radius:99px;padding:3px 7px;font-size:10px;color:var(--muted);white-space:nowrap}
+.status-panel,.summary-panel,.audio-panel{background:var(--surface);border:1px solid var(--line);border-radius:11px;padding:12px}
+.status-panel{border-left:4px solid #7090b5}
+.status-heading{display:flex;gap:9px;align-items:center;min-height:24px}
+.status-heading strong{font-size:17px;letter-spacing:.01em;min-width:0}
+.status-dot{width:9px;height:9px;border-radius:50%;flex:none;background:#8a9caa}
+.status-panel:has([data-state="recording"]){border-left-color:var(--good)}
+.status-panel:has([data-state="recording"]) .status-dot{background:var(--good)}
+.status-panel:has([data-state="draining"]){border-left-color:var(--warn)}
+.status-panel:has([data-state="draining"]) .status-dot{background:var(--warn)}
+.status-panel:has([data-state="standby"]){border-left-color:var(--blue)}
+.status-panel:has([data-state="standby"]) .status-dot{background:var(--blue)}
+.status-panel:has([data-state="unknown"]){border-left-color:var(--bad)}
+.status-panel:has([data-state="unknown"]) .status-dot{background:var(--bad)}
+.medium{margin-left:auto;padding:2px 6px;background:var(--raised);border:1px solid var(--line);border-radius:6px;color:var(--muted);font-size:10px;font-weight:700}
+.target{margin:4px 0 0 18px;color:var(--muted);overflow-wrap:anywhere}
+.metric-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:7px}
+.metric{padding:8px 7px;min-width:0;background:#101c2e;border:1px solid #354b66;border-radius:8px}
+.metric span{font-size:10px;color:var(--muted);display:block;line-height:1.3;min-height:27px;overflow-wrap:anywhere}
+.metric strong{font-size:21px;font-weight:700;line-height:1.25;display:block;font-variant-numeric:tabular-nums}
+.audio-panel{padding:0;overflow:hidden}
+.audio-panel summary{cursor:pointer;padding:9px 12px;font-weight:650;min-height:38px;list-style-position:inside}
+.audio-panel[open] summary{border-bottom:1px solid var(--line)}
+.audio-panel p{padding:0 12px 11px;margin:10px 0 0;color:var(--muted);overflow-wrap:anywhere}
+.popup-actions{display:grid;gap:8px}
+a,button{border-radius:8px;min-height:36px;padding:8px 10px;border:1px solid var(--line);color:var(--ink);background:#253b56;text-decoration:none;text-align:center;display:flex;align-items:center;justify-content:center;font-family:inherit;font-weight:600;font-size:12px;line-height:1.4;cursor:pointer}
+a:hover,button:hover{background:#385878;border-color:#83bbec}
+a.primary{background:#1d5782;border-color:#76b9ef;color:white;font-weight:750;font-size:13px;gap:7px;min-height:40px}
+.action-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+footer{border-top:1px solid #394b61;padding-top:10px;display:flex;align-items:center;justify-content:space-between;gap:8px;color:var(--muted);font-size:11px}
+footer button{min-height:34px;padding:6px 11px;background:transparent}
+button:disabled{opacity:.65;cursor:wait}
+:focus-visible{outline:3px solid #c6e6ff;outline-offset:2px}
+@media (max-width:350px){body{width:100%;min-width:0}.popup-shell{padding:10px}.candidate-label{font-size:9px}.metric-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.metric span{min-height:0}}
+@media (prefers-contrast:more){:root{--line:#a4bad3;--muted:#e2edfa}a,button,.status-panel,.summary-panel,.audio-panel{border-width:2px}}
+@media (forced-colors:active){.status-panel,.summary-panel,.audio-panel,.metric,a,button{background:Canvas;color:CanvasText;border:1px solid CanvasText}.status-dot{border:1px solid CanvasText;background:CanvasText}}
+@media (prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;transition:none!important;animation:none!important}}
+
+.refresh-note{display:grid;gap:1px;min-width:0}.refresh-note small{font-size:10px;line-height:1.35;color:var(--muted)}
+
+/* v0.23: distinguish unavailable ledger counts from measured zero. */
+.ledger-note{font-size:11px;line-height:1.5;margin:9px 0 0;color:var(--muted);overflow-wrap:anywhere;border-top:1px solid var(--line);padding-top:8px}
