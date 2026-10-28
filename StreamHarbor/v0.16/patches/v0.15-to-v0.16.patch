@@ -1,0 +1,275 @@
+--- a/src/player.user.js
++++ b/src/player.user.js
+@@ -2075,7 +2075,10 @@
+       this.abandonedQueuedHistoryComplete = true;
+       // v0.15: queued items and a currently worked-on item are different evidence.
+       this.activeSegmentAtSourceChange = 0;
++      // v0.16: stale completion evidence is separate from missing segments.
++      this.staleSegmentResultsIgnored = 0;
+       this._inFlightSegmentWork = false;
++      this._inFlightSegmentGeneration = null;
+     }
+ 
+     enabled() { return this.rec.recAudio(); }
+@@ -2120,7 +2123,8 @@
+       const abandoned = this.queue.length;
+       // A shifted segment may still be fetching/writing and is not in queue.
+       // This counts operations observed at switching, NOT confirmed missing media.
+-      const activeAtSwitch = this._inFlightSegmentWork === true ? 1 : 0;
++      const activeAtSwitch = this._inFlightSegmentWork === true &&
++        this._inFlightSegmentGeneration === (this._hlsGeneration || 0) ? 1 : 0;
+       if (abandoned) {
+         const prior = this.abandonedQueuedOnSourceChange === undefined ? 0 : this.abandonedQueuedOnSourceChange;
+         if (Number.isSafeInteger(prior) && prior >= 0 && prior <= Number.MAX_SAFE_INTEGER - abandoned) {
+@@ -2137,6 +2141,9 @@
+         this.log('音声源の切替時に処理中の項目を検出しました（成否は不明）');
+       }
+       HLS.reset(this);this.seen.clear(); this.queue.length = 0; this.lastSeq = -1;
++      // The old promise may still settle, but must not be counted in the new generation.
++      this._inFlightSegmentWork = false;
++      this._inFlightSegmentGeneration = null;
+       if ((abandoned || activeAtSwitch) && this.rec && typeof this.rec.persistSession === 'function') this.rec.persistSession();
+       this.running = true; this.stopReason = ''; this.stoppedAt = '';
+       /* 要求オフセット(0.3〜0.5秒): 映像との同時リクエストを避け1セッションに近似 */
+@@ -2271,8 +2278,19 @@
+         const generation=this._hlsGeneration||0;
+         // Keep this true through append; a source change can occur during either await.
+         this._inFlightSegmentWork = true;
++        this._inFlightSegmentGeneration = generation;
+         try {
+           const r = await this.fetchSeg(item);
++          // A late retry must never be unshifted into the next source's FIFO.
++          // Do not interpret a discarded result as a confirmed media loss.
++          if ((this._hlsGeneration || 0) !== generation || !this.running) {
++            const prior = this.staleSegmentResultsIgnored;
++            if (Number.isSafeInteger(prior) && prior >= 0 && prior < Number.MAX_SAFE_INTEGER) {
++              this.staleSegmentResultsIgnored = prior + 1;
++            } else { this.abandonedQueuedHistoryComplete = false; }
++            if (rec && typeof rec.persistSession === 'function') rec.persistSession();
++            return;
++          }
+           if (this.stopped || (this.rec && this.rec.stopped)) return;
+           if (r.data) { if(!await HLS.append(this,item,r,generation))return;this.segTotal++;this.segCount++; }
+           if (r.retry) {
+@@ -2280,7 +2298,13 @@
+             HLS.noteTerminal(this,item);this.segFails++;
+             this.log('音声セグメント取得断念(' + item.tries + '回): ...' + item.name.slice(-28));
+           }
+-        } finally { this._inFlightSegmentWork = false; }
++        } finally {
++          // Do not clear a newer drain's in-flight marker on late settlement.
++          if (this._inFlightSegmentGeneration === generation) {
++            this._inFlightSegmentWork = false;
++            this._inFlightSegmentGeneration = null;
++          }
++        }
+       }
+     }
+ 
+@@ -2385,6 +2409,7 @@
+         abandonedQueuedOnSourceChange: this.abandonedQueuedOnSourceChange || 0,
+         abandonedQueuedHistoryComplete: this.abandonedQueuedHistoryComplete === true,
+         activeSegmentAtSourceChange: this.activeSegmentAtSourceChange,
++        staleSegmentResultsIgnored: this.staleSegmentResultsIgnored,
+         bytes: this.bytesTotal, files: this.filesSaved, saveRequests:this.saveRequests||0, failedSaves:this.failedSaves||0,
+         parts: this.partIndex,
+         partsLog: this.partsLog.slice(),
+@@ -2687,7 +2712,8 @@
+           partsLog: cleanParts,
+           audioPartsLog: cleanAudioParts,
+           audioQueueAbandoned: this.audio && Number.isSafeInteger(this.audio.abandonedQueuedOnSourceChange) && this.audio.abandonedQueuedOnSourceChange >= 0 ? this.audio.abandonedQueuedOnSourceChange : null,
+-          audioActiveAtSourceChange: this.audio && Number.isSafeInteger(this.audio.activeSegmentAtSourceChange) && this.audio.activeSegmentAtSourceChange >= 0 ? this.audio.activeSegmentAtSourceChange : null
++          audioActiveAtSourceChange: this.audio && Number.isSafeInteger(this.audio.activeSegmentAtSourceChange) && this.audio.activeSegmentAtSourceChange >= 0 ? this.audio.activeSegmentAtSourceChange : null,
++          audioStaleResultsIgnored: this.audio && Number.isSafeInteger(this.audio.staleSegmentResultsIgnored) && this.audio.staleSegmentResultsIgnored >= 0 ? this.audio.staleSegmentResultsIgnored : null
+         };
+         let json = JSON.stringify(payload);
+         if (json.length > 49152) {
+@@ -2847,6 +2873,7 @@
+       // A crash or failed storage write can have occurred after the last snapshot.
+       this.audio.abandonedQueuedHistoryComplete = false;
+       this.audio.activeSegmentAtSourceChange = Number.isSafeInteger(s.audioActiveAtSourceChange) && s.audioActiveAtSourceChange >= 0 ? s.audioActiveAtSourceChange : 0;
++      this.audio.staleSegmentResultsIgnored = Number.isSafeInteger(s.audioStaleResultsIgnored) && s.audioStaleResultsIgnored >= 0 ? s.audioStaleResultsIgnored : 0;
+       this._skipBacklog = true;  // 復帰直後の既存ウィンドウはスキップ(重複防止)
+       this.lastPollAt = 0; this._playlistBody = null; this._playlistUri = '';
+       this.curPollMs = 3000;
+@@ -2962,7 +2989,7 @@
+           return {
+             enabled: a.enabled, running: a.running, group: a.group, uri: recRedactUrl(a.uri), // v2.5.0(P2)
+             bandwidth: a.bw, channels: a.channels, label: a.label,
+-            segTotal: a.segTotal, segFails: a.segFails, abandonedQueuedOnSourceChange: a.abandonedQueuedOnSourceChange, abandonedQueuedHistoryComplete: a.abandonedQueuedHistoryComplete, activeSegmentAtSourceChange: a.activeSegmentAtSourceChange, bytes: a.bytes, files: a.files,
++            segTotal: a.segTotal, segFails: a.segFails, abandonedQueuedOnSourceChange: a.abandonedQueuedOnSourceChange, abandonedQueuedHistoryComplete: a.abandonedQueuedHistoryComplete, activeSegmentAtSourceChange: a.activeSegmentAtSourceChange, staleSegmentResultsIgnored: a.staleSegmentResultsIgnored, bytes: a.bytes, files: a.files,
+             segmentWriteEvidence: ((typeof HLS.writeEvidence === 'function') ? HLS.writeEvidence(selfRef.audio) : undefined),
+             stopped: a.stopReason || undefined, stoppedAt: a.stoppedAt || undefined,
+             parts: a.partsLog
+--- a/src/offscreen_post.js
++++ b/src/offscreen_post.js
+@@ -443,6 +443,7 @@
+       abandonedQueuedOnSourceChange: Number.isSafeInteger(n) && n >= 0 ? n : null,
+       abandonedQueuedHistoryComplete: a.abandonedQueuedHistoryComplete === true,
+       activeSegmentAtSourceChange: Number.isSafeInteger(a.activeSegmentAtSourceChange) && a.activeSegmentAtSourceChange >= 0 ? a.activeSegmentAtSourceChange : null,
++      staleSegmentResultsIgnored: Number.isSafeInteger(a.staleSegmentResultsIgnored) && a.staleSegmentResultsIgnored >= 0 ? a.staleSegmentResultsIgnored : null,
+       stopReason: reasons.includes(a.stopReason) ? a.stopReason : ''
+     };
+   }
+--- a/src/background.js
++++ b/src/background.js
+@@ -359,7 +359,7 @@
+   if((fromDashboard||fromInspector) && msg.type==='monitor.status'){
+     (async()=>{try{const owner=await urlOwner();const st=await toOffscreen({type:'rec.status',payload:{},control:owner}),ex=await exportManager.status();
+       let policy=null;try{const pref=await dashboardDefaults();policy=rspEffectivePolicy(pref.rsp_dashboard_defaults);}catch(e){policy={unavailable:true};}
+-      reply({ok:true,recording:!!st.recording,draining:!!st.draining,oid:st.oid||'',state:st.state||'IDLE',medium:st.medium||'',creatorName:st.creatorName||'',title:st.title||'',urlSession:st.urlSession===true,urlSource:st.urlSource||'',parts:(st.parts||[]).slice(-20),audioTransition:st.audioTransition&&typeof st.audioTransition==='object'?{running:st.audioTransition.running===true,abandonedQueuedOnSourceChange:Number.isSafeInteger(st.audioTransition.abandonedQueuedOnSourceChange)&&st.audioTransition.abandonedQueuedOnSourceChange>=0?st.audioTransition.abandonedQueuedOnSourceChange:null,abandonedQueuedHistoryComplete:st.audioTransition.abandonedQueuedHistoryComplete===true,activeSegmentAtSourceChange:Number.isSafeInteger(st.audioTransition.activeSegmentAtSourceChange)&&st.audioTransition.activeSegmentAtSourceChange>=0?st.audioTransition.activeSegmentAtSourceChange:null,stopReason:['404','stall','flv','standby','off','resolve','write_error','unsupported'].includes(st.audioTransition.stopReason)?st.audioTransition.stopReason:''}:null,exports:ex,mp4Handoff:st.mp4Handoff?{enabled:st.mp4Handoff.enabled===true,busy:st.mp4Handoff.busy===true,queued:Number(st.mp4Handoff.queued)||0,last:st.mp4Handoff.last?{status:st.mp4Handoff.last.status,reason:st.mp4Handoff.last.reason||'',errorCode:st.mp4Handoff.last.errorCode||''}:null}:null,policy:policy,start:rspStartInfoFor(st)});}catch(e){reply({ok:false,error:'STATUS_UNAVAILABLE'});}})();return true;
++      reply({ok:true,recording:!!st.recording,draining:!!st.draining,oid:st.oid||'',state:st.state||'IDLE',medium:st.medium||'',creatorName:st.creatorName||'',title:st.title||'',urlSession:st.urlSession===true,urlSource:st.urlSource||'',parts:(st.parts||[]).slice(-20),audioTransition:st.audioTransition&&typeof st.audioTransition==='object'?{running:st.audioTransition.running===true,abandonedQueuedOnSourceChange:Number.isSafeInteger(st.audioTransition.abandonedQueuedOnSourceChange)&&st.audioTransition.abandonedQueuedOnSourceChange>=0?st.audioTransition.abandonedQueuedOnSourceChange:null,abandonedQueuedHistoryComplete:st.audioTransition.abandonedQueuedHistoryComplete===true,activeSegmentAtSourceChange:Number.isSafeInteger(st.audioTransition.activeSegmentAtSourceChange)&&st.audioTransition.activeSegmentAtSourceChange>=0?st.audioTransition.activeSegmentAtSourceChange:null,staleSegmentResultsIgnored:Number.isSafeInteger(st.audioTransition.staleSegmentResultsIgnored)&&st.audioTransition.staleSegmentResultsIgnored>=0?st.audioTransition.staleSegmentResultsIgnored:null,stopReason:['404','stall','flv','standby','off','resolve','write_error','unsupported'].includes(st.audioTransition.stopReason)?st.audioTransition.stopReason:''}:null,exports:ex,mp4Handoff:st.mp4Handoff?{enabled:st.mp4Handoff.enabled===true,busy:st.mp4Handoff.busy===true,queued:Number(st.mp4Handoff.queued)||0,last:st.mp4Handoff.last?{status:st.mp4Handoff.last.status,reason:st.mp4Handoff.last.reason||'',errorCode:st.mp4Handoff.last.errorCode||''}:null}:null,policy:policy,start:rspStartInfoFor(st)});}catch(e){reply({ok:false,error:'STATUS_UNAVAILABLE'});}})();return true;
+   }
+   /* v2.38.0: dashboard外部予約閲覧 — 登録一覧を読みBGホストへ巡回を依頼(読取専用)。
+      トークンはUIタブから受け渡された自分の会話のみ(offscreenが保持していなければnologin)。 */
+--- a/src/dashboard.js
++++ b/src/dashboard.js
+@@ -34,7 +34,7 @@
+ const requested=count(exports.requested),unknown=count(exports.unknown);
+ setMetric('statusPending',requested===null&&unknown===null?'—':(requested||0)+(unknown||0));
+ setMetric('statusFailed',count(exports.failed)??'—');$('target').textContent=[s.creatorName,s.title,s.urlSession===true?(s.urlSource||'URL録画'):s.oid].filter(Boolean).join(' / ')||'対象なし';$('detail').textContent='状態: '+s.state+' / 形式: '+(s.medium||'—');
+-try{if($('audioTransition')){const a=s.audioTransition;let msg='音声状態: 情報なし';if(a&&typeof a==='object'){const n=a.abandonedQueuedOnSourceChange;const valid=Number.isSafeInteger(n)&&n>=0;const reason={resolve:'参照先を解決できません', '404':'プレイリストを取得できません',stall:'音声の取得が停滞',write_error:'音声の書き込み失敗',unsupported:'対応外のHLS形式'};msg='別音声: '+(a.running?'取得中':'停止または待機')+(Object.hasOwn(reason,a.stopReason)?'（'+reason[a.stopReason]+'）':'')+'。'+(!valid?'切替時の未処理件数は不明':a.abandonedQueuedHistoryComplete!==true?'切替時の未処理破棄は少なくとも '+n+'件（復旧前の全件数は不明）':n>0?'切替時に未処理 '+n+'件を破棄（欠落の可能性）':'切替時に記録された未処理の破棄はありません')+'。'+(Number.isSafeInteger(a.activeSegmentAtSourceChange)&&a.activeSegmentAtSourceChange>=0?(a.abandonedQueuedHistoryComplete===true?'切替時に処理中だった項目は延べ '+a.activeSegmentAtSourceChange+'件':'切替時に処理中だった項目は少なくとも延べ '+a.activeSegmentAtSourceChange+'件（復旧前の全件数は不明）'):'切替時に処理中だった項目の記録は不明')+'（処理中は欠落確定ではありません）。映像・音声の同期と再生は未確認';}$('audioTransition').textContent=msg;}}catch(e){}
++try{if($('audioTransition')){const a=s.audioTransition;let msg='音声状態: 情報なし';if(a&&typeof a==='object'){const n=a.abandonedQueuedOnSourceChange;const valid=Number.isSafeInteger(n)&&n>=0;const reason={resolve:'参照先を解決できません', '404':'プレイリストを取得できません',stall:'音声の取得が停滞',write_error:'音声の書き込み失敗',unsupported:'対応外のHLS形式'};msg='別音声: '+(a.running?'取得中':'停止または待機')+(Object.hasOwn(reason,a.stopReason)?'（'+reason[a.stopReason]+'）':'')+'。'+(!valid?'切替時の未処理件数は不明':a.abandonedQueuedHistoryComplete!==true?'切替時の未処理破棄は少なくとも '+n+'件（復旧前の全件数は不明）':n>0?'切替時に未処理 '+n+'件を破棄（欠落の可能性）':'切替時に記録された未処理の破棄はありません')+'。'+(Number.isSafeInteger(a.activeSegmentAtSourceChange)&&a.activeSegmentAtSourceChange>=0?(a.abandonedQueuedHistoryComplete===true?'切替時に処理中だった項目は延べ '+a.activeSegmentAtSourceChange+'件':'切替時に処理中だった項目は少なくとも延べ '+a.activeSegmentAtSourceChange+'件（復旧前の全件数は不明）'):'切替時に処理中だった項目の記録は不明')+'（処理中は欠落確定ではありません）。'+(Number.isSafeInteger(a.staleSegmentResultsIgnored)&&a.staleSegmentResultsIgnored>=0?(a.abandonedQueuedHistoryComplete===true?'旧音声源の遅延結果を採用せず破棄: '+a.staleSegmentResultsIgnored+'回':'旧音声源の遅延結果を採用せず破棄: 少なくとも'+a.staleSegmentResultsIgnored+'回（復旧前は不明）'):'旧音声源の遅延結果件数は不明')+'（破棄回数はメディア欠落数ではありません）。映像・音声の同期と再生は未確認';}$('audioTransition').textContent=msg;}}catch(e){}
+ try{if($('saveState')){const e=s.exports||{},m=s.mp4Handoff,reason={'separate-audio':'別音声は手動確認が必要','incomplete-history':'パート履歴が不完全','parts-missing':'取得できないパートあり','unsupported-part':'対応外形式のパートあり','failed-part':'保存失敗パートあり','busy-recording':'録画中','disabled':'設定OFF'};let msg='ブラウザ保存: サイズ照合済み '+(Number(e.verified)||0)+' / 確認待ち '+((Number(e.requested)||0)+(Number(e.unknown)||0))+' / 失敗 '+(Number(e.failed)||0);if(m&&m.busy)msg+='。MP4変換・引渡し処理中';else if(m&&m.last){const l=m.last;msg+=l.status==='staged'?'。MP4を保存処理へ引渡し済み（保存完了は別途確認）':l.status==='skipped'?'。MP4自動変換を保留: '+(reason[l.reason]||'要確認'):l.status==='failed'?'。MP4自動変換・引渡し失敗: '+String(l.errorCode||'要確認'):'';}$('saveState').textContent=msg;}}catch(e){}
+ /* v2.38.0: 実効policy(次回BG開始に適用される内容)と開始理由の表示 */
+ try{if($('policyLine'))$('policyLine').textContent=s.policy&&s.policy.unavailable?'実効policy: 保存済み設定を確認できません（BG開始は拒否）':s.policy?'実効policy: BG自動開始='+(s.policy.autoStartAllowed?'許可':'禁止')+' / 外部設定='+(s.policy.externalApplied?'適用（'+(['follow','recAudio','preferJapaneseAudio','inheritQuery','mp4AutoHandoff'].filter(k=>s.policy.external[k]!==null).map(k=>k+'='+(s.policy.external[k]?'ON':'OFF')).concat(s.policy.external.splitMin!==null?['分割='+s.policy.external.splitMin+'分']:[]).join('・')||'値なし')+'）':'適用なし（ページ設定のまま）'):'';}catch(e){}
+--- a/tests/test_audio_inflight_v15.cjs
++++ b/tests/test_audio_inflight_v15.cjs
+@@ -9,18 +9,18 @@
+ const drain=source.slice(source.indexOf('    async drain() {',source.indexOf('  class AudioRecorder')),source.indexOf('    async fetchSeg(item)',source.indexOf('  class AudioRecorder')));
+ function mockSwitch(options={}){
+   const stored=[];
+-  const c=vm.createContext({URL,Number,Date,Math,RECENV:{pageUrl:()=> 'https://host.test/'},HLS:{reset(){},noteTerminal(){},append:async()=>true},REC_AUDIO_OFFSET_MS_MIN:300,REC_AUDIO_OFFSET_MS_MAX:500,REC_SEG_MAX_TRIES:3});
++  const c=vm.createContext({URL,Number,Date,Math,RECENV:{pageUrl:()=> 'https://host.test/'},HLS:{reset(owner){owner._hlsGeneration=(owner._hlsGeneration||0)+1},noteTerminal(){},append:async()=>true},REC_AUDIO_OFFSET_MS_MIN:300,REC_AUDIO_OFFSET_MS_MAX:500,REC_SEG_MAX_TRIES:3});
+   vm.runInContext(attrs+groups+'class A { enabled(){return true} closePart(){} log(){} '+sync+drain+'};globalThis.A=A',c);
+   const au=new c.A();const rec={stopped:false,state:'RUN',_masterTxt:'#EXT-X-MEDIA:TYPE=AUDIO,GROUP-ID="g",NAME="Japanese",URI="next.m3u8"',masterUrl:'https://host.test/master',selVariant:{audioGroup:'g'},persistSession(){stored.push([au.abandonedQueuedOnSourceChange,au.activeSegmentAtSourceChange,au.queue.length,au.abandonedQueuedHistoryComplete])}};
+-  Object.assign(au,{running:true,uri:'https://host.test/old',seen:new Set(),queue:[{id:1,tries:0},{id:2,tries:0}],rec,segTotal:0,segCount:0,segFails:0,abandonedQueuedOnSourceChange:0,activeSegmentAtSourceChange:0,abandonedQueuedHistoryComplete:true,_inFlightSegmentWork:false,...options});return {au,stored};
++  Object.assign(au,{running:true,uri:'https://host.test/old',seen:new Set(),queue:[{id:1,tries:0},{id:2,tries:0}],rec,segTotal:0,segCount:0,segFails:0,abandonedQueuedOnSourceChange:0,activeSegmentAtSourceChange:0,abandonedQueuedHistoryComplete:true,_inFlightSegmentWork:false,_inFlightSegmentGeneration:null,...options});return {au,stored};
+ }
+ function session(){let stored;const c=vm.createContext({Number,Date,REC_SESSION_KEY:'session',REC_POLL_MS:1000,HLS:{reset(){},clearWriteEvidence(){}},RECENV:{storageSet:(k,v)=>{stored=v},onUnload(){}},AudioRecorder:class{constructor(){this.abandonedQueuedOnSourceChange=0;this.abandonedQueuedHistoryComplete=true;this.activeSegmentAtSourceChange=0;this.partsLog=[];this.partIndex=0}},createTicker:()=>({usingWorker:()=>false})});vm.runInContext('class R {'+persist+resume+'};globalThis.R=R',c);const r=new c.R();Object.assign(r,{id:'a'.repeat(24),recording:true,stopped:false,creatorName:()=> 'creator',state:'RUN',partsLog:[],audio:{partsLog:[],abandonedQueuedOnSourceChange:4,activeSegmentAtSourceChange:2},ui:{recState(){}},resetQualityState(){},log(){},updateTitle(){}});return {r,read:()=>JSON.parse(stored)}}
+ test('v0.15 switching while a fetch is in flight counts it separately from abandoned queued entries',async()=>{
+  const {au,stored}=mockSwitch();let unlock;au.fetchSeg=()=>new Promise(resolve=>{unlock=resolve});const task=au.drain();a.equal(au.queue.length,1);a.equal(au._inFlightSegmentWork,true);au.sync('mid-fetch');a.equal(au.abandonedQueuedOnSourceChange,1);a.equal(au.activeSegmentAtSourceChange,1);a.deepEqual(stored,[[1,1,0,true]]);unlock({});await task;a.equal(au._inFlightSegmentWork,false);
+ });
+ test('v0.15 ordinary switch with no in-flight item preserves zero active evidence',()=>{const {au,stored}=mockSwitch();au.sync('ordinary');a.equal(au.abandonedQueuedOnSourceChange,2);a.equal(au.activeSegmentAtSourceChange,0);a.deepEqual(stored,[[2,0,0,true]])});
+-test('v0.15 a switch with only a processing item triggers checkpoint',()=>{const {au,stored}=mockSwitch({queue:[],_inFlightSegmentWork:true});au.sync('only-active');a.equal(au.abandonedQueuedOnSourceChange,0);a.equal(au.activeSegmentAtSourceChange,1);a.deepEqual(stored,[[0,1,0,true]])});
+-test('v0.15 safe integer overflow does not produce an invalid total or claim complete history',()=>{const {au,stored}=mockSwitch({abandonedQueuedOnSourceChange:Number.MAX_SAFE_INTEGER,activeSegmentAtSourceChange:Number.MAX_SAFE_INTEGER,_inFlightSegmentWork:true});au.sync('overflow');a.equal(au.abandonedQueuedOnSourceChange,Number.MAX_SAFE_INTEGER);a.equal(au.activeSegmentAtSourceChange,Number.MAX_SAFE_INTEGER);a.equal(au.abandonedQueuedHistoryComplete,false);a.deepEqual(stored,[[Number.MAX_SAFE_INTEGER,Number.MAX_SAFE_INTEGER,0,false]])});
++test('v0.15 a switch with only a processing item triggers checkpoint',()=>{const {au,stored}=mockSwitch({queue:[],_inFlightSegmentWork:true,_inFlightSegmentGeneration:0});au.sync('only-active');a.equal(au.abandonedQueuedOnSourceChange,0);a.equal(au.activeSegmentAtSourceChange,1);a.deepEqual(stored,[[0,1,0,true]])});
++test('v0.15 safe integer overflow does not produce an invalid total or claim complete history',()=>{const {au,stored}=mockSwitch({abandonedQueuedOnSourceChange:Number.MAX_SAFE_INTEGER,activeSegmentAtSourceChange:Number.MAX_SAFE_INTEGER,_inFlightSegmentWork:true,_inFlightSegmentGeneration:0});au.sync('overflow');a.equal(au.abandonedQueuedOnSourceChange,Number.MAX_SAFE_INTEGER);a.equal(au.activeSegmentAtSourceChange,Number.MAX_SAFE_INTEGER);a.equal(au.abandonedQueuedHistoryComplete,false);a.deepEqual(stored,[[Number.MAX_SAFE_INTEGER,Number.MAX_SAFE_INTEGER,0,false]])});
+ test('v0.15 snapshot round trip restores active operations as a lower bound',()=>{const w=session();w.r.persistSession();const x=w.read();a.equal(x.audioActiveAtSourceChange,2);a.equal(x.audioQueueAbandoned,4);Object.assign(w.r,{recording:false,stopped:true,state:'IDLE',partsLog:[],audio:null});w.r.resumeFromCrash({...x,state:'STANDBY',startedAt:Date.now()});a.equal(w.r.audio.activeSegmentAtSourceChange,2);a.equal(w.r.audio.abandonedQueuedHistoryComplete,false);a.equal(w.read().audioActiveAtSourceChange,2)});
+ test('v0.15 absent and malicious persisted values are unknown-history zero lower bounds',()=>{for(const value of [undefined,null,-1,'3',1.3,Infinity,Number.MAX_SAFE_INTEGER+1]){const w=session();Object.assign(w.r,{recording:false,stopped:true,state:'IDLE',audio:null});w.r.resumeFromCrash({state:'STANDBY',startedAt:Date.now(),audioActiveAtSourceChange:value});a.equal(w.r.audio.activeSegmentAtSourceChange,0);a.equal(w.r.audio.abandonedQueuedHistoryComplete,false)}});
+ test('v0.15 snapshot excludes source URL and token from both counts',()=>{const w=session();w.r.audio.uri='https://secret.invalid/?token=SECRET';w.r.persistSession();a.equal(w.read().audioActiveAtSourceChange,2);a.doesNotMatch(JSON.stringify(w.read()),/secret\.invalid|SECRET/)});
+--- a/tests/node_test_baseline.json
++++ b/tests/node_test_baseline.json
+@@ -759,6 +759,15 @@
+   "v0.15 snapshot excludes source URL and token from both counts": 1,
+   "v0.15 snapshot round trip restores active operations as a lower bound": 1,
+   "v0.15 switching while a fetch is in flight counts it separately from abandoned queued entries": 1,
++  "v0.16 late failure clears old generation marker without contaminating queue": 1,
++  "v0.16 missing, corrupt and unsafe saved counts are rejected": 1,
++  "v0.16 old completion cannot clear new in-flight generation marker": 1,
++  "v0.16 published summary is numeric only and never includes streaming URL": 1,
++  "v0.16 snapshot preserves sanitized stale result count as a lower bound": 1,
++  "v0.16 stale media response is never appended or counted as a successful segment": 1,
++  "v0.16 stale result counter saturates instead of wrapping and loses full-history claim": 1,
++  "v0.16 stale retry cannot reinsert into new audio source queue": 1,
++  "v0.16 two source switches do not recount same in-flight operation": 1,
+   "v0.4 code is synchronized in root, Chrome and Firefox packages": 1,
+   "v0.4 combined LL-HLS with skipped segments reports suspicion not full availability": 1,
+   "v0.4 counts EXT-X-GAP only on next complete segment": 1,
+--- a/tests/node_test_file_baseline.json
++++ b/tests/node_test_file_baseline.json
+@@ -2,6 +2,7 @@
+   "test_artifact_input_integrity.cjs",
+   "test_artifact_lock_integration.cjs",
+   "test_audio_defaults_v09.cjs",
++  "test_audio_generation_v16.cjs",
+   "test_audio_inflight_v15.cjs",
+   "test_audio_recovery_v14.cjs",
+   "test_audio_transition_dashboard_v13.cjs",
+--- /dev/null
++++ b/tests/test_audio_generation_v16.cjs
+@@ -0,0 +1,84 @@
++'use strict';
++const {test} = require('node:test');
++const assert = require('node:assert/strict');
++const fs = require('node:fs');
++const vm = require('node:vm');
++const path = require('node:path');
++const root = path.resolve(__dirname, '..');
++const source = fs.readFileSync(path.join(root, 'rplay-stable-player.user.js'), 'utf8');
++const cut = (a, b, start=0) => source.slice(source.indexOf(a,start),source.indexOf(b,source.indexOf(a,start)));
++const attrs = cut('  function parseM3u8Attrs','  function parseVariants');
++const groups = cut('  function parseAudioGroups','  /* ================= v2.11.0:');
++const start = source.indexOf('  class AudioRecorder');
++const sync = cut('    sync(why) {','    /* 再開可能な一時停止',start);
++const drain = cut('    async drain() {','    async fetchSeg(item)',start);
++const persist = cut('    persistSession() {','    clearSession() {');
++const resume = cut('    resumeFromCrash(s) {','    /* v1.10.0:',source.indexOf('    resumeFromCrash(s) {'));
++function fixture(options={}) {
++  const saved=[]; const calls={appended:0,terminal:0};
++  const HLS = {reset(owner){owner._hlsGeneration=(owner._hlsGeneration||0)+1;},noteTerminal(){calls.terminal++},append:async()=>{calls.appended++;return true}};
++  const context=vm.createContext({URL, Number, Date, Math,HLS,RECENV:{pageUrl:()=> 'https://example.invalid/'},REC_AUDIO_OFFSET_MS_MIN:300,REC_AUDIO_OFFSET_MS_MAX:500,REC_SEG_MAX_TRIES:3});
++  vm.runInContext(attrs+groups+'class A { enabled(){return true} closePart(){} log(){} '+sync+drain+'};globalThis.A=A',context);
++  const audio=new context.A();
++  const rec={stopped:false,state:'RUN',_masterTxt:'#EXT-X-MEDIA:TYPE=AUDIO,GROUP-ID="g",NAME="Japanese",URI="new.m3u8"',masterUrl:'https://example.invalid/master',selVariant:{audioGroup:'g'},persistSession(){saved.push({queued:audio.queue.length,stale:audio.staleSegmentResultsIgnored})}};
++  Object.assign(audio,{running:true,rec,uri:'https://example.invalid/old.m3u8',seen:new Set(),queue:[{id:1,tries:0},{id:2,tries:0}],_hlsGeneration:0,_inFlightSegmentWork:false,_inFlightSegmentGeneration:null,abandonedQueuedOnSourceChange:0,activeSegmentAtSourceChange:0,staleSegmentResultsIgnored:0,abandonedQueuedHistoryComplete:true},options);
++  return {audio,rec,calls,saved};
++}
++function deferred(){let resolve,reject; const p=new Promise((a,b)=>{resolve=a;reject=b});return {p,resolve,reject};}
++function restoreFixture(){let saved;const HLS={reset(){},clearWriteEvidence(){}};const c=vm.createContext({Number,Date,REC_SESSION_KEY:'s',REC_POLL_MS:1000,HLS,RECENV:{storageSet:(k,v)=>{saved=v},onUnload(){}},AudioRecorder:class {constructor(){this.abandonedQueuedOnSourceChange=0;this.abandonedQueuedHistoryComplete=true;this.activeSegmentAtSourceChange=0;this.staleSegmentResultsIgnored=0;this.partsLog=[];this.partIndex=0;}},createTicker:()=>({usingWorker:()=>false})});vm.runInContext('class R {'+persist+resume+'};globalThis.R=R',c);const r=new c.R();Object.assign(r,{id:'a'.repeat(24),recording:true,stopped:false,creatorName:()=> 'creator',state:'RUN',partsLog:[],audio:{partsLog:[],abandonedQueuedOnSourceChange:4,activeSegmentAtSourceChange:2,staleSegmentResultsIgnored:3},ui:{recState(){}},resetQualityState(){},log(){},updateTitle(){}});return {r,get:()=>JSON.parse(saved)};}
++test('v0.16 stale retry cannot reinsert into new audio source queue', async()=>{
++ const f=fixture();const d=deferred();f.audio.fetchSeg=()=>d.p;
++ const old=f.audio.drain();assert.equal(f.audio.queue.length,1);
++ f.audio.sync('source-switch');assert.equal(f.audio.activeSegmentAtSourceChange,1);
++ f.audio.queue.push({id:'fresh',tries:0});d.resolve({retry:true});await old;
++ assert.deepEqual(f.audio.queue.map(x=>x.id),['fresh']);assert.equal(f.audio.staleSegmentResultsIgnored,1);
++ assert.equal(f.calls.appended,0);
++});
++test('v0.16 stale media response is never appended or counted as a successful segment',async()=>{
++ const f=fixture();const d=deferred();f.audio.fetchSeg=()=>d.p;const old=f.audio.drain();f.audio.sync('switch');d.resolve({data:new Uint8Array([0x47])});await old;
++ assert.equal(f.calls.appended,0);assert.equal(f.audio.segTotal||0,0);assert.equal(f.audio.staleSegmentResultsIgnored,1);
++});
++test('v0.16 two source switches do not recount same in-flight operation',async()=>{
++ const f=fixture();const d=deferred();f.audio.fetchSeg=()=>d.p;const old=f.audio.drain();f.audio.sync('first');
++ f.rec._masterTxt='#EXT-X-MEDIA:TYPE=AUDIO,GROUP-ID="g",NAME="Japanese",URI="next.m3u8"';f.audio.sync('second');
++ assert.equal(f.audio.activeSegmentAtSourceChange,1);d.resolve({retry:true});await old;
++ assert.equal(f.audio.staleSegmentResultsIgnored,1);
++});
++test('v0.16 old completion cannot clear new in-flight generation marker',async()=>{
++ const f=fixture({queue:[{id:'old',tries:0}]});const one=deferred(),two=deferred();
++ f.audio.fetchSeg=item=>item.id==='old'?one.p:two.p;
++ const old=f.audio.drain();f.audio.sync('switch');f.audio.queue.push({id:'fresh',tries:0});const newer=f.audio.drain();
++ assert.equal(f.audio._inFlightSegmentWork,true);assert.equal(f.audio._inFlightSegmentGeneration,1);
++ one.resolve({retry:true});await old;assert.equal(f.audio._inFlightSegmentWork,true);
++ assert.equal(f.audio._inFlightSegmentGeneration,1);
++ two.resolve({});await newer;assert.equal(f.audio._inFlightSegmentWork,false);assert.equal(f.audio._inFlightSegmentGeneration,null);
++});
++test('v0.16 late failure clears old generation marker without contaminating queue',async()=>{
++ const f=fixture();const d=deferred();f.audio.fetchSeg=()=>d.p;const old=f.audio.drain();f.audio.sync('switch');d.reject(Error('network failure'));await assert.rejects(old,/network failure/);
++ assert.equal(f.audio._inFlightSegmentWork,false);assert.equal(f.audio.staleSegmentResultsIgnored,0);
++});
++test('v0.16 stale result counter saturates instead of wrapping and loses full-history claim',async()=>{
++ const f=fixture({staleSegmentResultsIgnored:Number.MAX_SAFE_INTEGER});const d=deferred();f.audio.fetchSeg=()=>d.p;const old=f.audio.drain();f.audio.sync('switch');d.resolve({retry:true});await old;
++ assert.equal(f.audio.staleSegmentResultsIgnored,Number.MAX_SAFE_INTEGER);assert.equal(f.audio.abandonedQueuedHistoryComplete,false);
++});
++test('v0.16 snapshot preserves sanitized stale result count as a lower bound',()=>{
++ const f=restoreFixture();f.r.persistSession();const data=f.get();assert.equal(data.audioStaleResultsIgnored,3);
++ f.r.recording=false;f.r.stopped=true;f.r.audio=null;f.r.resumeFromCrash({...data,state:'STANDBY',startedAt:Date.now()});
++ assert.equal(f.r.audio.staleSegmentResultsIgnored,3);assert.equal(f.r.audio.abandonedQueuedHistoryComplete,false);
++});
++test('v0.16 missing, corrupt and unsafe saved counts are rejected',()=>{
++ for(const value of [undefined,null,-1,'99',1.5,Infinity,Number.MAX_SAFE_INTEGER+1]){
++  const f=restoreFixture();f.r.recording=false;f.r.stopped=true;f.r.audio=null;
++  f.r.resumeFromCrash({state:'STANDBY',startedAt:Date.now(),audioStaleResultsIgnored:value});
++  assert.equal(f.r.audio.staleSegmentResultsIgnored,0);
++ }
++});
++test('v0.16 published summary is numeric only and never includes streaming URL',()=>{
++ const off=fs.readFileSync(path.join(root,'src/offscreen_post.js'),'utf8');const a=off.indexOf('  function audioTransitionSummary(');const b=off.indexOf('  function recordingParts(',a);
++ const c=vm.createContext({Number});vm.runInContext(off.slice(a,b)+';globalThis.summary=audioTransitionSummary',c);
++ const r=c.summary({audio:{staleSegmentResultsIgnored:5,uri:'https://private.invalid/stream?token=SECRET'}});
++ assert.equal(r.staleSegmentResultsIgnored,5);assert.doesNotMatch(JSON.stringify(r),/private|SECRET|https/);
++ assert.equal(c.summary({audio:{staleSegmentResultsIgnored:'6'}}).staleSegmentResultsIgnored,null);
++ const bg=fs.readFileSync(path.join(root,'src/background.js'),'utf8');assert.match(bg,/staleSegmentResultsIgnored:Number\.isSafeInteger/);
++ const ui=fs.readFileSync(path.join(root,'src/dashboard.js'),'utf8');assert.match(ui,/破棄回数はメディア欠落数ではありません/);
++});
