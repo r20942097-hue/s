@@ -1,0 +1,322 @@
+--- a/src/export_manager.js
++++ b/src/export_manager.js
+@@ -2,8 +2,36 @@
+ (function(root){
+ 'use strict';
+ function create(api, sendHost, now=Date.now) {
+- const KEY='rsp_exports_v211'; let serial=Promise.resolve(); let ready=false, records=[],evictedVerified=null;
++ const KEY='rsp_exports_v211'; let serial=Promise.resolve(); let ready=false, records=[],evictedVerified=null,evictedSessions=null;
+  const SESSION_KEY=/^[a-f0-9]{32}$/;
++ const MAX_EVICTED_SESSIONS=128;
++ // Counts are observations of verified-row EVICTION events since v0.29 only.
++ // An old journal or an overflow never establishes a complete lifetime history.
++ function parseEvictions(coverage){
++  if(!Object.prototype.hasOwnProperty.call(coverage,'evictedSessionCounts'))return null;
++  const counts=coverage.evictedSessionCounts;
++  if(!counts||typeof counts!=='object'||Array.isArray(counts)||
++     Object.keys(counts).length>MAX_EVICTED_SESSIONS||typeof coverage.evictedSessionOverflow!=='boolean')throw Error('EXPORT_JOURNAL_INVALID');
++  const safeCounts=Object.create(null);
++  for(const [key,value] of Object.entries(counts)){
++   if(!SESSION_KEY.test(key)||!Number.isSafeInteger(value)||value<1)throw Error('EXPORT_JOURNAL_INVALID');
++   safeCounts[key]=value;
++  }
++  return {counts:safeCounts,overflow:coverage.evictedSessionOverflow};
++ }
++ function addEvictions(old,removed){
++  const counts=Object.assign(Object.create(null),old?old.counts:null);let overflow=old?old.overflow:false;
++  for(const r of removed){
++   const key=r.sessionKey;
++   if(!key)continue; // Legacy or orphan parts are deliberately unattributed.
++   if(Object.prototype.hasOwnProperty.call(counts,key)){
++    if(counts[key]===Number.MAX_SAFE_INTEGER){overflow=true;continue;}
++    counts[key]++;
++   }else if(Object.keys(counts).length<MAX_EVICTED_SESSIONS)counts[key]=1;
++   else overflow=true;
++  }
++  return {counts,overflow};
++ }
+  const SESSION_LEDGER=(typeof RspSessionExportLedger!=='undefined'?RspSessionExportLedger:
+    typeof module!=='undefined'&&module.exports?require('./session_export_ledger.js'):null);
+ 
+@@ -15,24 +43,26 @@
+   records=s?s.records:[];
+   // Older v1 journals never tracked evictions: history completeness is unknown.
+   // New empty journals can initially attest that no verified rows were evicted.
+-  if(!s)evictedVerified=false;
+-  else if(!Object.prototype.hasOwnProperty.call(s,'coverage'))evictedVerified=null;
++  if(!s){evictedVerified=false;evictedSessions=null;}
++  else if(!Object.prototype.hasOwnProperty.call(s,'coverage')){evictedVerified=null;evictedSessions=null;}
+   else {
+     const c=s.coverage;
+     if(!c||typeof c!=='object'||Array.isArray(c)||!Object.prototype.hasOwnProperty.call(c,'verifiedEvictions')||
+       (c.verifiedEvictions!==true&&c.verifiedEvictions!==false&&c.verifiedEvictions!==null))throw Error('EXPORT_JOURNAL_INVALID');
+-    evictedVerified=c.verifiedEvictions;
++    evictedVerified=c.verifiedEvictions;evictedSessions=parseEvictions(c);
+   }
+   if(records.length>512||records.some(r=>!r||!/^[a-zA-Z0-9_-]{8,100}$/.test(r.partId)||!safe(r.name)||!safe(r.stageName)||!Number.isSafeInteger(r.size)||r.size<0||!['requested','unverified','complete_unknown','verified','interrupted','size_mismatch','request_failed'].includes(r.status)||!Number.isSafeInteger(r.attempt)||r.attempt<1||!Number.isSafeInteger(r.requestedAt)||!(r.downloadId===null||(Number.isSafeInteger(r.downloadId)&&r.downloadId>=0))||
+     (r.sessionKey!==undefined&&r.sessionKey!==null&&!SESSION_KEY.test(r.sessionKey))))throw Error('EXPORT_JOURNAL_INVALID');
+   if(new Set(records.map(r=>r.partId)).size!==records.length)throw Error('EXPORT_JOURNAL_INVALID');
+   ready=true;
+  }
+- async function persist(next,nextCoverage=evictedVerified){
++ async function persist(next,nextCoverage=evictedVerified,nextEvictions=evictedSessions){
+   // Commit the coverage marker and records in one browser storage transaction.
+   // Never mark an unknown older history as complete just because a new write succeeded.
+-  await call(api.storage.local,'set',{[KEY]:{version:1,records:next,coverage:{verifiedEvictions:nextCoverage}}});
+-  records=next;evictedVerified=nextCoverage;
++  const coverage={verifiedEvictions:nextCoverage};
++  if(nextEvictions){coverage.evictedSessionCounts={...nextEvictions.counts};coverage.evictedSessionOverflow=nextEvictions.overflow;}
++  await call(api.storage.local,'set',{[KEY]:{version:1,records:next,coverage}});
++  records=next;evictedVerified=nextCoverage;evictedSessions=nextEvictions;
+  }
+  function summary(){const count=s=>records.filter(r=>r.status===s).length;return {requested:count('requested'),verified:count('verified'),unknown:count('unverified')+count('complete_unknown'),failed:count('interrupted')+count('size_mismatch')+count('request_failed'),cleanupPending:records.filter(r=>r.cleanupPending).length,retained:records.length,capacity:512,verifiedEvictions:evictedVerified,items:records.slice(-100).reverse().map(r=>({name:r.name,size:r.size,status:r.status,requestedAt:r.requestedAt}))};}
+  // Project only retained, journal-committed events; observed-only, never a
+@@ -49,8 +79,13 @@
+    ledger=SESSION_LEDGER.record(ledger,{partId:r.partId,attempt:r.attempt,stage});
+   }
+   const result=SESSION_LEDGER.summary(ledger);
++  const retired=evictedSessions&&Object.prototype.hasOwnProperty.call(evictedSessions.counts,key)?evictedSessions.counts[key]:null;
++  const lower=retired===null?null:result.verified+retired;
+   return Object.freeze({...result,source:'retained-export-journal',
+-    historicalCoverage:'incomplete',verifiedEvictions:evictedVerified});
++    historicalCoverage:'incomplete',verifiedEvictions:evictedVerified,
++    // null means no per-session eviction evidence, not a measured lifetime zero.
++    evictedVerifiedObserved:retired,verifiedObservedLowerBound:Number.isSafeInteger(lower)?lower:null,
++    evictionCoverage:evictedSessions?(evictedSessions.overflow?'bounded-partial':'since-v029-partial'):'unavailable'});
+  }
+  async function finish(r){
+   const response=await sendHost({type:'export.finish',partId:r.partId,name:r.stageName,status:r.status,remove:r.status==='verified'});
+@@ -81,21 +116,25 @@
+    await load();if(!msg||!/^[a-zA-Z0-9_-]{8,100}$/.test(msg.partId)||!safe(msg.name)||!Number.isSafeInteger(msg.size)||msg.size<0||typeof msg.url!=='string'||!msg.url.startsWith('blob:')||
+       (msg.sessionKey!==undefined&&msg.sessionKey!==null&&!SESSION_KEY.test(msg.sessionKey)))throw Error('BAD_EXPORT');
+    const existing=records.find(r=>r.partId===msg.partId);
++   // Existing attribution is immutable even when a caller forges a retry key.
++   // Recovered OPFS entries may send null: original journal provenance wins.
++   if(existing&&msg.sessionKey!=null&&existing.sessionKey!==msg.sessionKey)throw Error('SESSION_ATTRIBUTION_CONFLICT');
+    if(existing&&!(msg.retry===true&&['interrupted','size_mismatch','request_failed'].includes(existing.status))){await reconcileOne(existing);return {ok:true,status:records.find(r=>r.partId===msg.partId).status};}
+    const attempt=existing?existing.attempt+1:1;
+    const name=msg.name.replace(/(\.[^.]+)$/,'_a'+attempt+'$1');
+    if(!safe(name))throw Error('BAD_NAME');
+    let next=records.filter(r=>r.partId!==msg.partId);
++   let nextEvictions=evictedSessions;
+    // Never evict unverified/failed data to make space. Only settled cleaned records.
+    let nextCoverage=evictedVerified;
+    if(next.length>=512){
+      const eligible=next.filter(r=>r.status==='verified'&&!r.cleanupPending);
+-     if(eligible.length){next=next.filter(r=>!(r.status==='verified'&&!r.cleanupPending));nextCoverage=true;}
++     if(eligible.length){next=next.filter(r=>!(r.status==='verified'&&!r.cleanupPending));nextCoverage=true;nextEvictions=addEvictions(evictedSessions,eligible);}
+    }
+    if(next.length>=512)throw Error('EXPORT_JOURNAL_FULL');
+    const record={partId:msg.partId,name,stageName:msg.name,size:msg.size,attempt,status:'requested',downloadId:null,requestedAt:now(),cleanupPending:false,
+-     sessionKey:msg.sessionKey||null};
+-   await persist(next.concat(record),nextCoverage);
++     sessionKey:existing?(existing.sessionKey||null):(msg.sessionKey||null)};
++   await persist(next.concat(record),nextCoverage,nextEvictions);
+    let id;
+    try{id=await call(api.downloads,'download',{url:msg.url,filename:'RPLAY/'+name,conflictAction:'uniquify'});}catch(e){await persist(records.map(r=>r.partId===msg.partId?{...r,status:'request_failed'}:r));await finish(records.find(r=>r.partId===msg.partId));return {ok:false,error:'REQUEST_FAILED'};}
+    if(!Number.isSafeInteger(id)||id<0)throw Error('INVALID_DOWNLOAD_ID');
+--- a/src/popup.html
++++ b/src/popup.html
+@@ -12,7 +12,7 @@
+ <main class="popup-shell">
+ <header class="popup-head">
+   <div class="popup-brand"><span class="brand-mark" aria-hidden="true">SH</span><div><p class="eyebrow">STREAMHARBOR / RPLAY</p><h1>録画ステータス</h1></div></div>
+-  <span class="candidate-label">v0.27 開発版</span>
++  <span class="candidate-label">v0.29 開発版</span>
+ </header>
+ <section class="status-panel" aria-label="録画の現在の状態">
+   <div class="status-heading"><span class="status-dot" aria-hidden="true"></span><strong id="popup-state" data-state="loading" role="status" aria-live="polite">確認中…</strong><span id="popup-medium" class="medium">—</span></div>
+--- a/tests/node_test_baseline.json
++++ b/tests/node_test_baseline.json
+@@ -905,6 +905,19 @@
+   "v0.28 snapshot key cannot change while OPFS staging write awaits": 1,
+   "v0.28 two control epochs are isolated in retained journal projection": 1,
+   "v0.28 unknown or legacy export does not acquire a later active key": 1,
++  "v0.29 a forged retry cannot migrate a part between audit sessions": 1,
++  "v0.29 a pre-v0.29 journal never fabricates historical eviction totals": 1,
++  "v0.29 evicted-session index has a bounded overflow marker without assigning new keys": 1,
++  "v0.29 existing group remains incrementable after bounded-index overflow": 1,
++  "v0.29 failed atomic storage write never marks evicted verified parts": 1,
++  "v0.29 malicious or malformed persisted eviction metadata fails closed": 1,
++  "v0.29 missing retry key inherits the original journal identity": 1,
++  "v0.29 popup badge identifies current candidate and does not request an audit key": 1,
++  "v0.29 recovered null attribution cannot be upgraded on the same part id": 1,
++  "v0.29 repeated queries never add retirement events or new download requests": 1,
++  "v0.29 status projection leaks no raw keys, part ids, file names or blob urls": 1,
++  "v0.29 verified evictions are counted per attributed session atomically": 1,
++  "v0.29 verified record eviction never implies playable media or complete session history": 1,
+   "v0.4 code is synchronized in root, Chrome and Firefox packages": 1,
+   "v0.4 combined LL-HLS with skipped segments reports suspicion not full availability": 1,
+   "v0.4 counts EXT-X-GAP only on next complete segment": 1,
+--- a/tests/node_test_file_baseline.json
++++ b/tests/node_test_file_baseline.json
+@@ -37,6 +37,7 @@
+   "test_mp4_convert.cjs",
+   "test_parts.cjs",
+   "test_selection_record_integration.cjs",
++  "test_session_eviction_audit_v29.cjs",
+   "test_session_export_wiring_v28.cjs",
+   "test_session_gate.cjs",
+   "test_sha256.cjs",
+--- /dev/null
++++ b/tests/test_session_eviction_audit_v29.cjs
+@@ -0,0 +1,128 @@
++'use strict';
++const {test}=require('node:test');
++const assert=require('node:assert/strict');
++const {create}=require('../src/export_manager.js');
++const A='a'.repeat(32),B='b'.repeat(32),C='c'.repeat(32),D='d'.repeat(32);
++const PART=i=>'part'+String(i).padStart(8,'0');
++function record(i,status='requested',key=null){return {partId:PART(i),name:'RPLAY_'+i+'_a1.ts',stageName:'RPLAY_'+i+'.ts',size:3,attempt:1,status,downloadId:null,requestedAt:1700000000000,cleanupPending:false,sessionKey:key};}
++function harness(initial){
++ const store=initial?structuredClone(initial):{},history=[];let failure=false,downloads=0,manager;
++ const api={runtime:{lastError:null},storage:{local:{
++  get:(key,cb)=>queueMicrotask(()=>cb(structuredClone(store))),
++  set:(obj,cb)=>queueMicrotask(()=>{
++   if(failure){api.runtime.lastError={message:'fail'};cb();api.runtime.lastError=null;}
++   else {Object.assign(store,structuredClone(obj));history.push(structuredClone(obj));cb();}
++  })}},downloads:{
++  download:(req,cb)=>queueMicrotask(()=>cb(++downloads)),
++  search:(q,cb)=>queueMicrotask(()=>cb([]))
++ }};
++ const restart=()=>{manager=create(api,async()=>({ok:true}),()=>1700000000000);};restart();
++ return {store,history,restart,get manager(){return manager;},set failure(v){failure=v;},get downloads(){return downloads;},
++  offer:(i,key,retry=false)=>manager.offer({partId:PART(i),name:'RPLAY_'+i+'.ts',size:3,url:'blob:synthetic',sessionKey:key,retry})};
++}
++const full=(rows,coverage={verifiedEvictions:false})=>({rsp_exports_v211:{version:1,coverage,records:rows}});
++test('v0.29 a forged retry cannot migrate a part between audit sessions',async()=>{
++ const h=harness();await h.offer(1,A);const snapshot=structuredClone(h.store);
++ await assert.rejects(()=>h.offer(1,B,true),/SESSION_ATTRIBUTION_CONFLICT/);
++ assert.deepEqual(h.store,snapshot);assert.equal(h.downloads,1);
++});
++test('v0.29 recovered null attribution cannot be upgraded on the same part id',async()=>{
++ const h=harness();await h.offer(1,null);
++ await assert.rejects(()=>h.offer(1,A,true),/SESSION_ATTRIBUTION_CONFLICT/);
++ assert.equal(h.store.rsp_exports_v211.records[0].sessionKey,null);
++});
++test('v0.29 missing retry key inherits the original journal identity',async()=>{
++ const r=record(1,'interrupted',A),h=harness(full([r]));
++ await h.offer(1,null,true);
++ assert.equal(h.store.rsp_exports_v211.records[0].sessionKey,A);
++ assert.equal(h.store.rsp_exports_v211.records[0].attempt,2);
++});
++test('v0.29 verified evictions are counted per attributed session atomically',async()=>{
++ const rows=Array.from({length:512},(_,i)=>record(i,i<2?'verified':'requested',i===0?A:i===1?B:C));
++ const h=harness(full(rows));await h.offer(900,C);
++ const coverage=h.store.rsp_exports_v211.coverage;
++ assert.equal(coverage.verifiedEvictions,true);
++ assert.deepEqual(coverage.evictedSessionCounts,{[A]:1,[B]:1});
++ assert.equal(coverage.evictedSessionOverflow,false);
++ assert.equal(h.store.rsp_exports_v211.records.length,511);
++ for(const key of [A,B]){
++  const info=await h.manager.sessionStatus(key);
++  assert.equal(info.evictedVerifiedObserved,1);
++  assert.equal(info.verifiedObservedLowerBound,1);
++  assert.equal(info.historicalCoverage,'incomplete');
++  assert.equal(info.complete,false);
++  assert.equal(info.evictionCoverage,'since-v029-partial');
++ }
++ assert.equal((await h.manager.sessionStatus(C)).evictedVerifiedObserved,null);
++ h.restart();assert.equal((await h.manager.sessionStatus(A)).evictedVerifiedObserved,1);
++});
++test('v0.29 repeated queries never add retirement events or new download requests',async()=>{
++ const rows=Array.from({length:512},(_,i)=>record(i,i===0?'verified':'requested',i===0?A:B));
++ const h=harness(full(rows));await h.offer(900,C);
++ const snapshot=structuredClone(h.store);const n=h.history.length;
++ for(let i=0;i<4;i++){await h.manager.status();await h.manager.sessionStatus(A);}
++ assert.deepEqual(h.store,snapshot);assert.equal(h.history.length,n);
++ assert.equal(h.downloads,1);
++});
++test('v0.29 failed atomic storage write never marks evicted verified parts',async()=>{
++ const rows=Array.from({length:512},(_,i)=>record(i,i===0?'verified':'requested',i===0?A:B));
++ const h=harness(full(rows));const prior=structuredClone(h.store);
++ h.failure=true;await assert.rejects(()=>h.offer(900,C),/BROWSER_API_ERROR/);
++ assert.equal(h.downloads,0);assert.deepEqual(h.store,prior);
++ h.failure=false;h.restart();assert.equal((await h.manager.sessionStatus(A)).evictedVerifiedObserved,null);
++});
++test('v0.29 a pre-v0.29 journal never fabricates historical eviction totals',async()=>{
++ const h=harness(full([record(1,'verified',A)],{verifiedEvictions:true}));
++ const r=await h.manager.sessionStatus(A);assert.equal(r.evictedVerifiedObserved,null);
++ assert.equal(r.evictionCoverage,'unavailable');assert.equal(r.verifiedObservedLowerBound,null);
++});
++test('v0.29 evicted-session index has a bounded overflow marker without assigning new keys',async()=>{
++ const counts={};for(let i=0;i<128;i++)counts[i.toString(16).padStart(32,'0')]=1;
++ const rows=Array.from({length:512},(_,i)=>record(i,i===0?'verified':'requested',i===0?A:B));
++ const h=harness(full(rows,{verifiedEvictions:true,evictedSessionCounts:counts,evictedSessionOverflow:false}));
++ await h.offer(900,C);
++ assert.equal(Object.keys(h.store.rsp_exports_v211.coverage.evictedSessionCounts).length,128);
++ assert.equal(h.store.rsp_exports_v211.coverage.evictedSessionOverflow,true);
++ const info=await h.manager.sessionStatus(A);assert.equal(info.evictedVerifiedObserved,null);
++ assert.equal(info.evictionCoverage,'bounded-partial');
++});
++test('v0.29 existing group remains incrementable after bounded-index overflow',async()=>{
++ const counts={[A]:2};for(let i=1;i<128;i++)counts[i.toString(16).padStart(32,'0')]=1;
++ const rows=Array.from({length:512},(_,i)=>record(i,i===0?'verified':'requested',i===0?A:B));
++ const h=harness(full(rows,{verifiedEvictions:true,evictedSessionCounts:counts,evictedSessionOverflow:true}));
++ await h.offer(900,C);assert.equal((await h.manager.sessionStatus(A)).evictedVerifiedObserved,3);
++});
++test('v0.29 malicious or malformed persisted eviction metadata fails closed',async()=>{
++ const invalid=[
++  {verifiedEvictions:true,evictedSessionCounts:{bad:1},evictedSessionOverflow:false},
++  {verifiedEvictions:true,evictedSessionCounts:{[A]:0},evictedSessionOverflow:false},
++  {verifiedEvictions:true,evictedSessionCounts:{[A]:1},evictedSessionOverflow:'no'},
++  {verifiedEvictions:true,evictedSessionCounts:[],evictedSessionOverflow:false}
++ ];
++ for(const coverage of invalid){const h=harness(full([],coverage));
++  await assert.rejects(()=>h.manager.status(),/EXPORT_JOURNAL_INVALID/);
++  assert.equal(h.downloads,0);
++ }
++});
++test('v0.29 status projection leaks no raw keys, part ids, file names or blob urls',async()=>{
++ const rows=Array.from({length:512},(_,i)=>record(i,i===0?'verified':'requested',i===0?A:B));
++ const h=harness(full(rows));await h.offer(900,C);
++ const v=JSON.stringify(await h.manager.sessionStatus(A));
++ for(const secret of [A,B,PART(0),'RPLAY_0','blob:'])assert.equal(v.includes(secret),false);
++});
++test('v0.29 verified record eviction never implies playable media or complete session history',async()=>{
++ const rows=Array.from({length:512},(_,i)=>record(i,i===0?'verified':'requested',i===0?A:B));
++ const h=harness(full(rows));await h.offer(900,C);
++ const v=await h.manager.sessionStatus(A);
++ assert.equal(v.observedOnly,true);assert.equal(v.complete,false);assert.equal(v.source,'retained-export-journal');
++ assert.equal('decoded' in v,false);assert.equal('playable' in v,false);
++});
++
++test('v0.29 popup badge identifies current candidate and does not request an audit key',()=>{
++ const fs=require('node:fs'),path=require('node:path');
++ const R=path.join(__dirname,'..');
++ const html=fs.readFileSync(path.join(R,'src','popup.html'),'utf8');
++ const popup=fs.readFileSync(path.join(R,'src','popup.js'),'utf8');
++ assert.match(html,/v0\.29 開発版/);
++ assert.equal(popup.includes('sessionKey'),false);
++});
+--- /dev/null
++++ b/CHANGELOG_V029.md
+@@ -0,0 +1,9 @@
++# StreamHarbor v0.29.0 (development candidate)
++
++- **Session attribution freeze**: refuse a conflicting non-null session key during existing part retries; preserve original key on null-key OPFS recovery.
++- **Bounded retained-eviction counters**: persist verified-row eviction observations per session key with 128-key bound and overflow signal, in the same browser-storage transaction as journal row deletion.
++- **Conservative read-only session summary**: report observed retired verified count (when present), lower-bound count (when safe), and explicit incomplete-history source/coverage.
++- **Migration and safety**: distinguish legacy journal absence from confirmed observations; reject malformed persisted metadata; never leak raw media paths or tokens in exported diagnostics.
++- **QA**: add new v0.29 regression tests including injected journal write failures and restart, preserve Node/Python baseline and Chrome/Firefox build copy verification.
++
++`CANDIDATE / NO_GO`: recording, streaming, Windows disk quota, browser startup, crash/restart and A/V synchronization acceptance remain outstanding.
+--- /dev/null
++++ b/README_V029_QA.md
+@@ -0,0 +1,16 @@
++# StreamHarbor v0.29 QA and design notes
++
++**Status: CANDIDATE / NO_GO**. This change is an incremental correction to v0.28 and retains the existing Chrome/Firefox extension manifest version 2.56.0.
++
++## v0.29 behavior
++
++- The export manager makes the stored session attribution immutable: an explicit different key for an existing `partId` is rejected; a null-key retry retains the persisted key. An unattributed historical part is never silently upgraded.
++- The existing 512-entry journal may evict settled verified rows (after OPFS cleanup). At eviction time, the journal atomically commits a bounded per-session **count of observed verified-row evictions since v0.29**. This metadata records observed ledger events, not necessarily unique files, playable media, or all historical records.
++- The count index holds at most 128 session keys. A new untracked group after that bound sets `evictedSessionOverflow=true`. The status projection reports **bounded-partial**, not completeness. Existing indexed groups can still increment unless numeric saturation occurs. No key, part ID, name, download URL, or media bytes are returned by the session projection.
++- A legacy journal without v0.29 counters does not claim zero prior evictions. `evictedVerifiedObserved=null` means no per-session eviction evidence is available for the requested key; it is not a measured zero.
++- `sessionStatus(key)` now exposes `evictedVerifiedObserved`, `verifiedObservedLowerBound`, and `evictionCoverage` in addition to the retained-only status fields. `historicalCoverage` remains `incomplete` and `complete=false` in every result. The popup does not display or request raw session keys.
++- Failed browser storage writes never modify the in-memory or persisted eviction counter, and never begin a download when journal staging fails.
++
++## Remaining constraints
++
++A new host recording control epoch generates a new audit ID; stable recording identity across browser crashes is not yet implemented. Aggregates before v0.29, attribution for recovered OPFS orphans, >128 group overflow, replay after journal record eviction, and loss of browser storage cannot be fully reconstructed. Verified means downloaded-file-size equality; it is not video decode, audio synchronization, or completeness proof. No live service/browser/long-duration acceptance has been performed.
