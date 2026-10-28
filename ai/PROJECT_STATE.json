@@ -1,0 +1,39 @@
+{
+  "schema": "project-state/v1",
+  "repository": "r20942097-hue/s",
+  "role": "ブラウザー用フィルターの公開配布元（release authority）",
+  "updated": "2026-10-28",
+  "default_branch": "main",
+  "heads": {
+    "main_before_governance_pr": "a3bb00a94c2c44ad882a85078a4e3e74730290a2",
+    "note": "最新の main head は `git rev-parse origin/main` で確認してください。この値は本ファイル作成時点の記録です。"
+  },
+  "gates": {
+    "P0": "active",
+    "PUBLICATION_HOLD": "active: Release作成・公開範囲変更・購読URL変更は所有者承認まで保留",
+    "NO_NEW_INTERNAL_PUSH": "active: main への直接 push 禁止（作業ブランチへの push と PR 作成は可）"
+  },
+  "permissions": {
+    "always_allowed": ["read", "create proposal/feature branches", "push to proposal/feature branches", "open draft/normal PRs", "rerun CI", "run local verification"],
+    "requires_owner_approval": ["merge to main", "delete original branches/files", "visibility/publication changes", "force-push / history rewrite", "production deploy", "add ZIP/binary artifacts"]
+  },
+  "protection": {
+    "main_ruleset": "PR必須（承認0）・必須チェック test / engine（Filter list checks）・force-push禁止・削除禁止",
+    "ci_zip_guard": "Filter list checks の test ジョブで追跡中の *.zip / *.7z を検出すると FAIL"
+  },
+  "verification_commands": [
+    "python -m unittest discover -s tests -p 'test_*.py' -v",
+    "python scripts/validate_lists.py",
+    "python scripts/generate_lists.py --check"
+  ],
+  "downstream": {
+    "repository": "r20942097-hue/faaff",
+    "pinned_import": "faaff/ai/imports/s.json（本リポジトリ main 変更後は faaff 側で別PRにより再取り込み）"
+  },
+  "open_items": [
+    "git 履歴に RPLAY_*.zip（約4MB×10）が残存。完全削除には filter-repo + force-push + GitHub Support 依頼が必要（要承認・未実施）",
+    "LICENSE ファイル未配置（ライセンスは各フィルターのヘッダーで宣言）",
+    "has_wiki が有効（未使用と推定・未検証）",
+    "Actions に main に存在しないワークフロー「Validate v2 filters」が登録残り"
+  ]
+}

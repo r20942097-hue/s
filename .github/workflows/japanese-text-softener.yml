@@ -10,15 +10,8 @@ on:
       - 'filter-profiles.json'
       - 'verification/**'
       - '.github/workflows/japanese-text-softener.yml'
+  # PR では全変更で実行する（main の Ruleset 必須チェックのため、パス絞り込みなし）
   pull_request:
-    paths:
-      - '*.txt'
-      - 'v2/**'
-      - 'scripts/**'
-      - 'tests/**'
-      - 'filter-profiles.json'
-      - 'verification/**'
-      - '.github/workflows/japanese-text-softener.yml'
 
   workflow_dispatch:
 
@@ -36,6 +29,12 @@ jobs:
       - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: '3.13'
+      - name: Fail if ZIP/7z archives are tracked
+        run: |
+          if git ls-files | grep -iE '\.(zip|7z)$'; then
+            echo "::error::ZIP/7z archives must not be committed (see AGENTS.md)"
+            exit 1
+          fi
       - name: Run filter regression tests
         run: python -m unittest discover -s tests -p 'test_*.py' -v
       - name: Validate all filter lists
