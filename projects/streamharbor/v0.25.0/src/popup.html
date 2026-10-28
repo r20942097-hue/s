@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>StreamHarbor 録画ステータス</title>
+<link rel="stylesheet" href="popup.css">
+<script defer src="popup_state.js"></script>
+<script defer src="popup.js"></script>
+</head>
+<body>
+<main class="popup-shell">
+<header class="popup-head">
+  <div class="popup-brand"><span class="brand-mark" aria-hidden="true">SH</span><div><p class="eyebrow">STREAMHARBOR / RPLAY</p><h1>録画ステータス</h1></div></div>
+  <span class="candidate-label">v0.25 開発版</span>
+</header>
+<section class="status-panel" aria-label="録画の現在の状態">
+  <div class="status-heading"><span class="status-dot" aria-hidden="true"></span><strong id="popup-state" data-state="loading" role="status" aria-live="polite">確認中…</strong><span id="popup-medium" class="medium">—</span></div>
+  <p id="popup-target" class="target">現在の状態を取得しています</p>
+</section>
+<section aria-labelledby="session-title" class="session-panel">
+  <h2 id="session-title">録画セッション <span>状態取得で確認できたパート一覧（直近最大100件）</span></h2>
+  <div class="session-measure"><span>直近パート</span><strong id="popup-parts" aria-describedby="popup-session-note">—</strong></div>
+  <p id="popup-session-note" class="session-note" aria-live="polite">録画セッションを確認中…</p>
+</section>
+<section aria-labelledby="summary-title" class="summary-panel">
+  <h2 id="summary-title">保存台帳（全録画） <span>現在の録画だけの件数ではありません</span></h2>
+  <div class="metric-grid">
+    <div class="metric"><span>サイズ照合済み</span><strong id="popup-verified">—</strong></div>
+    <div class="metric"><span>確認待ち</span><strong id="popup-pending" aria-describedby="popup-ledger-note">—</strong></div>
+    <div class="metric"><span>失敗</span><strong id="popup-failed">—</strong></div>
+  </div>
+  <p id="popup-ledger-note" class="ledger-note" aria-live="polite">保存台帳を確認中…</p>
+</section>
+<details class="audio-panel"><summary>音声切替の診断</summary><p id="popup-audio">状態を確認中…</p></details>
+<nav class="popup-actions" aria-label="詳細画面へ移動">
+ <a class="primary" href="dashboard.html" target="_blank" rel="noopener">録画管理を開く <span aria-hidden="true">↗</span></a>
+ <div class="action-grid"><a href="media_inspect.html" target="_blank" rel="noopener">HLS診断</a><a href="mp4_convert.html" target="_blank" rel="noopener">TS→MP4</a><a href="recovery.html" target="_blank" rel="noopener">復旧</a></div>
+</nav>
+<footer><span class="refresh-note"><span id="popup-updated" aria-live="polite">確認中…</span><small>表示中は5秒間隔で更新</small></span><button id="popup-refresh" type="button">状態を更新</button></footer>
+</main>
+</body>
+</html>
