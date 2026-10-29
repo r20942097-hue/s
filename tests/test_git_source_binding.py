@@ -186,6 +186,61 @@ class GitSourceBindingTests(unittest.TestCase):
         self.assertEqual(self.result()["status"], "MATCH")
         self.assertEqual(self.git("rev-parse", "HEAD"), old)
 
+    def test_online_github_id_and_tree_match(self):
+        tree = self.git("rev-parse", "HEAD^{tree}")
+        with patch.object(binding, "_gh_api", side_effect=["1389881401", tree]) as client:
+            out = binding.verify(self.claim, self.source, self.zip, REPO, verify_github_tree=True)
+        self.assertEqual(out["status"], "MATCH")
+        self.assertEqual(out["upstream_repository_authenticated"],
+                         "GITHUB_API_REPOSITORY_ID_AND_TREE_MATCH")
+        self.assertEqual(client.call_count, 2)
+        self.assertEqual(client.call_args_list[0].args, (f"repos/{REPO}", ".id"))
+        self.assertEqual(client.call_args_list[1].args,
+                         (f"repos/{REPO}/git/commits/{self.head}", ".tree.sha"))
+
+    def test_online_rejects_wrong_repository_id(self):
+        with patch.object(binding, "_gh_api", return_value="123") as client:
+            result = binding.verify(self.claim, self.source, self.zip, REPO, verify_github_tree=True)
+        self.assertEqual(result["status"], "FAIL")
+        self.assertEqual(client.call_count, 1)
+
+    def test_online_rejects_wrong_tree(self):
+        with patch.object(binding, "_gh_api", side_effect=["1389881401", "0"*40]):
+            result = binding.verify(self.claim, self.source, self.zip, REPO, verify_github_tree=True)
+        self.assertEqual(result["status"], "FAIL")
+
+    def test_online_refuses_malformed_tree(self):
+        with patch.object(binding, "_gh_api", side_effect=["1389881401", "bad-tree"]):
+            result = binding.verify(self.claim, self.source, self.zip, REPO, verify_github_tree=True)
+        self.assertEqual(result["status"], "FAIL")
+
+    def test_online_unavailable_gh_fails_closed(self):
+        with patch.object(binding, "_gh_api", side_effect=FileNotFoundError):
+            result = binding.verify(self.claim, self.source, self.zip, REPO, verify_github_tree=True)
+        self.assertEqual(result["status"], "FAIL")
+
+    def test_online_never_runs_when_local_parity_failed(self):
+        self.file.write_bytes(b"modified")
+        with patch.object(binding, "_gh_api") as client:
+            result = binding.verify(self.claim, self.source, self.zip, REPO, verify_github_tree=True)
+        self.assertEqual(result["status"], "FAIL")
+        client.assert_not_called()
+
+    def test_default_does_not_call_gh(self):
+        with patch.object(binding, "_gh_api") as client:
+            result = self.result()
+        self.assertEqual(result["status"], "MATCH")
+        client.assert_not_called()
+
+    def test_cli_online_flag(self):
+        tree = self.git("rev-parse", "HEAD^{tree}")
+        with patch.object(binding, "_gh_api", side_effect=["1389881401", tree]):
+            with patch("builtins.print"):
+                status = binding.main(["--claim", str(self.claim),
+                    "--source-root", str(self.source), "--artifact", str(self.zip),
+                    "--expected-repo", REPO, "--verify-github-tree", "--json"])
+        self.assertEqual(status, 0)
+
     def test_artifact_symlink_rejected(self):
         actual = Path(self.temp.name) / "original.zip"
         self.zip.rename(actual)
