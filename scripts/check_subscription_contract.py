@@ -51,8 +51,12 @@ def check_path(root: Path, name: str) -> list[str]:
         problems.append("license metadata mismatch")
     if fields.get("Homepage", []) != ["https://github.com/r20942097-hue/s"]:
         problems.append("homepage metadata mismatch")
-    if "Subscription" in fields and fields["Subscription"] != [BASE + name]:
-        problems.append("subscription URL metadata mismatch")
+    if name == "ad-ubo.txt":
+        # This legacy supplement intentionally has no Subscription metadata.
+        if "Subscription" in fields and fields["Subscription"] != [BASE + name]:
+            problems.append("subscription URL metadata mismatch")
+    elif fields.get("Subscription") != [BASE + name]:
+        problems.append("missing or changed subscription URL metadata")
     return problems
 
 
