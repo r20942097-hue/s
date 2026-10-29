@@ -138,6 +138,10 @@ class ReproSourceTests(unittest.TestCase):
         self.save(entries=[{"source": "a.txt", "member": "CON.txt"}])
         with self.assertRaises(app.BuildError): self.generate()
 
+    def test_windows_superscript_device_name_rejected(self):
+        self.save(entries=[{"source": "a.txt", "member": "COM¹.log"}])
+        with self.assertRaises(app.BuildError): self.generate()
+
     def test_duplicate_casefold_destination_rejected(self):
         self.save(entries=[{"source": "a.txt", "member": "DIST/A.txt"},
                            {"source": "b.js", "member": "dist/a.TXT"}])
