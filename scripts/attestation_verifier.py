@@ -90,6 +90,7 @@ def verify(artifact: Path, repo: str, workflow: str, source_sha: str,
         return _failure("artifact SHA-256 differs from independent expected digest")
     signer = repo + "/" + workflow
     args = ["gh", "attestation", "verify", str(artifact),
+            "--hostname", "github.com",
             "--repo", repo, "--signer-workflow", signer,
             "--source-digest", source_sha, "--source-ref", source_ref,
             "--signer-digest", signer_sha,
@@ -101,7 +102,7 @@ def verify(artifact: Path, repo: str, workflow: str, source_sha: str,
         verified_output = json.loads(_invoke(args))
         if not isinstance(verified_output, list) or not (1 <= len(verified_output) <= 5):
             raise ValueError("no verified attestations")
-        id_output = _invoke(["gh", "api", f"repos/{repo}", "--jq", ".id"]).strip()
+        id_output = _invoke(["gh", "api", "--hostname", "github.com", f"repos/{repo}", "--jq", ".id"]).strip()
         if not id_output.isdecimal() or int(id_output) <= 0:
             raise ValueError("GitHub repository ID unavailable")
         current_id = int(id_output)
