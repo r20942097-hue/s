@@ -116,6 +116,14 @@ class ParityTests(unittest.TestCase):
         self.lock.write_text(make_lock(workflows, dependencies))
         self.assertEqual(self.status(), 'PASS')
 
+    def test_transitive_uses_without_trailing_space(self):
+        dep = (f"    '{A}':\n        ref: 'v7'\n        commit: 'sha1-{SHA_A}'\n        owner_id: 1\n        repo_id: 2\n"
+               f"        uses:\n            - '{B}'\n"
+               f"    '{B}':\n        ref: 'v1'\n        commit: 'sha1-{SHA_B}'\n        owner_id: 1\n        repo_id: 3\n")
+        workflows = f"    '.github/workflows/ci.yml':\n        - '{A}'\n        - '{B}'\n"
+        self.lock.write_text(make_lock(workflows, dep))
+        self.assertEqual(self.status(), 'PASS')
+
     def test_missing_transitive_reference(self):
         dependencies = (f"    '{A}':\n        ref: 'v7'\n        commit: 'sha1-{SHA_A}'\n        owner_id: 1\n        repo_id: 2\n"
                         f"        uses: \n            - '{B}'\n")
