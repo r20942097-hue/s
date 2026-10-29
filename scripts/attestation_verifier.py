@@ -20,6 +20,8 @@ SHA256 = re.compile(r"[0-9a-f]{64}\Z")
 WORKFLOW = re.compile(r"\.github/workflows/[a-zA-Z0-9_.-]+\.ya?ml\Z")
 REF = re.compile(r"refs/(?:heads|tags)/[A-Za-z0-9_./-]+\Z")
 PREDICATE = "https://slsa.dev/provenance/v1"
+MIN_GH_VERSION = (2, 102, 0)  # GHSA-wjmr-j3rp-mh2g and GHSA-4mq3-hpgx-9cx8
+GH_VERSION = re.compile(r"^gh version ([0-9]+)\.([0-9]+)\.([0-9]+)(?:\s|$)")
 MAX_ARTIFACT_SIZE = 1024 * 1024 * 1024
 MAX_JSON_BYTES = 4 * 1024 * 1024
 
@@ -55,6 +57,18 @@ def _invoke(args: list[str]) -> str:
     return r.stdout
 
 
+def require_safe_gh() -> str:
+    """Reject GitHub CLI releases with vulnerable source-ref or signer matching."""
+    line = _invoke(["gh", "--version"])
+    match = GH_VERSION.match(line)
+    if match is None:
+        raise ValueError("unrecognized GitHub CLI version")
+    version = tuple(int(p) for p in match.groups())
+    if version < MIN_GH_VERSION:
+        raise ValueError("GitHub CLI predates fixed attestation verification")
+    return ".".join(match.groups())
+
+
 def verify(artifact: Path, repo: str, workflow: str, source_sha: str,
            source_ref: str, expected_sha256: str, signer_sha: str) -> dict:
     """Validate arguments first, then cryptographically verify with GitHub CLI."""
@@ -83,6 +97,7 @@ def verify(artifact: Path, repo: str, workflow: str, source_sha: str,
             "--predicate-type", PREDICATE, "--deny-self-hosted-runners",
             "--limit", "5", "--format", "json"]
     try:
+        cli_version = require_safe_gh()
         verified_output = json.loads(_invoke(args))
         if not isinstance(verified_output, list) or not (1 <= len(verified_output) <= 5):
             raise ValueError("no verified attestations")
@@ -126,6 +141,7 @@ def verify(artifact: Path, repo: str, workflow: str, source_sha: str,
             "signer_workflow": signer, "signer_digest": signer_sha,
             "source_digest": source_sha,
             "source_ref": source_ref, "attestations_checked": len(verified_output),
+            "gh_cli_version": cli_version,
             "cryptographic_verification": "GH_CLI_VERIFIED",
             "git_checkout_verified": "NOT_RUN", "runtime_e2e": "NOT_RUN",
             "errors": []}
