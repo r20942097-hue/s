@@ -22,7 +22,7 @@ USE = re.compile(r"^\s*(?:-\s*)?uses:\s*([^\s#]+)")
 PATH = re.compile(r"^\.github/workflows/[A-Za-z0-9_.-]+\.ya?ml$")
 QKEY = re.compile(r"^    '([^']+)':$")
 QUSE = re.compile(r"^        - '([^']+)'$")
-FIELD = re.compile(r"^        ([a-z_]+): (.*)$")
+FIELD = re.compile(r"^        ([a-z_]+):(?: (.*))?$")
 NESTED_USE = re.compile(r"^            - '([^']+)'$")
 SINGLE = re.compile(r"^'([^']*)'$")
 HOST = re.compile(r"^(?:github\.com|[a-z0-9-]+(?:\.[a-z0-9-]+)*\.ghe\.com)$")
@@ -87,6 +87,7 @@ def parse(text: str) -> tuple[dict, list[str]]:
             m = FIELD.fullmatch(raw)
             if m and active is not None:
                 field, token = m.groups()
+                token = token or ''
                 d = dependencies[active]
                 if field in d or field not in {'ref', 'commit', 'owner_id', 'repo_id', 'hostname', 'uses'}:
                     errors.append(f'line {number}: duplicate or unsupported dependency field')
