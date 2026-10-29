@@ -127,6 +127,14 @@ def parse(text: str) -> tuple[dict, list[str]]:
     return {'workflows': workflows, 'dependencies': dependencies}, errors
 
 
+def _canonical(ref: str) -> str:
+    """Map a subdirectory action to the parent action repository's lock pin."""
+    if not ACTION.fullmatch(ref):
+        return ref
+    path, sha = ref.rsplit('@', 1)
+    return '/'.join(path.split('/')[:2]) + '@' + sha
+
+
 def _closure(roots: list[str], deps: dict[str, dict], errors: list[str]) -> set[str]:
     done, active = set(), set()
     def visit(dep: str) -> None:
@@ -140,11 +148,11 @@ def _closure(roots: list[str], deps: dict[str, dict], errors: list[str]) -> set[
             return
         active.add(dep)
         for child in deps[dep].get('uses', []):
-            visit(child)
+            visit(_canonical(child))
         active.remove(dep)
         done.add(dep)
     for root in roots:
-        visit(root)
+        visit(_canonical(root))
     return done
 
 
