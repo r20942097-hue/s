@@ -1,0 +1,52 @@
+name: GPT1 Actions lock pilot (no commits)
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  lock-preview:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout PR with no persisted credentials
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Confirm hosted GitHub CLI and read-only API access
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          gh --version
+          gh api repos/github/gh-actions-lock --jq '.full_name'
+      - name: Install immutable official extension v0.2.0 in ephemeral runner
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          gh extension install github/gh-actions-lock --pin v0.2.0
+          gh actions-lock --version
+      - name: Generate and verify ephemeral dependency lock
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          gh actions-lock --no-narrow
+          test -s .github/workflows/actions.lock
+          gh actions-lock --verify-local
+          gh actions-lock --verify
+          git diff --exit-code -- .github/workflows
+          python - <<'PY'
+          import base64
+          from pathlib import Path
+          content = Path('.github/workflows/actions.lock').read_bytes()
+          if not (1 <= len(content) <= 65536):
+              raise SystemExit('lockfile size outside reviewable limit')
+          print('GPT1_LOCKFILE_BASE64_BEGIN')
+          print(base64.b64encode(content).decode('ascii'))
+          print('GPT1_LOCKFILE_BASE64_END')
+          PY
