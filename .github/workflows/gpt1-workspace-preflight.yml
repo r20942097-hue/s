@@ -31,4 +31,4 @@ jobs:
       - name: Self-test preflight (offline)
         run: python -m unittest discover -s tests -p test_gpt1_preflight.py -v
       - name: Inspect checked-out repository (offline)
-        run: python scripts/gpt1_preflight.py --json
+        run: python scripts/gpt1_preflight.py --expected-repository r20942097-hue/s --require-git --json
