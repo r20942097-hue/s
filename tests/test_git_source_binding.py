@@ -187,7 +187,7 @@ class GitSourceBindingTests(unittest.TestCase):
         self.assertEqual(self.git("rev-parse", "HEAD"), old)
 
     def test_gh_api_pins_public_github_host(self):
-        response = subprocess.CompletedProcess([], 0, b"1389881401\\n", b"")
+        response = subprocess.CompletedProcess([], 0, b"1389881401", b"")
         with patch.object(binding.subprocess, "run", return_value=response) as proc:
             result = binding._gh_api("repos/r20942097-hue/faaff", ".id")
         self.assertEqual(result, "1389881401")
