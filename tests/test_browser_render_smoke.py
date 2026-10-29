@@ -15,6 +15,40 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
 import browser_render_smoke as smoke
 
 class BrowserSmokeTests(unittest.TestCase):
+    def test_sandbox_relaxation_requires_explicit_opt_in(self):
+        def runner(exe, url, workspace, unsandboxed_ephemeral=False):
+            if unsandboxed_ephemeral:
+                return {"result": "PASS", "sandbox": "DISABLED_LOCAL_FIXTURE_ONLY"}
+            raise ValueError("CHROMIUM_EXIT_-6;stdout_bytes_0")
+        with patch.object(smoke, "_chromium", side_effect=runner) as runner_mock:
+            strict = smoke.inspect("chromium", discover=lambda name: name)
+            self.assertEqual(strict["result"], "FAIL")
+            self.assertEqual(runner_mock.call_count, 1)
+        with patch.object(smoke, "_chromium", side_effect=runner) as runner_mock:
+            partial = smoke.inspect("chromium", discover=lambda name: name,
+                                    allow_no_sandbox_ephemeral=True)
+            self.assertEqual(partial["result"], "PASS")
+            self.assertEqual(partial["browser_checks"]["chromium"]["default_sandbox_attempt"],
+                             "ABORTED_-6")
+            self.assertEqual(runner_mock.call_count, 2)
+            self.assertTrue(runner_mock.call_args_list[-1].kwargs["unsandboxed_ephemeral"])
+
+    def test_unsandboxed_mode_not_enabled_for_arbitrary_failure(self):
+        with patch.object(smoke, "_chromium",
+                          side_effect=ValueError("CHROMIUM_DOM_MARKER_MISSING")) as run:
+            result = smoke.inspect("chromium", discover=lambda name: name,
+                                   allow_no_sandbox_ephemeral=True)
+        self.assertEqual(result["result"], "FAIL")
+        self.assertEqual(run.call_count, 1)
+
+    def test_no_sandbox_command_not_default(self):
+        process = subprocess.CompletedProcess([], 0, smoke.MARKER.encode(), b"")
+        with tempfile.TemporaryDirectory() as temp:
+            with patch.object(smoke, "_run", return_value=process) as run:
+                status = smoke._chromium("chromium", "http://127.0.0.1/fixture", Path(temp))
+        self.assertNotIn("--no-sandbox", run.call_args.args[0])
+        self.assertEqual(status["sandbox"], "DEFAULT")
+
     def test_html_has_script_marker(self):
         self.assertIn(smoke.MARKER.encode(), smoke.HTML)
         self.assertIn(b"<script>", smoke.HTML)
