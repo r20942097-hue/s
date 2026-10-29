@@ -1,0 +1,150 @@
+name: GPT1 workspace preflight
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  preflight:
+    name: Preflight / ${{ matrix.os }} / Python ${{ matrix.python-version }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 8
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python-version: ['3.11', '3.14']
+    steps:
+      - name: Checkout without persistent credentials
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Set up Python
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Self-test preflight (offline)
+        run: python -m unittest discover -s tests -p test_gpt1_preflight.py -v
+      - name: Unit-test GitHub workflow supply-chain policy
+        run: python -m unittest discover -s tests -p test_workflow_supply_chain.py -v
+      - name: Unit-test Actions lockfile graph parity
+        run: python -m unittest discover -s tests -p test_lockfile_parity.py -v
+      - name: Compare locked graph with checked-out workflows
+        run: python scripts/lockfile_parity.py --json
+      - name: Audit workflow SHA, permissions and unsafe triggers
+        run: python scripts/workflow_supply_chain.py --expected-repository r20942097-hue/s --json
+      - name: Test copied-source ZIP provenance boundary (offline)
+        run: python -m unittest discover -s tests -p test_source_zip_parity.py -v
+      - name: Test official gh attestation verifier policy with synthetic fixtures
+        run: python -m unittest discover -s tests -p test_attestation_verifier.py -v
+      - name: Require security-patched gh attestation verifier
+        run: python -c "import sys; sys.path.insert(0, 'scripts'); from attestation_verifier import require_safe_gh; print('Safe GitHub CLI', require_safe_gh())"
+      - name: Confirm hosted GitHub CLI supports attestation verification (no artifact)
+        run: gh attestation verify --help
+      - name: Verify real local Git commit and ZIP source binding fixtures
+        run: python -m unittest discover -s tests -p test_git_source_binding.py -v
+      - name: Verify immutable GitHub repository ID via API (read only)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          observed="$(gh api repos/r20942097-hue/s --jq '.id')"
+          test "$observed" = "1389881111"
+      - name: Test deterministic Git-blob ZIP source builds (offline)
+        run: python -m unittest discover -s tests -p test_repro_source_archive.py -v
+      - name: Test read-only developer toolchain inventory
+        run: python -m unittest discover -s tests -p test_toolchain_doctor.py -v
+      - name: Cross-check hosted toolchain PATH availability (non-installing)
+        run: python scripts/toolchain_doctor.py --profile github-ci --json
+      - name: Probe isolated Linux browser versions without loading extensions
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          for browser in firefox chromium; do
+            if command -v "$browser" >/dev/null 2>&1; then
+              if timeout 15s "$browser" --version; then
+                echo "BROWSER_CLI_AVAILABLE=$browser"
+              else
+                echo "BROWSER_CLI_UNVERIFIED=$browser"
+              fi
+            else
+              echo "BROWSER_NOT_ON_PATH=$browser"
+            fi
+          done
+      - name: Inspect checked-out repository (offline)
+        run: python scripts/gpt1_preflight.py --expected-repository r20942097-hue/s --require-git --json
+  github-identity:
+    name: Live GitHub commit and tree identity
+    if: github.event_name != 'pull_request' || ${{ github.event.pull_request.head.repo.full_name }} == ${{ github.repository }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Checkout exact PR head or pushed commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - name: Unit-test GitHub repository and commit identity (offline mocks)
+        run: python3 -m unittest discover -s tests -p test_github_commit_identity.py -v
+      - name: Match checked-out HEAD and root tree against live GitHub.com API
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GPT1_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 scripts/github_commit_identity.py --root . --repo r20942097-hue/s --commit "$GPT1_HEAD_SHA" --json
+  ubuntu-browser-canary:
+    name: Runner OS / ${{ matrix.os }} / browser CLI canary
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 5
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, ubuntu-26.04]
+    steps:
+      - name: Read-only Ubuntu and browser capability comparison
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat /etc/os-release
+          for tool in git python3 node npm gh shellcheck firefox chromium; do
+            if command -v "$tool" >/dev/null 2>&1; then
+              printf 'TOOL_ON_PATH=%s\n' "$tool"
+            else
+              printf 'TOOL_NOT_ON_PATH=%s\n' "$tool"
+            fi
+          done
+          for browser in firefox chromium; do
+            if command -v "$browser" >/dev/null 2>&1; then
+              timeout 15s "$browser" --version
+            else
+              echo "BROWSER_CLI_NOT_RUN=$browser"
+            fi
+          done
+          echo "EXTENSION_INSTALL=NOT_RUN; PRODUCT_E2E=NOT_RUN"
+  browser-render-smoke:
+    name: Isolated browser rendering / ${{ matrix.os }}
+    if: github.event_name != 'pull_request' || ${{ github.event.pull_request.head.repo.full_name }} == ${{ github.repository }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 8
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, ubuntu-26.04]
+    steps:
+      - name: Checkout exact source under test
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - name: Verify local-only browser test policy without running browsers
+        run: python3 -m unittest discover -s tests -p test_browser_render_smoke.py -v
+      - name: Render localhost fixture in Firefox and Chromium (ephemeral profiles)
+        run: python3 scripts/browser_render_smoke.py --browser both --allow-no-sandbox-ephemeral --json

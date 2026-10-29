@@ -37,6 +37,8 @@ jobs:
           fi
       - name: Run filter regression tests
         run: python -m unittest discover -s tests -p 'test_*.py' -v
+      - name: Protect published subscription paths and license headers
+        run: python scripts/check_subscription_contract.py --json
       - name: Validate all filter lists
         run: python scripts/validate_lists.py
       - name: Check generated network lists
