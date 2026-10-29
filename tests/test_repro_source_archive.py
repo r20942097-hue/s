@@ -53,6 +53,12 @@ class ReproSourceTests(unittest.TestCase):
         self.out.write_bytes(b)
         return b, report
 
+    def test_cross_platform_golden_zip_sha256(self):
+        data, report = self.generate()
+        self.assertEqual(report["sha256"],
+                         "4b41b60c27390b5976b31139ba60f8405db41fc9044b31bf9c75aff5588e193b")
+        self.assertEqual(len(data), 227)
+
     def test_build_deterministic_repeated(self):
         first, one = self.generate()
         second, two = self.generate()
