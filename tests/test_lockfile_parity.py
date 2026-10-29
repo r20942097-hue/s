@@ -127,6 +127,23 @@ class ParityTests(unittest.TestCase):
         self.lock.write_text(make_lock(dependencies=dependencies))
         self.assertEqual(self.status(), 'FAIL')
 
+    def test_subdirectory_actions_map_to_repository_pin(self):
+        codeql = 'github/codeql-action@' + SHA_B
+        lock = make_lock(
+            workflows=f"    '.github/workflows/ci.yml':\n        - '{codeql}'\n",
+            dependencies=f"    '{codeql}':\n        ref: 'v4'\n        commit: 'sha1-{SHA_B}'\n        owner_id: 9919\n        repo_id: 2\n")
+        self.lock.write_text(lock)
+        self.workflow.write_text(f"jobs:\n  x:\n    steps:\n      - uses: github/codeql-action/init@{SHA_B}\n      - uses: github/codeql-action/analyze@{SHA_B}\n")
+        self.assertEqual(self.status(), 'PASS')
+
+    def test_subdirectory_different_sha_is_not_accepted(self):
+        codeql = 'github/codeql-action@' + SHA_B
+        self.lock.write_text(make_lock(
+            workflows=f"    '.github/workflows/ci.yml':\n        - '{codeql}'\n",
+            dependencies=f"    '{codeql}':\n        ref: 'v4'\n        commit: 'sha1-{SHA_B}'\n        owner_id: 9919\n        repo_id: 2\n"))
+        self.workflow.write_text(f"jobs:\n  x:\n    steps:\n      - uses: github/codeql-action/init@{SHA_A}\n")
+        self.assertEqual(self.status(), 'FAIL')
+
     def test_tab_rejected(self):
         self.lock.write_text(make_lock().replace('owner_id: 44036562', 'owner_id:\t44036562'))
         self.assertEqual(self.status(), 'FAIL')
