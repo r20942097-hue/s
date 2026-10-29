@@ -2,6 +2,8 @@ name: GPT1 Actions lock verification
 
 on:
   pull_request:
+  push:
+    branches: [main]
   workflow_dispatch:
 
 permissions:
