@@ -172,6 +172,18 @@ class PreflightTests(unittest.TestCase):
             self.skipTest("symlink creation unavailable")
         self.assertFalse(safe_required_path(self.root, "ai/HANDOFF.md", False))
 
+    def test_symlinked_parent_directory_is_rejected(self):
+        self.make_repo()
+        original = self.root / "ai"
+        real = self.root / "real-ai"
+        original.rename(real)
+        try:
+            original.symlink_to(real, target_is_directory=True)
+        except (OSError, NotImplementedError):
+            self.skipTest("directory symlink creation unavailable")
+        self.assertFalse(safe_required_path(self.root, "ai/HANDOFF.md", False))
+        self.assertIn("state", self.failure_names())
+
     def test_cli_requires_git_for_ci(self):
         self.make_repo()
         with patch("builtins.print"):
