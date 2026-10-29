@@ -37,7 +37,7 @@ def _gh_api(endpoint: str, jq: str) -> str:
     """Use the real GitHub API; exact repository IDs are pinned policy inputs."""
     if not isinstance(endpoint, str) or not endpoint.startswith("repos/"):
         raise ValueError("unsupported GitHub endpoint")
-    process = subprocess.run(["gh", "api", endpoint, "--jq", jq],
+    process = subprocess.run(["gh", "api", "--hostname", "github.com", endpoint, "--jq", jq],
                              capture_output=True, timeout=35, check=False)
     if process.returncode != 0 or len(process.stdout) > 4096:
         raise ValueError("GitHub API failed or exceeded response size limit")
