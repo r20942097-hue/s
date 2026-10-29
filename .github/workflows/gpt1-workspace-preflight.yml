@@ -30,5 +30,9 @@ jobs:
           python-version: ${{ matrix.python-version }}
       - name: Self-test preflight (offline)
         run: python -m unittest discover -s tests -p test_gpt1_preflight.py -v
+      - name: Unit-test GitHub workflow supply-chain policy
+        run: python -m unittest discover -s tests -p test_workflow_supply_chain.py -v
+      - name: Audit workflow SHA, permissions and unsafe triggers
+        run: python scripts/workflow_supply_chain.py --expected-repository r20942097-hue/s --json
       - name: Inspect checked-out repository (offline)
         run: python scripts/gpt1_preflight.py --expected-repository r20942097-hue/s --require-git --json
