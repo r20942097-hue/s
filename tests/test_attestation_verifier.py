@@ -253,6 +253,14 @@ class AttestationPolicyTests(unittest.TestCase):
         with self.mock_run(version_stdout="gh version 1.200.0\n"):
             self.assertEqual(self.check()["status"], "FAIL")
 
+    def test_cli_unicode_decode_error_fails_closed(self):
+        with patch.object(guard.subprocess, "run", side_effect=UnicodeDecodeError("utf-8", b"\\xff", 0, 1, "invalid")):
+            self.assertEqual(self.check()["status"], "FAIL")
+
+    def test_cli_unicode_encode_error_fails_closed(self):
+        with patch.object(guard.subprocess, "run", side_effect=UnicodeEncodeError("utf-8", "\\ud800", 0, 1, "invalid")):
+            self.assertEqual(self.check()["status"], "FAIL")
+
     def test_no_actual_attestation_in_tests(self):
         self.assertIn("synthetic", self.evidence())
         self.assertEqual(guard.PREDICATE, "https://slsa.dev/provenance/v1")
