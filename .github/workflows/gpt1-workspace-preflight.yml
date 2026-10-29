@@ -100,3 +100,32 @@ jobs:
         run: |
           set -euo pipefail
           python3 scripts/github_commit_identity.py --root . --repo r20942097-hue/s --commit "$GPT1_HEAD_SHA" --json
+  ubuntu-browser-canary:
+    name: Runner OS / ${{ matrix.os }} / browser CLI canary
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 5
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, ubuntu-26.04]
+    steps:
+      - name: Read-only Ubuntu and browser capability comparison
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat /etc/os-release
+          for tool in git python3 node npm gh shellcheck firefox chromium; do
+            if command -v "$tool" >/dev/null 2>&1; then
+              printf 'TOOL_ON_PATH=%s\n' "$tool"
+            else
+              printf 'TOOL_NOT_ON_PATH=%s\n' "$tool"
+            fi
+          done
+          for browser in firefox chromium; do
+            if command -v "$browser" >/dev/null 2>&1; then
+              timeout 15s "$browser" --version
+            else
+              echo "BROWSER_CLI_NOT_RUN=$browser"
+            fi
+          done
+          echo "EXTENSION_INSTALL=NOT_RUN; PRODUCT_E2E=NOT_RUN"
