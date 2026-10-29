@@ -13,6 +13,7 @@ import subprocess
 import sys
 import tempfile
 import threading
+import zlib
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
@@ -25,6 +26,47 @@ HTML = ("""<!doctype html><html lang="en"><meta charset="utf-8">"""
         + MARKER + """';</script></body></html>""").encode("utf-8")
 PNG_MAGIC = b"\x89PNG\r\n\x1a\n"
 MAX_OUTPUT = 2 * 1024 * 1024
+MAX_SCREENSHOT = 12 * 1024 * 1024
+
+
+def _png_structure(path: Path) -> tuple[int, int, int]:
+    """Check PNG signature, IHDR/IDAT/IEND and every chunk CRC, bounded."""
+    if not path.is_file() or path.stat().st_size > MAX_SCREENSHOT:
+        raise ValueError("Firefox screenshot missing or oversized")
+    raw = path.read_bytes()
+    if not raw.startswith(PNG_MAGIC) or len(raw) < 57:
+        raise ValueError("Firefox screenshot does not have valid PNG signature")
+    offset, width, height, has_idat, has_end, first = 8, 0, 0, False, False, True
+    while offset + 12 <= len(raw):
+        size = struct.unpack_from(">I", raw, offset)[0]
+        end = offset + 12 + size
+        if size > MAX_SCREENSHOT or end > len(raw):
+            raise ValueError("PNG chunk length outside file bounds")
+        kind = raw[offset + 4: offset + 8]
+        payload = raw[offset + 8: offset + 8 + size]
+        expected_crc = struct.unpack_from(">I", raw, offset + 8 + size)[0]
+        if (zlib.crc32(kind + payload) & 0xFFFFFFFF) != expected_crc:
+            raise ValueError("PNG chunk checksum mismatch")
+        if first:
+            if kind != b"IHDR" or size != 13:
+                raise ValueError("PNG must start with 13-byte IHDR")
+            width, height = struct.unpack_from(">II", payload, 0)
+            if not (600 <= width <= 2400 and 400 <= height <= 2400):
+                raise ValueError("PNG dimensions outside viewport bounds")
+            first = False
+        if kind == b"IDAT":
+            has_idat = True
+        if kind == b"IEND":
+            if size != 0 or end != len(raw) or not has_idat:
+                raise ValueError("PNG does not end cleanly after IDAT")
+            has_end = True
+            break
+        offset = end
+    if not has_end or not has_idat:
+        raise ValueError("PNG lacks required image data and end chunk")
+    return width, height, len(raw)
+
+
 
 
 class LocalHandler(BaseHTTPRequestHandler):
@@ -71,7 +113,7 @@ def _chromium(executable: str, url: str, workspace: Path,
                       "cannot", "failed", "error") if category in err]
         raise ValueError(f"CHROMIUM_EXIT_{result.returncode};stdout_bytes_{len(result.stdout)};"
                          f"stderr_bytes_{len(result.stderr)};categories_{','.join(categories)}")
-    if MARKER not in text:
+    if f'<div id="result">{MARKER}</div>' not in text:
         raise ValueError(f"CHROMIUM_DOM_MARKER_MISSING;stdout_bytes_{len(result.stdout)};"
                          f"html_seen_{'<html' in text.lower()}")
     return {"result": "PASS", "javascript_marker": "FOUND", "dom_bytes": len(result.stdout),
@@ -85,19 +127,11 @@ def _firefox(executable: str, url: str, workspace: Path) -> dict:
     result = _run([executable, "-no-remote", "-profile", str(profile),
                    "--headless", "--window-size", "900,600",
                    "--screenshot", str(image), url], timeout=65)
-    if result.returncode != 0 or not image.is_file():
-        raise ValueError("Firefox headless did not write screenshot")
-    with image.open("rb") as handle:
-        header = handle.read(24)
-    if len(header) != 24 or not header.startswith(PNG_MAGIC):
-        raise ValueError("Firefox screenshot is not PNG")
-    width, height = struct.unpack(">II", header[16:24])
-    if not (600 <= width <= 2400 and 400 <= height <= 2400):
-        raise ValueError("Firefox screenshot dimensions outside expected range")
-    if image.stat().st_size < 1000:
-        raise ValueError("Firefox screenshot unexpectedly small")
+    if result.returncode != 0:
+        raise ValueError("Firefox headless screenshot command exited nonzero")
+    width, height, count = _png_structure(image)
     return {"result": "PASS", "png_dimensions": [width, height],
-            "screenshot_bytes": image.stat().st_size}
+            "png_chunks_crc": "VALID", "screenshot_bytes": count}
 
 
 def inspect(browser: str = "both", discover=shutil.which,
