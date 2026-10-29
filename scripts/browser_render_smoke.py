@@ -58,8 +58,12 @@ def _chromium(executable: str, url: str, workspace: Path) -> dict:
                    "--disable-extensions", "--user-data-dir=" + str(profile),
                    "--virtual-time-budget=2000", "--dump-dom", url], timeout=55)
     text = result.stdout.decode("utf-8", "replace")
-    if result.returncode != 0 or MARKER not in text:
-        raise ValueError("Chromium did not run the local DOM fixture")
+    if result.returncode != 0:
+        # Only numeric diagnostics; never print browser stderr, paths, or URLs.
+        raise ValueError(f"CHROMIUM_EXIT_{result.returncode};stdout_bytes_{len(result.stdout)}")
+    if MARKER not in text:
+        raise ValueError(f"CHROMIUM_DOM_MARKER_MISSING;stdout_bytes_{len(result.stdout)};"
+                         f"html_seen_{'<html' in text.lower()}")
     return {"result": "PASS", "javascript_marker": "FOUND", "dom_bytes": len(result.stdout)}
 
 
@@ -108,8 +112,9 @@ def inspect(browser: str = "both", discover=shutil.which) -> dict:
                                           if name == "chromium"
                                           else _firefox(executable, url, workspace))
                 except (OSError, ValueError, UnicodeError,
-                        subprocess.TimeoutExpired):
-                    observations[name] = {"result": "FAIL", "reason": "runtime or fixture check failed"}
+                        subprocess.TimeoutExpired) as exc:
+                    reason = (str(exc) if type(exc) is ValueError else "RUNTIME_EXECUTION_FAILURE")
+                    observations[name] = {"result": "FAIL", "reason": reason}
         finally:
             server.shutdown()
             server.server_close()
