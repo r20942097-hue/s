@@ -147,4 +147,4 @@ jobs:
       - name: Verify local-only browser test policy without running browsers
         run: python3 -m unittest discover -s tests -p test_browser_render_smoke.py -v
       - name: Render localhost fixture in Firefox and Chromium (ephemeral profiles)
-        run: python3 scripts/browser_render_smoke.py --browser both --json
+        run: python3 scripts/browser_render_smoke.py --browser both --allow-no-sandbox-ephemeral --json
