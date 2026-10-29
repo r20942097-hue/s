@@ -1,4 +1,4 @@
-name: GPT1 Actions lock pilot (no commits)
+name: GPT1 Actions lock verification
 
 on:
   pull_request:
@@ -30,23 +30,13 @@ jobs:
         run: |
           gh extension install github/gh-actions-lock --pin v0.2.0
           gh actions-lock --version
-      - name: Generate and verify ephemeral dependency lock
+      - name: Verify committed lockfile without modifying it
         env:
           GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
-          gh actions-lock --no-narrow
           test -s .github/workflows/actions.lock
           gh actions-lock --verify-local
           gh actions-lock --verify
           git diff --exit-code -- .github/workflows
-          python - <<'PY'
-          import base64
-          from pathlib import Path
-          content = Path('.github/workflows/actions.lock').read_bytes()
-          if not (1 <= len(content) <= 65536):
-              raise SystemExit('lockfile size outside reviewable limit')
-          print('GPT1_LOCKFILE_BASE64_BEGIN')
-          print(base64.b64encode(content).decode('ascii'))
-          print('GPT1_LOCKFILE_BASE64_END')
-          PY
+          sha256sum .github/workflows/actions.lock
