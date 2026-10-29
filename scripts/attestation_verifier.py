@@ -131,7 +131,7 @@ def verify(artifact: Path, repo: str, workflow: str, source_sha: str,
             )):
                 raise ValueError("signed subject digest mismatch")
     except (subprocess.TimeoutExpired, FileNotFoundError, OSError, RuntimeError,
-            ValueError, TypeError, json.JSONDecodeError):
+            ValueError, TypeError, UnicodeError, json.JSONDecodeError):
         # Do not echo CLI stderr or potentially sensitive certificate/claim metadata.
         return _failure("GitHub CLI verification, current repository ID or SLSA policy failed")
     return {"schema": "gpt1-attestation-verification/v1", "status": "VERIFIED",
