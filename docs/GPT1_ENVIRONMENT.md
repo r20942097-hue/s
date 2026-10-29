@@ -58,3 +58,13 @@ Output status vocabulary: PASS / FAIL / PARTIAL / NOT_RUN. CLI exits 0 = structu
 - A failure stops **this CI check**, not production operation. Existing `main` rules, publication holds, scheduled releases, and subscriptions are not changed.
 - Offline text-pattern checks can miss complex YAML constructs. The official `gh actions-lock --verify` job provides separate dependency coverage and owner/repository provenance validation. Neither is a claim of code safety or real-browser E2E success.
 - Adding new workflow permissions or a privileged event requires a reviewed policy change with new regression tests. Do not weaken the guard solely to obtain a green CI.
+
+## v1.8 / independent offline lockfile graph parity
+
+- Run: `python scripts/lockfile_parity.py --json`. Test: `python -m unittest discover -s tests -p test_lockfile_parity.py -v`.
+- Checks GitHub Actions `actions.lock` schema `v0.0.3` produced by the official CLI, exact workflow inventory, direct SHA references, transitive dependency closure, unused dependency records, action owner/repo ID presence, and `sha1-<commit>` metadata consistency.
+- Conservative parser: restricted to the **machine-generated v0.0.3 subset** seen in current repositories. Unsupported lockfile syntax causes a failure until reviewed; it does not silently grant a PASS.
+- Rejects unknown fields, duplicate workflow/metadata keys, missing metadata, absent workflow lock entries, invalid paths and cyclic/missing transitive action nodes.
+- This is a **local consistency** check only. It cannot authenticate the current owner/repo IDs, action publisher, upstream release tag, or security of a remote Action. Official online `gh actions-lock --verify` remains a distinct mandatory CI job.
+- The gate does not change or generate lockfiles. To regenerate, use a trusted GitHub-hosted/CLI environment, review diffs and keep verified source SHA pins.
+- Product browser E2E, Windows hardware, release approvals, publication and the existing governance guards remain unchanged.
