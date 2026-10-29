@@ -188,6 +188,26 @@ class SourceZipParityTests(unittest.TestCase):
         self.makeclaim()
         self.assertEqual(self.verdict()["content_parity"], "MISMATCH")
 
+    def test_product_list_is_rejected_without_exception(self):
+        self.data["product"] = ["malformed"]
+        self.save()
+        self.assertEqual(self.verdict()["content_parity"], "MISMATCH")
+
+    def test_zip_file_parent_conflict_rejected(self):
+        nested = self.sources / "nested.txt"
+        nested.write_bytes(PAYLOAD)
+        self.makezip([("code.js", PAYLOAD), ("code.js/child.js", PAYLOAD)])
+        self.makeclaim([{"source": "code.js", "member": "code.js",
+                         "sha256": hashlib.sha256(PAYLOAD).hexdigest()},
+                        {"source": "nested.txt", "member": "code.js/child.js",
+                         "sha256": hashlib.sha256(PAYLOAD).hexdigest()}])
+        self.assertEqual(self.verdict()["content_parity"], "MISMATCH")
+
+    def test_repeated_directory_separator_rejected(self):
+        self.makezip([("code.js", PAYLOAD), ("strange//", b"")])
+        self.makeclaim()
+        self.assertEqual(self.verdict()["content_parity"], "MISMATCH")
+
     def test_no_claimed_files_rejected(self):
         self.makeclaim([])
         self.assertEqual(self.verdict()["content_parity"], "MISMATCH")
