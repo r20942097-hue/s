@@ -71,6 +71,9 @@ class AttestationPolicyTests(unittest.TestCase):
         self.assertEqual(args[args.index("--cert-oidc-issuer") + 1],
                          "https://token.actions.githubusercontent.com")
         self.assertEqual(args[args.index("--limit") + 1], "5")
+        self.assertEqual(args[args.index("--hostname") + 1], "github.com")
+        api_args = cmd.call_args_list[2].args[0]
+        self.assertEqual(api_args[:4], ["gh", "api", "--hostname", "github.com"])
         self.assertNotIn("--bundle", args)
         self.assertNotIn("--owner", args)
 
