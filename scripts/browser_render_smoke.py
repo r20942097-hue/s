@@ -59,8 +59,14 @@ def _chromium(executable: str, url: str, workspace: Path) -> dict:
                    "--virtual-time-budget=2000", "--dump-dom", url], timeout=55)
     text = result.stdout.decode("utf-8", "replace")
     if result.returncode != 0:
-        # Only numeric diagnostics; never print browser stderr, paths, or URLs.
-        raise ValueError(f"CHROMIUM_EXIT_{result.returncode};stdout_bytes_{len(result.stdout)}")
+        # Fixed-category diagnostics only; no raw stderr, URL or profile path.
+        err = result.stderr.decode("utf-8", "replace").lower()
+        categories = [category for category in ("sandbox", "namespace", "zygote",
+                      "crashpad", "dbus", "gpu", "permission", "profile",
+                      "fatal", "check failed", "root", "resource",
+                      "cannot", "failed", "error") if category in err]
+        raise ValueError(f"CHROMIUM_EXIT_{result.returncode};stdout_bytes_{len(result.stdout)};"
+                         f"stderr_bytes_{len(result.stderr)};categories_{','.join(categories)}")
     if MARKER not in text:
         raise ValueError(f"CHROMIUM_DOM_MARKER_MISSING;stdout_bytes_{len(result.stdout)};"
                          f"html_seen_{'<html' in text.lower()}")
