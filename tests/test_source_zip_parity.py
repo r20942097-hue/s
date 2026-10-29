@@ -224,6 +224,8 @@ class SourceZipParityTests(unittest.TestCase):
 
     def test_safe_name_rejects_win_devices(self):
         self.assertFalse(safe_name("COM1.txt"))
+        self.assertFalse(safe_name("COM¹.txt"))
+        self.assertFalse(safe_name("lpt².tmp"))
         self.assertFalse(safe_name("folder/../x"))
         self.assertFalse(safe_name("/absolute"))
         self.assertTrue(safe_name("valid/source.js"))
