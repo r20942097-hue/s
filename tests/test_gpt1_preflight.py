@@ -6,8 +6,8 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-# Test file lives in the sibling tests directory of its target script.
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+# In s, tests/ is at the repository root; the script lives in scripts/.
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
 from gpt1_preflight import GATES, REQUIRED, audit, main, tracked_archives
 
 
