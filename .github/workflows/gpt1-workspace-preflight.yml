@@ -42,6 +42,8 @@ jobs:
         run: python -m unittest discover -s tests -p test_source_zip_parity.py -v
       - name: Test official gh attestation verifier policy with synthetic fixtures
         run: python -m unittest discover -s tests -p test_attestation_verifier.py -v
+      - name: Require security-patched gh attestation verifier
+        run: python -c "import sys; sys.path.insert(0, 'scripts'); from attestation_verifier import require_safe_gh; print('Safe GitHub CLI', require_safe_gh())"
       - name: Confirm hosted GitHub CLI supports attestation verification (no artifact)
         run: gh attestation verify --help
       - name: Inspect checked-out repository (offline)
