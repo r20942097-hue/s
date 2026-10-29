@@ -3,8 +3,8 @@
 ## Purpose and evidence
 - This is a **real browser process** validation against a local, static HTML + JavaScript fixture served from `127.0.0.1` only. No external URLs, user credentials, saved browser profiles or user product ZIPs.
 - The test uses Python standard library `http.server`, `subprocess` and temporary working directories. Test artifacts are removed when the job finishes.
-- Chromium: `--headless --dump-dom` must return DOM content containing a JavaScript-created marker (checks basic JavaScript execution and DOM serialization).
-- Firefox: `--headless --screenshot` must create a valid PNG header with a plausible viewport size (checks headless page rendering). This **does not** assert Firefox DOM/JS execution specifically.
+- Chromium: `--headless --dump-dom` must contain the **mutated exact `<div id="result">GPT1_BROWSER_JS_RENDER_OK_2026</div>` element**, not merely the marker in the original script text; the stricter negative test rejects a marker inside an unexecuted script.
+- Firefox: `--headless --screenshot` must create a PNG with checked signature, IHDR dimensions, IDAT, IEND, bounded chunk sizes and **matching CRC on each chunk**. This checks file integrity and basic rendering; it is not a full pixel decode or a direct Firefox DOM/JS assertion.
 - Official references: [Chrome headless command line](https://developer.chrome.com/docs/automation-and-testing/headless-cli) and [Firefox command line](https://firefox-source-docs.mozilla.org/browser/CommandLineParameters.html).
 
 ## Security and sandbox trade-off
@@ -26,7 +26,7 @@ python3 ai/browser_render_smoke.py --browser both --allow-no-sandbox-ephemeral -
 # s: replace ai/ with scripts/ for the verifier, tests live in tests/
 ```
 
-If either browser render fails, the script exits with code 1 and reports FAIL. The CI suite tests the script's fail-closed behavior with unit tests and runs the real browsers on explicit `ubuntu-24.04` and `ubuntu-26.04` labels.
+If either browser render fails, the script exits with code 1 and reports FAIL. The CI suite runs 22 fail-closed and anti-false-positive unit tests per repository and executes the real browsers on explicit `ubuntu-24.04` and `ubuntu-26.04` labels.
 
 ## Distinct quality gates
 
