@@ -42,5 +42,7 @@ jobs:
         run: python -m unittest discover -s tests -p test_source_zip_parity.py -v
       - name: Test official gh attestation verifier policy with synthetic fixtures
         run: python -m unittest discover -s tests -p test_attestation_verifier.py -v
+      - name: Confirm hosted GitHub CLI supports attestation verification (no artifact)
+        run: gh attestation verify --help
       - name: Inspect checked-out repository (offline)
         run: python scripts/gpt1_preflight.py --expected-repository r20942097-hue/s --require-git --json
