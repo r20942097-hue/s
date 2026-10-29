@@ -69,7 +69,7 @@ def _validate_claim(data: object) -> tuple[list[dict], list[str]]:
     errors: list[str] = []
     if not isinstance(data, dict) or set(data) != {"schema", "product", "artifact_sha256", "source_commit", "files"}:
         return [], ["invalid manifest keys"]
-    if data["schema"] != SCHEMA or data["product"] not in PRODUCTS:
+    if data["schema"] != SCHEMA or not isinstance(data["product"], str) or data["product"] not in PRODUCTS:
         errors.append("invalid schema/product")
     if not isinstance(data["artifact_sha256"], str) or not SHA.fullmatch(data["artifact_sha256"]):
         errors.append("invalid expected artifact digest")
@@ -126,7 +126,7 @@ def verify(claim_file: Path, source_dir: Path, artifact: Path) -> dict:
                 total = 0
                 for entry in members:
                     name = entry.filename
-                    if not safe_name(name.rstrip("/") if entry.is_dir() else name):
+                    if not safe_name(name[:-1] if entry.is_dir() else name):
                         errors.append("unsafe ZIP member path")
                         continue
                     key = unicodedata.normalize("NFC", name.rstrip("/")).casefold()
@@ -143,6 +143,8 @@ def verify(claim_file: Path, source_dir: Path, artifact: Path) -> dict:
                     if not entry.is_dir():
                         total += entry.file_size
                         actual[name] = entry
+                if any(any(other.startswith(name + "/") for other in canonical) for name in actual):
+                    errors.append("ZIP member file/directory name conflict")
                 if total > MAX_TOTAL:
                     errors.append("ZIP expanded size exceeds policy")
                 claim_members = {item["member"] for item in files}
