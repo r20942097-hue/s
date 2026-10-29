@@ -33,7 +33,7 @@ Output status vocabulary: PASS / FAIL / PARTIAL / NOT_RUN. CLI exits 0 = structu
 
 ## v1.3 / required subscription metadata
 
-- The published stable files carry explicit \`! Subscription:\` metadata matching their raw.githubusercontent.com paths, except the legacy \`ad-ubo.txt\` supplement which intentionally omits it.
-- Removing or changing a required \`Subscription\` header now fails the contract check; changing stable output paths remains prohibited.
+- The published stable files carry explicit `! Subscription:` metadata matching their raw.githubusercontent.com paths, except the legacy `ad-ubo.txt` supplement which intentionally omits it.
+- Removing or changing a required `Subscription` header now fails the contract check; changing stable output paths remains prohibited.
 - Additional regression fixtures cover deletion of metadata in standard and deep Japanese-font profiles.
 - This is a metadata/path contract, not validation of filter rule behavior or browser compatibility.
