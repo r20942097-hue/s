@@ -16,7 +16,8 @@ from pathlib import Path
 
 from source_zip_parity import verify as zip_parity
 
-REPOS = frozenset({"r20942097-hue/faaff", "r20942097-hue/s"})
+REPO_IDS = {"r20942097-hue/faaff": 1389881401, "r20942097-hue/s": 1389881111}
+REPOS = frozenset(REPO_IDS)
 SHA40 = re.compile(r"[0-9a-f]{40}\Z")
 MAX_BLOB_BYTES = 16 * 1024 * 1024
 MAX_FILES = 1000
@@ -32,6 +33,17 @@ def _git(root: Path, *args: str, binary: bool = False) -> bytes | str:
     return p.stdout if binary else p.stdout.decode("utf-8", "strict").strip()
 
 
+def _gh_api(endpoint: str, jq: str) -> str:
+    """Use the real GitHub API; exact repository IDs are pinned policy inputs."""
+    if not isinstance(endpoint, str) or not endpoint.startswith("repos/"):
+        raise ValueError("unsupported GitHub endpoint")
+    process = subprocess.run(["gh", "api", endpoint, "--jq", jq],
+                             capture_output=True, timeout=35, check=False)
+    if process.returncode != 0 or len(process.stdout) > 4096:
+        raise ValueError("GitHub API failed or exceeded response size limit")
+    return process.stdout.decode("utf-8", "strict").strip()
+
+
 def _failure(errors: list[str], copied: dict | None = None) -> dict:
     return {
         "schema": "gpt1-git-source-binding/v1", "status": "FAIL",
@@ -44,7 +56,8 @@ def _failure(errors: list[str], copied: dict | None = None) -> dict:
     }
 
 
-def verify(claim_path: Path, source_root: Path, artifact: Path, expected_repo: str) -> dict:
+def verify(claim_path: Path, source_root: Path, artifact: Path, expected_repo: str,
+           verify_github_tree: bool = False) -> dict:
     if not isinstance(expected_repo, str) or expected_repo not in REPOS:
         return _failure(["repository not allowlisted"])
     source_root = Path(source_root)
@@ -100,13 +113,26 @@ def verify(claim_path: Path, source_root: Path, artifact: Path, expected_repo: s
     except (OSError, ValueError, KeyError, TypeError, UnicodeError,
             subprocess.TimeoutExpired, FileNotFoundError):
         return _failure(["Git checkout, origin metadata, or committed blob evidence failed"], copied)
+    remote_status = "NOT_RUN"
+    if verify_github_tree:
+        try:
+            identifier = _gh_api(f"repos/{expected_repo}", ".id")
+            if not identifier.isdecimal() or int(identifier) != REPO_IDS[expected_repo]:
+                raise ValueError("authenticated repository ID mismatch")
+            local_tree = _git(source_root, "rev-parse", "HEAD^{tree}")
+            remote_tree = _gh_api(f"repos/{expected_repo}/git/commits/{commit}", ".tree.sha")
+            if (not SHA40.fullmatch(remote_tree) or local_tree != remote_tree):
+                raise ValueError("authenticated GitHub commit tree differs from local Git tree")
+            remote_status = "GITHUB_API_REPOSITORY_ID_AND_TREE_MATCH"
+        except (OSError, ValueError, UnicodeError, subprocess.TimeoutExpired, FileNotFoundError):
+            return _failure(["GitHub repository ID or committed tree API verification failed"], copied)
     return {
         "schema": "gpt1-git-source-binding/v1", "status": "MATCH",
         "decision": "CANDIDATE_NO_GO", "source_zip_parity": "MATCH",
         "git_tree_parity": "MATCH", "git_commit": commit,
         "repository_configured": expected_repo, "files_verified": len(entries),
         "git_author_identity": "NOT_VERIFIED",
-        "upstream_repository_authenticated": "NOT_RUN",
+        "upstream_repository_authenticated": remote_status,
         "signed_attestation": "NOT_RUN", "live_browser_e2e": "NOT_RUN",
         "errors": [],
     }
@@ -118,9 +144,12 @@ def main(argv=None) -> int:
     p.add_argument("--source-root", required=True, type=Path)
     p.add_argument("--artifact", required=True, type=Path)
     p.add_argument("--expected-repo", required=True, choices=sorted(REPOS))
+    p.add_argument("--verify-github-tree", action="store_true",
+                   help="require GitHub API repo ID and commit tree SHA match")
     p.add_argument("--json", action="store_true")
     a = p.parse_args(argv)
-    result = verify(a.claim, a.source_root, a.artifact, a.expected_repo)
+    result = verify(a.claim, a.source_root, a.artifact, a.expected_repo,
+                    verify_github_tree=a.verify_github_tree)
     if a.json:
         print(json.dumps(result, indent=2, ensure_ascii=False))
     else:
