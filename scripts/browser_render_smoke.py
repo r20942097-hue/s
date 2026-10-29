@@ -51,12 +51,16 @@ def _run(args: list[str], timeout: int = 65) -> subprocess.CompletedProcess:
     return result
 
 
-def _chromium(executable: str, url: str, workspace: Path) -> dict:
+def _chromium(executable: str, url: str, workspace: Path,
+              unsandboxed_ephemeral: bool = False) -> dict:
     profile = workspace / "chromium-profile"
-    result = _run([executable, "--headless", "--disable-gpu", "--no-first-run",
-                   "--no-default-browser-check", "--disable-background-networking",
-                   "--disable-extensions", "--user-data-dir=" + str(profile),
-                   "--virtual-time-budget=2000", "--dump-dom", url], timeout=55)
+    cmd = [executable, "--headless", "--disable-gpu", "--no-first-run",
+           "--no-default-browser-check", "--disable-background-networking",
+           "--disable-extensions", "--user-data-dir=" + str(profile),
+           "--virtual-time-budget=2000", "--dump-dom", url]
+    if unsandboxed_ephemeral:
+        cmd.insert(1, "--no-sandbox")
+    result = _run(cmd, timeout=55)
     text = result.stdout.decode("utf-8", "replace")
     if result.returncode != 0:
         # Fixed-category diagnostics only; no raw stderr, URL or profile path.
@@ -70,7 +74,8 @@ def _chromium(executable: str, url: str, workspace: Path) -> dict:
     if MARKER not in text:
         raise ValueError(f"CHROMIUM_DOM_MARKER_MISSING;stdout_bytes_{len(result.stdout)};"
                          f"html_seen_{'<html' in text.lower()}")
-    return {"result": "PASS", "javascript_marker": "FOUND", "dom_bytes": len(result.stdout)}
+    return {"result": "PASS", "javascript_marker": "FOUND", "dom_bytes": len(result.stdout),
+            "sandbox": "DISABLED_LOCAL_FIXTURE_ONLY" if unsandboxed_ephemeral else "DEFAULT"}
 
 
 def _firefox(executable: str, url: str, workspace: Path) -> dict:
@@ -95,7 +100,8 @@ def _firefox(executable: str, url: str, workspace: Path) -> dict:
             "screenshot_bytes": image.stat().st_size}
 
 
-def inspect(browser: str = "both", discover=shutil.which) -> dict:
+def inspect(browser: str = "both", discover=shutil.which,
+            allow_no_sandbox_ephemeral: bool = False) -> dict:
     if browser not in {"both", "chromium", "firefox"}:
         raise ValueError("unknown browser")
     requested = ["chromium", "firefox"] if browser == "both" else [browser]
@@ -114,9 +120,19 @@ def inspect(browser: str = "both", discover=shutil.which) -> dict:
                     observations[name] = {"result": "FAIL", "reason": "not found on PATH"}
                     continue
                 try:
-                    observations[name] = (_chromium(executable, url, workspace)
-                                          if name == "chromium"
-                                          else _firefox(executable, url, workspace))
+                    if name == "chromium":
+                        try:
+                            observations[name] = _chromium(executable, url, workspace)
+                        except ValueError as exc:
+                            # Never relax browser security automatically or for real sites.
+                            if (not allow_no_sandbox_ephemeral
+                                    or not str(exc).startswith("CHROMIUM_EXIT_-6;")):
+                                raise
+                            observations[name] = _chromium(
+                                executable, url, workspace, unsandboxed_ephemeral=True)
+                            observations[name]["default_sandbox_attempt"] = "ABORTED_-6"
+                    else:
+                        observations[name] = _firefox(executable, url, workspace)
                 except (OSError, ValueError, UnicodeError,
                         subprocess.TimeoutExpired) as exc:
                     reason = (str(exc) if type(exc) is ValueError else "RUNTIME_EXECUTION_FAILURE")
@@ -140,9 +156,12 @@ def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--browser", choices=["both", "chromium", "firefox"],
                         default="both")
+    parser.add_argument("--allow-no-sandbox-ephemeral", action="store_true",
+                        help="only for localhost fixture in disposable CI runner")
     parser.add_argument("--json", action="store_true")
     args = parser.parse_args(argv)
-    result = inspect(args.browser)
+    result = inspect(args.browser,
+                     allow_no_sandbox_ephemeral=args.allow_no_sandbox_ephemeral)
     if args.json:
         print(json.dumps(result, ensure_ascii=False, indent=2))
     else:
