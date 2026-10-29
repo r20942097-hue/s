@@ -49,3 +49,12 @@ References:
 - https://slsa.dev/spec/v1.0/provenance
 
 Safety: `main`, public subscriptions, release governance and production settings remain unchanged. Both PRs are Draft.
+
+## Optional online GitHub repository/tree check
+
+- Add `--verify-github-tree` to the `git_source_binding.py` command to require GitHub CLI API access. Without it, only local object bytes/config are inspected and `upstream_repository_authenticated=NOT_RUN`.
+- With this flag, the verifier checks `gh api repos/OWNER/REPO --jq .id` against the **pinned repository ID** and `gh api repos/OWNER/REPO/git/commits/COMMIT_SHA --jq .tree.sha` against `git rev-parse HEAD^{tree}`.
+- Pinned IDs verified against the live repository API on 2026-10-29: `r20942097-hue/faaff` = `1389881401`; `r20942097-hue/s` = `1389881111`.
+- This is **authenticated GitHub API repository/tree equality**, not a signature on the commit, a review of its author, a signed SLSA builder attestation, or evidence of deployment authorization.
+- Missing GitHub CLI/network permissions, a changed repository ID, an absent commit, or a different root tree MUST fail closed. No `git fetch`, force-push or GitHub write action is performed.
+- To use it in GitHub Actions, supply the job's short-lived read-only `GH_TOKEN` through environment variables. Do not embed a token in the command line or commit it to the repository.
