@@ -34,7 +34,7 @@ class BuildError(ValueError):
     """Untrusted or inconsistent reproducible-build input."""
 
 
-DEVICES = re.compile(r"(?:con|prn|aux|nul|com[1-9]|lpt[1-9])(?:\..*)?\Z", re.I)
+DEVICES = re.compile(r"(?:con|prn|aux|nul|com[1-9¹²³]|lpt[1-9¹²³])(?:\..*)?\Z", re.I)
 BAD_CHARS = set('<>:"|?*')
 
 
