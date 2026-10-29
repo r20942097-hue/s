@@ -56,15 +56,17 @@ def _invoke(args: list[str]) -> str:
 
 
 def verify(artifact: Path, repo: str, workflow: str, source_sha: str,
-           source_ref: str, expected_sha256: str) -> dict:
+           source_ref: str, expected_sha256: str, signer_sha: str) -> dict:
     """Validate arguments first, then cryptographically verify with GitHub CLI."""
-    if repo not in ALLOWED_REPOS:
+    if not isinstance(repo, str) or repo not in ALLOWED_REPOS:
         return _failure("repository is not allowlisted", "INVALID")
     if (not isinstance(workflow, str) or not WORKFLOW.fullmatch(workflow)
             or not isinstance(source_sha, str) or not SHA40.fullmatch(source_sha)
             or not isinstance(source_ref, str) or not REF.fullmatch(source_ref)
             or ".." in source_ref.split("/")
-            or not isinstance(expected_sha256, str) or not SHA256.fullmatch(expected_sha256)):
+            or not isinstance(expected_sha256, str) or not SHA256.fullmatch(expected_sha256)
+            or not isinstance(signer_sha, str) or not SHA40.fullmatch(signer_sha)
+            or "//" in source_ref or source_ref.endswith("/")):
         return _failure("invalid signer workflow, source identity, ref or digest", "INVALID")
     try:
         actual = _sha256_file(Path(artifact))
@@ -76,11 +78,13 @@ def verify(artifact: Path, repo: str, workflow: str, source_sha: str,
     args = ["gh", "attestation", "verify", str(artifact),
             "--repo", repo, "--signer-workflow", signer,
             "--source-digest", source_sha, "--source-ref", source_ref,
+            "--signer-digest", signer_sha,
+            "--cert-oidc-issuer", "https://token.actions.githubusercontent.com",
             "--predicate-type", PREDICATE, "--deny-self-hosted-runners",
-            "--format", "json"]
+            "--limit", "5", "--format", "json"]
     try:
         verified_output = json.loads(_invoke(args))
-        if not isinstance(verified_output, list) or not verified_output:
+        if not isinstance(verified_output, list) or not (1 <= len(verified_output) <= 5):
             raise ValueError("no verified attestations")
         id_output = _invoke(["gh", "api", f"repos/{repo}", "--jq", ".id"]).strip()
         if not id_output.isdecimal() or int(id_output) <= 0:
@@ -92,6 +96,11 @@ def verify(artifact: Path, repo: str, workflow: str, source_sha: str,
             result = entry.get("verificationResult")
             if not isinstance(result, dict):
                 raise ValueError("missing verificationResult")
+            timestamps = result.get("verifiedTimestamps")
+            if not isinstance(timestamps, list) or not timestamps or not all(
+                isinstance(t, dict) and t for t in timestamps
+            ):
+                raise ValueError("no verified signed timestamps")
             signature = result.get("signature")
             cert = signature.get("certificate") if isinstance(signature, dict) else None
             repo_id = cert.get("sourceRepositoryIdentifier") if isinstance(cert, dict) else None
@@ -114,7 +123,8 @@ def verify(artifact: Path, repo: str, workflow: str, source_sha: str,
             "decision": "CANDIDATE_NO_GO",
             "scope": "gh-verified GitHub signature + current repo ID + SLSA subject policy",
             "artifact_sha256": actual, "repository": repo,
-            "signer_workflow": signer, "source_digest": source_sha,
+            "signer_workflow": signer, "signer_digest": signer_sha,
+            "source_digest": source_sha,
             "source_ref": source_ref, "attestations_checked": len(verified_output),
             "cryptographic_verification": "GH_CLI_VERIFIED",
             "git_checkout_verified": "NOT_RUN", "runtime_e2e": "NOT_RUN",
@@ -126,12 +136,13 @@ def main(argv=None) -> int:
     p.add_argument("--artifact", type=Path, required=True)
     p.add_argument("--repo", choices=sorted(ALLOWED_REPOS), required=True)
     p.add_argument("--signer-workflow", required=True, help="relative .github/workflows/*.yml path")
+    p.add_argument("--signer-sha", required=True, help="expected signing workflow commit (40 lowercase hex)")
     p.add_argument("--source-sha", required=True, help="expected source commit (40 lowercase hex)")
     p.add_argument("--source-ref", required=True, help="expected GitHub source ref")
     p.add_argument("--sha256", required=True, help="independently obtained artifact SHA-256")
     p.add_argument("--json", action="store_true")
     a = p.parse_args(argv)
-    result = verify(a.artifact, a.repo, a.signer_workflow, a.source_sha, a.source_ref, a.sha256)
+    result = verify(a.artifact, a.repo, a.signer_workflow, a.source_sha, a.source_ref, a.sha256, a.signer_sha)
     if a.json:
         print(json.dumps(result, ensure_ascii=False, indent=2))
     else:
