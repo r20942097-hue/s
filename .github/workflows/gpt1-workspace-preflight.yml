@@ -58,3 +58,24 @@ jobs:
           test "$observed" = "1389881111"
       - name: Inspect checked-out repository (offline)
         run: python scripts/gpt1_preflight.py --expected-repository r20942097-hue/s --require-git --json
+  github-identity:
+    name: Live GitHub commit and tree identity
+    if: github.event_name != 'pull_request' || ${{ github.event.pull_request.head.repo.full_name }} == ${{ github.repository }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Checkout exact PR head or pushed commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - name: Unit-test GitHub repository and commit identity (offline mocks)
+        run: python3 -m unittest discover -s tests -p test_github_commit_identity.py -v
+      - name: Match checked-out HEAD and root tree against live GitHub.com API
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GPT1_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 scripts/github_commit_identity.py --root . --repo r20942097-hue/s --commit "$GPT1_HEAD_SHA" --json
