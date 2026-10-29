@@ -39,10 +39,12 @@ class AttestationPolicyTests(unittest.TestCase):
             "attestation": {"synthetic": "does not represent an actual signature"},
         }])
 
-    def mock_run(self, stdout=None, repo_id="12345", returncode=0):
+    def mock_run(self, stdout=None, repo_id="12345", returncode=0,
+                 version_stdout="gh version 2.103.1 (synthetic)\n"):
+        version = subprocess.CompletedProcess([], 0, version_stdout, "")
         first = subprocess.CompletedProcess([], returncode, self.evidence() if stdout is None else stdout, "")
         second = subprocess.CompletedProcess([], 0, repo_id + "\n", "")
-        return patch.object(guard.subprocess, "run", side_effect=[first, second])
+        return patch.object(guard.subprocess, "run", side_effect=[version, first, second])
 
     def check(self, **kw):
         params = dict(artifact=self.artifact, repo=REPO, workflow=WORKFLOW,
@@ -58,7 +60,9 @@ class AttestationPolicyTests(unittest.TestCase):
         self.assertEqual(result["decision"], "CANDIDATE_NO_GO")
         self.assertEqual(result["runtime_e2e"], "NOT_RUN")
         self.assertEqual(result["git_checkout_verified"], "NOT_RUN")
-        args = cmd.call_args_list[0].args[0]
+        self.assertEqual(result["gh_cli_version"], "2.103.1")
+        self.assertEqual(cmd.call_args_list[0].args[0], ["gh", "--version"])
+        args = cmd.call_args_list[1].args[0]
         for flag in ("--repo", "--signer-workflow", "--source-digest",
                      "--signer-digest", "--source-ref", "--cert-oidc-issuer",
                      "--deny-self-hosted-runners", "--limit", "--format"):
@@ -225,6 +229,28 @@ class AttestationPolicyTests(unittest.TestCase):
     def test_attestation_limit_rejects_unexpected_extra_results(self):
         record = json.loads(self.evidence())[0]
         with self.mock_run(stdout=json.dumps([record] * 6)):
+            self.assertEqual(self.check()["status"], "FAIL")
+
+
+    def test_vulnerable_gh_2_101_refused_before_verify(self):
+        with self.mock_run(version_stdout="gh version 2.101.0 (synthetic)\n") as cmd:
+            self.assertEqual(self.check()["status"], "FAIL")
+        self.assertEqual(len(cmd.call_args_list), 1)
+        self.assertEqual(cmd.call_args_list[0].args[0], ["gh", "--version"])
+
+    def test_gh_2_102_accepted(self):
+        with self.mock_run(version_stdout="gh version 2.102.0 (synthetic)\n"):
+            result = self.check()
+        self.assertEqual(result["status"], "VERIFIED")
+        self.assertEqual(result["gh_cli_version"], "2.102.0")
+
+    def test_unknown_gh_version_refused(self):
+        with self.mock_run(version_stdout="github-cli build dev\n") as cmd:
+            self.assertEqual(self.check()["status"], "FAIL")
+        self.assertEqual(len(cmd.call_args_list), 1)
+
+    def test_wrong_gh_major_version_refused(self):
+        with self.mock_run(version_stdout="gh version 1.200.0\n"):
             self.assertEqual(self.check()["status"], "FAIL")
 
     def test_no_actual_attestation_in_tests(self):
