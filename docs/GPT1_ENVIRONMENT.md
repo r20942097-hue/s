@@ -47,3 +47,14 @@ Output status vocabulary: PASS / FAIL / PARTIAL / NOT_RUN. CLI exits 0 = structu
 - Action SHA pins remain in the YAML as defense in depth. The GitHub `Require lockfile` repository policy is **not enabled** here: protected main remains unchanged and policy activation requires a separate approved rollout.
 - Lockfiles cover Actions dependencies, not Docker images, arbitrary `run:` shell downloads, or product releases. The official extension is pre-1.0; pin upgrades deliberately after reviewing its release.
 - On a fresh branch, run `gh extension install github/gh-actions-lock --pin v0.2.0` with proper GitHub auth and then `gh actions-lock --verify`; do not allow non-reviewed automatic lockfile rewrites.
+
+## v1.7 / GitHub Actions supply-chain regression guard
+
+- Baseline: official GitHub Actions lock verified through the existing GitHub-hosted verification job. The new **offline** guard adds independent policy checks; it is not a YAML parser or a substitute for the official lock verifier.
+- Run: `python scripts/workflow_supply_chain.py --expected-repository r20942097-hue/s --json`.
+- Regression tests: `python -m unittest discover -s tests -p test_workflow_supply_chain.py -v` (26 negative/positive fixtures).
+- Controls: every external `uses:` reference must be pinned to an exact 40-digit lowercase commit SHA; `actions/checkout` must explicitly disable persisted credentials; reject privileged `pull_request_target` or `workflow_run` trigger usage.
+- Reviewed workflow baseline: `permissions: contents: read` only. The existing faaff CodeQL workflow is permitted `security-events: write` for upload of code-scanning findings. Job-level permission override requires separate review.
+- A failure stops **this CI check**, not production operation. Existing `main` rules, publication holds, scheduled releases, and subscriptions are not changed.
+- Offline text-pattern checks can miss complex YAML constructs. The official `gh actions-lock --verify` job provides separate dependency coverage and owner/repository provenance validation. Neither is a claim of code safety or real-browser E2E success.
+- Adding new workflow permissions or a privileged event requires a reviewed policy change with new regression tests. Do not weaken the guard solely to obtain a green CI.
