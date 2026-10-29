@@ -4,6 +4,7 @@ No real browsers launched by these fixtures; real runner job is separate.
 """
 import json
 import struct
+import zlib
 import subprocess
 import sys
 import tempfile
@@ -42,12 +43,47 @@ class BrowserSmokeTests(unittest.TestCase):
         self.assertEqual(run.call_count, 1)
 
     def test_no_sandbox_command_not_default(self):
-        process = subprocess.CompletedProcess([], 0, smoke.MARKER.encode(), b"")
+        process = subprocess.CompletedProcess([], 0, f'<div id="result">{smoke.MARKER}</div>'.encode(), b"")
         with tempfile.TemporaryDirectory() as temp:
             with patch.object(smoke, "_run", return_value=process) as run:
                 status = smoke._chromium("chromium", "http://127.0.0.1/fixture", Path(temp))
         self.assertNotIn("--no-sandbox", run.call_args.args[0])
         self.assertEqual(status["sandbox"], "DEFAULT")
+
+    @staticmethod
+    def valid_png():
+        def chunk(kind, payload):
+            return (struct.pack(">I", len(payload)) + kind + payload
+                    + struct.pack(">I", zlib.crc32(kind + payload) & 0xFFFFFFFF))
+        ihdr = struct.pack(">IIBBBBB", 900, 600, 8, 2, 0, 0, 0)
+        row = b"\x00" + b"\xff\xff\xff" * 900
+        return (smoke.PNG_MAGIC + chunk(b"IHDR", ihdr)
+                + chunk(b"IDAT", zlib.compress(row * 600))
+                + chunk(b"IEND", b""))
+
+    def test_script_marker_without_mutation_fails(self):
+        body = f"<html><script>var text='{smoke.MARKER}'</script><div id='result'>NOT_READY</div></html>"
+        command = subprocess.CompletedProcess([], 0, body.encode(), b"")
+        with tempfile.TemporaryDirectory() as temp:
+            with patch.object(smoke, "_run", return_value=command):
+                with self.assertRaises(ValueError):
+                    smoke._chromium("chromium", "http://127.0.0.1/fixture", Path(temp))
+
+    def test_png_corrupted_chunk_crc_rejected(self):
+        with tempfile.TemporaryDirectory() as temp:
+            p = Path(temp)/"test.png"
+            data = bytearray(self.valid_png())
+            data[-1] ^= 1
+            p.write_bytes(data)
+            with self.assertRaises(ValueError):
+                smoke._png_structure(p)
+
+    def test_png_without_iend_rejected(self):
+        with tempfile.TemporaryDirectory() as temp:
+            p = Path(temp)/"test.png"
+            p.write_bytes(self.valid_png()[:-12])
+            with self.assertRaises(ValueError):
+                smoke._png_structure(p)
 
     def test_html_has_script_marker(self):
         self.assertIn(smoke.MARKER.encode(), smoke.HTML)
@@ -71,7 +107,7 @@ class BrowserSmokeTests(unittest.TestCase):
 
     def test_chromium_dom_success_fixture(self):
         command = subprocess.CompletedProcess([], 0,
-                   ("<html>" + smoke.MARKER + "</html>").encode(), b"")
+                   f'<html><div id="result">{smoke.MARKER}</div></html>'.encode(), b"")
         with tempfile.TemporaryDirectory() as temp:
             with patch.object(smoke, "_run", return_value=command) as run:
                 response = smoke._chromium("chromium", "http://127.0.0.1/fixture", Path(temp))
@@ -97,8 +133,7 @@ class BrowserSmokeTests(unittest.TestCase):
     def test_firefox_valid_screenshot(self):
         def write_file(argv, timeout):
             target = Path(argv[argv.index("--screenshot")+1])
-            target.write_bytes(smoke.PNG_MAGIC + b"\0" * 8
-                               + struct.pack(">II", 900, 600) + b"0"*1100)
+            target.write_bytes(self.valid_png())
             return subprocess.CompletedProcess([], 0, b"", b"")
         with tempfile.TemporaryDirectory() as temp:
             with patch.object(smoke, "_run", side_effect=write_file):
