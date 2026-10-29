@@ -48,5 +48,13 @@ jobs:
         run: gh attestation verify --help
       - name: Verify real local Git commit and ZIP source binding fixtures
         run: python -m unittest discover -s tests -p test_git_source_binding.py -v
+      - name: Verify immutable GitHub repository ID via API (read only)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          observed="$(gh api repos/r20942097-hue/s --jq '.id')"
+          test "$observed" = "1389881111"
       - name: Inspect checked-out repository (offline)
         run: python scripts/gpt1_preflight.py --expected-repository r20942097-hue/s --require-git --json
