@@ -62,6 +62,21 @@ jobs:
         run: python -m unittest discover -s tests -p test_toolchain_doctor.py -v
       - name: Cross-check hosted toolchain PATH availability (non-installing)
         run: python scripts/toolchain_doctor.py --profile github-ci --json
+      - name: Probe isolated Linux browser versions without loading extensions
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          for browser in firefox chromium; do
+            if command -v "$browser" >/dev/null 2>&1; then
+              if timeout 15s "$browser" --version; then
+                echo "BROWSER_CLI_AVAILABLE=$browser"
+              else
+                echo "BROWSER_CLI_UNVERIFIED=$browser"
+              fi
+            else
+              echo "BROWSER_NOT_ON_PATH=$browser"
+            fi
+          done
       - name: Inspect checked-out repository (offline)
         run: python scripts/gpt1_preflight.py --expected-repository r20942097-hue/s --require-git --json
   github-identity:
