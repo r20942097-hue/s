@@ -32,6 +32,10 @@ jobs:
         run: python -m unittest discover -s tests -p test_gpt1_preflight.py -v
       - name: Unit-test GitHub workflow supply-chain policy
         run: python -m unittest discover -s tests -p test_workflow_supply_chain.py -v
+      - name: Unit-test Actions lockfile graph parity
+        run: python -m unittest discover -s tests -p test_lockfile_parity.py -v
+      - name: Compare locked graph with checked-out workflows
+        run: python scripts/lockfile_parity.py --json
       - name: Audit workflow SHA, permissions and unsafe triggers
         run: python scripts/workflow_supply_chain.py --expected-repository r20942097-hue/s --json
       - name: Inspect checked-out repository (offline)
