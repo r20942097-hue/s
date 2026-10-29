@@ -24,3 +24,9 @@ PR CI runs Python 3.11 / 3.14 on Ubuntu and Windows. Actions are pinned to compl
 - Keep the protected `main` branch and PUBLICATION_HOLD intact. This proposal does not merge, publish, or alter repository visibility.
 
 Output status vocabulary: PASS / FAIL / PARTIAL / NOT_RUN. CLI exits 0 = structural PASS, 1 = FAIL, 2 = PARTIAL. A structural PASS is **not** end-to-end acceptance.
+
+## v1.2 / subscription compatibility
+- `python scripts/check_subscription_contract.py --json` checks the nine stable public filter paths, header, homepage, license and optional declared subscription URL without changing any file.
+- `python -m unittest discover -s tests -p test_subscription_contract.py -v` covers 14 negative/positive scenarios.
+- The existing `Filter list checks` CI now executes the contract scan as well as generated-list parity and real-engine checks.
+- A PASS is a path/header contract only; actual subscriptions, browser behavior and rule correctness retain separate verification gates.
