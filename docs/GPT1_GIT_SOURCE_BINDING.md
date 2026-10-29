@@ -58,3 +58,15 @@ Safety: `main`, public subscriptions, release governance and production settings
 - This is **authenticated GitHub API repository/tree equality**, not a signature on the commit, a review of its author, a signed SLSA builder attestation, or evidence of deployment authorization.
 - Missing GitHub CLI/network permissions, a changed repository ID, an absent commit, or a different root tree MUST fail closed. No `git fetch`, force-push or GitHub write action is performed.
 - To use it in GitHub Actions, supply the job's short-lived read-only `GH_TOKEN` through environment variables. Do not embed a token in the command line or commit it to the repository.
+
+## v2.2 / Live checked-out GitHub commit and tree identity
+
+- A separate **read-only** `github-identity` job checks out the exact PR head commit (or push/dispatch commit) and runs `python3 scripts/github_commit_identity.py --root . --repo r20942097-hue/faaff --commit "$GPT1_HEAD_SHA" --json` (use `scripts/` and `r20942097-hue/s` for s).
+- The job directly calls GitHub.com's REST API using `gh api --hostname github.com` to confirm both the immutable current repository ID/full name and the exact commit SHA/root tree SHA against the Git checkout's HEAD/tree. It is no longer just a mocked online check.
+- To avoid exposing job credentials to unreviewed fork PR code, this added live-API job only runs for same-repository pull requests, or on push/workflow_dispatch. Existing offline matrix remains separate.
+- The verifier records GitHub's commit signature assessment as metadata (`GITHUB_VERIFIED`, `NOT_GITHUB_VERIFIED`, or `NOT_EVALUATED`) but does not treat commit signing or unsigned status as product release approval.
+- `git_source_binding.py` and `attestation_verifier.py` now also explicitly pin GitHub.com via the CLI `--hostname` option, instead of trusting a caller's `GH_HOST` default. This narrows accidental GitHub Enterprise host confusion; the integrity of the OS-installed CLI, its config, trust roots and the network remains outside this code's guarantee.
+- Live CI confirms **the GitHub PR source object and its root tree**. It does NOT check a particular user-owned product ZIP, guarantee the build was reproducible, sign the commit, or authenticate the author.
+- No ZIPs or binary releases are committed or published; current `PUBLICATION_HOLD` and `CANDIDATE_NO_GO` remain unchanged.
+- See GitHub API [Git commits](https://docs.github.com/en/rest/git/commits) and [GitHub CLI API host](https://cli.github.com/manual/gh_api) documentation.
+
