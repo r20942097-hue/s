@@ -53,7 +53,17 @@ class SubscriptionContractTests(unittest.TestCase):
     def test_subscription_url_change_rejected(self):
         p = self.root / "ad.txt"
         p.write_text(p.read_text().replace(BASE, "https://example.com/"))
-        self.assertIn("subscription URL metadata mismatch", check_path(self.root, "ad.txt"))
+        self.assertIn("missing or changed subscription URL metadata", check_path(self.root, "ad.txt"))
+
+    def test_required_subscription_header_removed(self):
+        self.put("ad.txt", subscription=False)
+        self.assertIn("missing or changed subscription URL metadata",
+                      check_path(self.root, "ad.txt"))
+
+    def test_deep_profile_header_removed(self):
+        self.put("japanese-text-softener-deep.txt", subscription=False)
+        self.assertIn("missing or changed subscription URL metadata",
+                      check_path(self.root, "japanese-text-softener-deep.txt"))
 
     def test_missing_newline(self):
         self.put("ad.txt", last_newline=False)
