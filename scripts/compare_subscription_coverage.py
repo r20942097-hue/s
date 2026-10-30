@@ -26,18 +26,23 @@ V2_PROPOSED_RULES = (
 THIRD_PARTY_HOST = re.compile(r"\|\|([a-z0-9.-]+)\^\$third-party\Z")
 
 
-def proposed_candidate_rows(profiles, baselines):
-    """Audit only seven explicitly proposed rules, not the entire installed set.
+def proposed_candidate_rows(profiles, baselines, evidence):
+    """Audit seven RETIRED redundant rules; none may remain in active outputs.
 
     Selected EasyPrivacy matches here are literal request-host/parent-rule
     *shape* comparisons; absence does not establish incremental ad blocking.
     """
-    existing = profiles["rule_sets"]["privacy-v2"]["rules"]
-    if any(rule not in existing for rule in V2_PROPOSED_RULES):
-        raise ValueError("proposed v2 rule missing or altered")
-    extra = profiles["rule_sets"]["privacy-optional-20261030"]["rules"]
-    if len(extra) != 4 or len(set(extra)) != 4:
-        raise ValueError("optional candidates must remain four unique rules")
+    archive = evidence.get("quarantine", {})
+    extra = archive.get("four_extra_rules")
+    if (archive.get("schema") != "stock-overlap-quarantine/v1"
+            or set(archive.get("three_v2_rules", [])) != set(V2_PROPOSED_RULES)
+            or archive.get("active_rule_count") != 0
+            or not isinstance(extra, list) or len(extra) != 4 or len(set(extra)) != 4):
+        raise ValueError("missing or changed seven-rule stock-overlap archive")
+    active = [rule for rule_set in profiles["rule_sets"].values()
+              for rule in rule_set.get("rules", [])]
+    if any(rule in active for rule in [*V2_PROPOSED_RULES, *extra]):
+        raise ValueError("retired stock-overlap rule leaked into active subscription")
     candidates = [("v2/tracking.txt", rule) for rule in V2_PROPOSED_RULES]
     candidates += [("v2/tracking-extra.txt", rule) for rule in extra]
     reference = observed_network_hosts(baselines) if baselines is not None else None
@@ -54,6 +59,9 @@ def proposed_candidate_rows(profiles, baselines):
             "selected_easyprivacy_match_shape": found["scope"] if found else None,
             "selected_easyprivacy_matching_host": found["matched_host"] if found else None,
             "incremental_blocking_value": "NOT_ESTABLISHED",
+            "stock_ubol_block_action_tested": True,
+            "status": "RETIRED_STOCK_OVERLAP",
+            "active_rule": False,
             "real_site_compatibility": "NOT_RUN",
             "adopted_to_stable": False
         })
@@ -117,14 +125,15 @@ def analyze(profiles, evidence, tracking, allowlist, baselines=None):
             "selected_easyprivacy_overlap_among_not_covered":
                 result["candidate_hosts_also_observed_in_selected_easyprivacy"]
         })
-    candidate_rows = proposed_candidate_rows(profiles, baselines)
+    candidate_rows = proposed_candidate_rows(profiles, baselines, evidence)
     return {
         "schema": REPORT_SCHEMA,
         "pinned_tracking_commit": evidence["sources"]["tracking"]["commit"],
         "source_host_universe": total,
         "independent_comparison": "PASS" if baselines is not None else "NOT_RUN",
         "outputs": rows,
-        "proposed_candidate_count": len(candidate_rows),
+        "proposed_candidate_count": 0,
+        "retired_stock_overlap_count": len(candidate_rows),
         "proposed_candidate_evidence": candidate_rows,
         "publication": "NO_GO",
         "live_site_e2e": "NOT_RUN",
