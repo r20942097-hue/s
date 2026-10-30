@@ -42,6 +42,24 @@ scripts/chromium_dnr_fixture.py は一時ディレクトリに最小のMV3拡張
 
 これは**実際にChromium標準の拡張遮断エンジンを使う検証**ですが、候補ルールをDNR変換したものではなく、uBlock Origin／uBO Liteそのものでもありません。Firefoxでの実拡張検証、実サイトの互換性、動画再生の安全性はなおNOT_RUNです。ブラウザー環境の許可・拒否の基本挙動を実証するだけで、リリース判定のD/Eは解除しません。
 
+## 公式uBO Lite既定ルールによる候補7件の再評価（重要）
+
+2026年10月26日公式ChromiumリリースのSHA-256固定ZIPを改変せずに起動した検証では、既定DNRルールセット6個の有効化を確認しています。さらにChromeの開発用 `declarativeNetRequest.testMatchOutcome()` で、候補7ホスト宛の仮想第三者画像通信（HTTPS、`pixel.gif`、適用元 `https://example.org/`）に一致したルールIDを取得し、**同じ公式ZIPの静的ルールJSON内のアクション定義と突き合わせました。7件とも `block` アクションでした。**
+
+| 候補ホスト | 一致した既定ルールセット | 仮想通信のアクション |
+|---|---|---|
+| match.prod.bidr.io | Peter Lowe (pgl) | block |
+| sync.adkernel.com | EasyList | block |
+| sync.richaudience.com | Peter Lowe (pgl) | block |
+| id5-sync.com | Peter Lowe (pgl) | block |
+| event.getblue.io | EasyPrivacy | block |
+| sync.ebis.ne.jp | EasyPrivacy | block |
+| pixel.wetracked.io | EasyPrivacy | block |
+
+この結果は「選択したEasyPrivacyの2ファイルだけでは4件を検出できなかった」という先行観測と矛盾しません。実際のuBO Liteには**他の既定リストも含まれている**ためです。これまでの「選択2ファイルで一致なし」を「増分効果あり」と解釈してはなりません。
+
+**判断**：少なくともこのバージョンの既定uBO Liteで上記の仮想通信を遮断する目的なら、候補7件の追加は重複しています。現在のDraft PRでは採用保留を維持します。Firefox版uBlock Origin、他のフィルター構成、実サイト固有の例外・正常機能との関係は未確定であり、実リクエストでの遮断やログイン・動画・決済の互換性をPASSとはしません。仮想リクエストはChromeの開発用APIによる予測であり、実通信のE2Eではありません。
+
 ## 候補7件の選択資料重複
 
 scripts/compare_subscription_coverage.py の proposed_candidate_evidence は候補7件を個別に追跡し、選択したEasyPrivacyの2ファイルに同一または親ドメインのホスト全体ルールがあるかを照合します。**確認できたのは match.prod.bidr.io、event.getblue.io、sync.ebis.ne.jp の3件（親ドメイン参照）**です。残り4件はこの選択資料からは参照が見つからないだけで、EasyPrivacy全体・他のフィルターを通じた追加価値や安全性は未確定です。CIの集計とこの7件の台帳は自動採用を行いません。
