@@ -11,6 +11,7 @@ from contextlib import contextmanager
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import json
 import threading
+import traceback
 from urllib.parse import urlsplit
 
 GIF = b64decode("R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==")
@@ -119,9 +120,9 @@ def run(browser_names=("chromium", "firefox")):
                 assert server.beacon_hits == before + 1, "surrogate route did not prevent beacon"
                 page.locator("#user").fill("synthetic-user")
                 page.locator("#sign-in").click()
-                assert page.locator("#status").inner_text() == "login-ok"
+                page.wait_for_function("document.querySelector('#status').textContent === 'login-ok'", timeout=10000)
                 page.locator("#checkout").click()
-                assert page.locator("#status").inner_text() == "checkout-ok"
+                page.wait_for_function("document.querySelector('#status').textContent === 'checkout-ok'", timeout=10000)
                 assert page.locator("video").count() == 1
                 result["browsers"].append({
                     "engine": name,
@@ -147,6 +148,7 @@ def main():
         result = run()
     except Exception as exc:
         print("BROWSER FIXTURE FAILED:", type(exc).__name__, str(exc))
+        traceback.print_exc()
         return 1
     if args.report:
         with open(args.report, "w", encoding="utf-8") as output:
