@@ -121,6 +121,36 @@
       "public_subscription_url": "UNCHANGED",
       "release": "NO_GO"
     },
-    "browser_quality_gates": "PASS for four isolated browser categories; see latest current-head CI and docs/RELEASE_ACCEPTANCE.md"
+    "browser_quality_gates": "PASS for four isolated browser categories; see latest current-head CI and docs/RELEASE_ACCEPTANCE.md",
+    "redundant_rules_quarantine": {
+      "status": "PASS",
+      "archived_count": 7,
+      "removed_from_v2_tracking": 3,
+      "removed_from_v2_tracking_extra": 4,
+      "active_new_rules": 0,
+      "archive_path": "verification/filter-candidates.json",
+      "experimental_output": "QUARANTINED_NO_ACTIVE_RULES",
+      "publication": "NO_GO"
+    },
+    "alternate_upstream_screening": {
+      "scope": "first 80 deterministic low-reference hosts of pinned AdGuard 2751 source universe, prefiltered by selected EasyPrivacy+allowlist",
+      "real_official_ubol": "2026.1026.1812",
+      "request_types": [
+        "image",
+        "script",
+        "xmlhttprequest"
+      ],
+      "stock_block_action_match": 45,
+      "zero_stock_block_match_in_tested_shapes": 34,
+      "unresolved": 1,
+      "priority_review": [
+        "adtrace.ai",
+        "adbrix.io",
+        "adtasukaru.com"
+      ],
+      "recommended_active_additions": 0,
+      "real_site_e2e": "NOT_RUN",
+      "docs": "docs/STOCK_GAP_REVIEW.md"
+    }
   }
 }
