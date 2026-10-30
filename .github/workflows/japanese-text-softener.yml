@@ -96,6 +96,8 @@ jobs:
     name: browser integration (isolated, no live sites)
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    env:
+      FILTER_UBOL_CACHE_DIR: ${{ runner.temp }}/filter-ubol-official-verified
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
