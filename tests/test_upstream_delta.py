@@ -87,6 +87,47 @@ class DeltaScanTests(unittest.TestCase):
         self.assertIn("parent_domain_expansion", expanded["risk_flags"])
         self.assertEqual(report["queue"][0]["host"], "brand-new-review.example")
 
+    def test_path_scoped_rule_does_not_imply_all_resource_coverage(self):
+        profiles = copy.deepcopy(self.profiles)
+        profiles["rule_sets"]["strict-v2"]["rules"].append(
+            "||partial-path-test.example/tracker.js$third-party")
+        report = scan(profiles, self.evidence,
+                      "||partial-path-test.example^$third-party", "", limit=10)
+        self.assertEqual(report["new_candidate_hosts"], 1)
+        self.assertEqual(report["already_covered_by_local_parent_or_exact"], 0)
+        self.assertEqual(report["restricted_scope_expansion_candidates"], 1)
+        self.assertIn("type_or_path_scope_expansion", report["queue"][0]["risk_flags"])
+        self.assertEqual(report["queue"][0]["coverage"], "expands-existing-restricted")
+
+    def test_script_scoped_parent_not_general_host_coverage(self):
+        profiles = copy.deepcopy(self.profiles)
+        profiles["rule_sets"]["strict-v2"]["rules"].append(
+            "||parent-scope-test.example^$third-party,script")
+        report = scan(profiles, self.evidence,
+                      "||cdn.parent-scope-test.example^$third-party", "", limit=10)
+        self.assertEqual(report["new_candidate_hosts"], 1)
+        self.assertEqual(report["restricted_scope_expansion_candidates"], 1)
+        self.assertEqual(report["queue"][0]["coverage"], "expands-existing-restricted")
+
+    def test_explicit_general_parent_blocks_child_completely(self):
+        profiles = copy.deepcopy(self.profiles)
+        profiles["rule_sets"]["privacy-core"]["rules"].append(
+            "||full-scope-test.example^$third-party")
+        report = scan(profiles, self.evidence,
+                      "||cdn.full-scope-test.example^$third-party", "", limit=10)
+        self.assertEqual(report["new_candidate_hosts"], 0)
+        self.assertEqual(report["already_covered_by_local_parent_or_exact"], 1)
+
+    def test_parent_candidate_of_path_rule_is_expansion_not_redundancy(self):
+        profiles = copy.deepcopy(self.profiles)
+        profiles["rule_sets"]["strict-v2"]["rules"].append(
+            "||asset.deep-scope-test.example/pixel$third-party")
+        report = scan(profiles, self.evidence,
+                      "||deep-scope-test.example^$third-party", "", limit=10)
+        self.assertEqual(report["parent_expansion_candidates"], 1)
+        self.assertEqual(report["new_candidate_hosts"], 1)
+        self.assertEqual(report["queue"][0]["coverage"], "expands-existing-child")
+
     def test_comment_mention_separated_from_actual_allow_rule(self):
         tracking = ("||somehost.example^$third-party\n"
                     "||anotherhost.example^$third-party\n")
