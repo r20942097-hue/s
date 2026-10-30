@@ -23,6 +23,13 @@ HOST_TOKEN = re.compile(r"(?<![A-Za-z0-9_.-])([A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)+)
 # Only an explicitly hostname-anchored exception has a clear request target.
 # The domain= filter option specifies where a rule applies, NOT its request host.
 EXCEPTION_TARGET = re.compile(r"^@@\|\|([a-z0-9.-]+)(?:\^|/)")
+# Exception directives may disable *other* filtering (cosmetics, redirects etc.).
+# They are not proof that the request is allowed by the network engine.
+NON_NETWORK_ALLOW_OPTIONS = frozenset({
+    "badfilter", "elemhide", "ehide", "generichide", "ghide",
+    "specifichide", "shide", "removeparam", "redirect-rule",
+    "urlskip", "csp", "permissions", "header", "replace", "uritransform"
+})
 
 
 def filter_hosts(profiles):
@@ -72,9 +79,14 @@ def allowlist_index(text):
     for line_no, line in enumerate(text.splitlines(), 1):
         for host in {match.group(1).lower() for match in HOST_TOKEN.finditer(line)}:
             mentions[host].append(line_no)
-        match = EXCEPTION_TARGET.match(line.lstrip())
+        normalized = line.lstrip()
+        match = EXCEPTION_TARGET.match(normalized)
         if match is not None and valid_hostname(match.group(1)):
-            targets[match.group(1)].append(line_no)
+            option_text = normalized.rsplit("$", 1)[-1] if "$" in normalized else ""
+            options = {entry.strip().lower().split("=", 1)[0]
+                       for entry in option_text.split(",")} if option_text else set()
+            if not options.intersection(NON_NETWORK_ALLOW_OPTIONS):
+                targets[match.group(1)].append(line_no)
     return mentions, targets
 
 
@@ -204,7 +216,7 @@ def scan(profiles, evidence, tracking_text, allowlist_text, limit=40, baseline_s
         "queue": page,
         "limitations": [
             "Local-only coverage: not equivalent to installed EasyList, EasyPrivacy or AdGuard even when independent cross-check is enabled.",
-            "Only literal @@||host^ or @@||host/path request targets are considered possible allow exceptions; $domain applicability and comments are mentions only.",
+            "Only literal @@||host^ or @@||host/path request targets without known non-network exception modifiers are considered possible network allow exceptions; $domain applicability and comments are mentions only.",
             "Parent-domain anchored exceptions may apply to candidate subdomains, but path/type/domain applicability is not evaluated.",
             "Regex-escaped, wildcard and semantic exceptions are not evaluated.",
             "Only exact ||host^$third-party from local profiles is accepted as complete coverage; other rule scopes require manual review.",
