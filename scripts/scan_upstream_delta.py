@@ -68,9 +68,11 @@ def allowlist_index(text):
     return found
 
 
-def scan(profiles, evidence, tracking_text, allowlist_text, limit=40, baseline_sources=None):
+def scan(profiles, evidence, tracking_text, allowlist_text, limit=40, baseline_sources=None, offset=0):
     if isinstance(limit, bool) or not isinstance(limit, int) or limit < 1 or limit > 200:
         raise ValueError("review queue limit must be an integer 1..200")
+    if isinstance(offset, bool) or not isinstance(offset, int) or not 0 <= offset <= 1_000_000:
+        raise ValueError("review queue offset must be an integer 0..1000000")
     if not isinstance(tracking_text, str) or not isinstance(allowlist_text, str):
         raise ValueError("upstream snapshots must decode as text")
     source = evidence["sources"]["tracking"]
@@ -146,6 +148,8 @@ def scan(profiles, evidence, tracking_text, allowlist_text, limit=40, baseline_s
         bool(item["selected_independent_easyprivacy_reference"]),
         item["host"]
     ))
+    page = queue[offset:offset + limit]
+    next_offset = offset + len(page) if offset + len(page) < len(queue) else None
     return {
         "schema": "upstream-delta-review/v2",
         "source_commit": source["commit"],
@@ -162,7 +166,10 @@ def scan(profiles, evidence, tracking_text, allowlist_text, limit=40, baseline_s
         "candidate_hosts_also_observed_in_selected_easyprivacy": also_seen_independently if independent is not None else None,
         "candidate_hosts_not_observed_in_selected_easyprivacy": len(queue)-also_seen_independently if independent is not None else None,
         "queue_limit": limit,
-        "queue": queue[:limit],
+        "queue_offset": offset,
+        "queue_total": len(queue),
+        "next_offset": next_offset,
+        "queue": page,
         "limitations": [
             "Local-only coverage: not equivalent to installed EasyList, EasyPrivacy or AdGuard even when independent cross-check is enabled.",
             "Literal-host allowlist scan: regex-escaped, wildcard and semantic exceptions are not evaluated.",
@@ -184,6 +191,8 @@ def main():
     parser.add_argument("--allowlist-file", type=Path, help="offline selected exception input")
     parser.add_argument("--report", type=Path, help="write JSON outside the repository only")
     parser.add_argument("--limit", type=int, default=40)
+    parser.add_argument("--offset", type=int, default=0,
+                        help="stable zero-based review queue offset; retrieve additional pages without adopting")
     parser.add_argument("--crosscheck-independent", action="store_true",
                         help="also fetch two immutable, independently pinned EasyPrivacy files; never imports rules")
     args = parser.parse_args()
@@ -207,7 +216,8 @@ def main():
         if args.crosscheck_independent:
             baseline_info = read_json(ROOT / "verification/filter-independent-baselines.json")
             baselines = fetch_baselines(baseline_info)
-        report = scan(profiles, evidence, tracking, allowlist, args.limit, baseline_sources=baselines)
+        report = scan(profiles, evidence, tracking, allowlist, args.limit,
+                      baseline_sources=baselines, offset=args.offset)
         if args.report:
             target = args.report.resolve()
             if target.is_relative_to(ROOT.resolve()):
@@ -225,7 +235,8 @@ def main():
           "with selected allowlist exceptions;",
           "EasyPrivacy crosscheck:", report["selected_independent_easyprivacy_comparison"],
           "; selected EasyPrivacy overlap:", report["candidate_hosts_also_observed_in_selected_easyprivacy"],
-          "; review queue:", len(report["queue"]),
+          "; review queue:", len(report["queue"]), "at", report["queue_offset"],
+          "; next:", report["next_offset"],
           "; NO_GO for auto-promotion")
     if not args.report:
         print(json.dumps(report["queue"][:min(10, args.limit)], ensure_ascii=False, indent=2))
