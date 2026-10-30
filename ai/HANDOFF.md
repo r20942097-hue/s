@@ -10,3 +10,14 @@
 4. 購読URL（`https://raw.githubusercontent.com/r20942097-hue/s/main/<ファイル名>`）のファイル名・パスは変更しない。
 5. 本リポジトリを変更したら、`r20942097-hue/faaff` の `ai/imports/s.json`（固定取り込み）を別PRで更新する。
 6. 未対応: `PROJECT_STATE.json` の `open_items` を参照。
+
+
+## 2026-10-30｜フィルターv2完成優先の引継ぎ
+
+- Draft PR: https://github.com/r20942097-hue/s/pull/14 （未マージ）。リリース判定は **NO_GO / NEEDS_HUMAN**。既存購読URL、安定版8ファイル、mainは保全。
+- 詳細な受入条件: docs/RELEASE_ACCEPTANCE.md。実ブラウザーを起動する合成試験は、広告ブロック拡張の実サイトE2Eとは別の工程。
+- 不変上流Git Blobの照合は scripts/pinned_snapshot_cache.py がオプションで同一CI実行内に限定して再利用する。ハッシュは毎回検査し、未審査の更新は採用しない。
+- リリース前に必要: Firefox/uBO と対応するChromium側の実際のフィルター購読・動作検証、既定リストからの実質的な増分効果、ログイン・フォーム・動画・決済画面の互換性、所有者承認。
+- 開発優先度: 既存テストがPASSしたら無制限な追加ルールの収集は中断。実サイト検証と不具合対応を優先。候補を安全と断言しない。
+- 本ブランチでの検証: python -m unittest discover -s tests -p 'test_*.py' -v、python scripts/validate_lists.py、python scripts/generate_lists.py --check、GitHub Actions「Filter list checks」（test / engine / browser fixture）。
+- **完成/公開**と**合成テスト成功**を混同しない。後続AIはPRの最新HEAD・CI runの結論を毎回取得し、古いメモリのPASS件数をそのまま引用しない。
