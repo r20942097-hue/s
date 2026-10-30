@@ -184,7 +184,7 @@ def audit(records, profiles, snapshots=None):
     if snapshots is not None:
         if set(snapshots) != {"tracking", "allowlist"}:
             errors.append("missing upstream blob snapshot")
-        elif all(valid_source(s) for s in sources.values()):
+        elif set(sources) == {"tracking", "allowlist"} and all(valid_source(s) for s in sources.values()):
             lines = {}
             for key, content in snapshots.items():
                 if not isinstance(content, bytes):
@@ -211,6 +211,8 @@ def audit(records, profiles, snapshots=None):
                             errors.append("selected upstream allowlist contains exception reference: " + host)
                 if not errors:
                     result["upstream_snapshot"] = "PASS"
+        else:
+            errors.append("upstream snapshot cannot be validated against missing or malformed source metadata")
     result["metadata"] = "PASS" if not errors else "FAIL"
     return errors, result
 
