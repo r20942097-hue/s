@@ -111,3 +111,5 @@ jobs:
         run: python scripts/chromium_dnr_fixture.py --report "$RUNNER_TEMP/chromium-dnr-fixture.json"
       - name: Load official, SHA256-pinned uBO Lite release in isolated Chromium
         run: python scripts/ubol_real_addon_fixture.py --report "$RUNNER_TEMP/real-ubol-fixture.json"
+      - name: Import held candidate rules into official uBO Lite (localhost only)
+        run: python scripts/ubol_imported_list_fixture.py --report "$RUNNER_TEMP/ubol-import-fixture.json"
