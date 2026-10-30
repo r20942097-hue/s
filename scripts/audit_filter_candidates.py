@@ -112,6 +112,16 @@ def audit(records, profiles, snapshots=None):
     if len(target) != 1 or target[0].get("rule_sets") != ["privacy-optional-20261030"]:
         errors.append("candidate-only output mapping missing")
         target = []
+    # Experimental rules must not be silently bundled into any other output.
+    # This checks both direct rule-set usage and include references, even where
+    # the generated output validation would otherwise accept the metadata.
+    for other in outputs:
+        if not isinstance(other, dict) or other.get("path") == records.get("output"):
+            continue
+        if ("privacy-optional-20261030" in other.get("rule_sets", [])
+                or "tracking-extra.txt" in other.get("includes", [])
+                or "v2/tracking-extra.txt" in other.get("includes", [])):
+            errors.append("opt-in candidate must never be included from another output: " + str(other.get("path")))
     candidate_set = profiles["rule_sets"].get("privacy-optional-20261030")
     candidate_rules = candidate_set.get("rules", []) if isinstance(candidate_set, dict) else []
     if not isinstance(candidate_rules, list) or not isinstance(candidate_set, dict) or candidate_set.get("license") != "GPL-3.0-only":
