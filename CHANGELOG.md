@@ -1,5 +1,12 @@
 # 更新記録
 
+## 2026-10-30 / 公式uBO Liteの外部候補リスト導入・解除の往復試験（Draft PR、未公開）
+
+- SHA-256検証済みの公式uBO Liteを隔離Chromiumに読み込み、PRの候補7件をローカルHTTPで配信、公式の`importFilterList`経路から取り込み成功。配布URL・公開リストは未変更。
+- 候補7件と独立した試験専用`*.invalid` 1件を追加し、8ルール受理・コンパイル保存を確認。仮想第三者画像リクエストのDNR比較で、登録前0→登録後block一致→登録解除後0を検証。
+- `verify_browser_gates.py` でChromium/Firefoxの模擬通信、ネイティブMV3試験、公式uBO Lite起動、リスト追加・削除を統合したfail-closed品質判定を追加。実通信や実サイトの検証済み宣言は禁止。
+- ユーザー環境、main、公開購読、安定版は変更せず。PRの7候補は引き続き重複可能性が高く、採用保留、NO_GO。
+
 ## 2026-10-30 / 既定uBO Liteとの実DNR差分判定：7候補採用保留（Draft PR、未公開）
 
 - Chromeの開発用 `testMatchOutcome()` が返した候補7ホストへの仮想第三者画像通信のルールIDを、SHA-256検証済み公式uBO Lite ZIP内の静的ルールJSONに照合。全7件で `block` アクションに一致。
