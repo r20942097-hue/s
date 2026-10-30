@@ -128,7 +128,7 @@ class RealUBOLReleaseTests(unittest.TestCase):
     def test_official_asset_cache_reuses_verified_bytes(self):
         payload = b"synthetic official release archive bytes"
         fake_lock = {"size_bytes": len(payload), "max_archive_bytes": 1000}
-        with __import__("tempfile").TemporaryDirectory() as cache, (
+        with (__import__("tempfile").TemporaryDirectory() as cache,
                 patch.dict(os.environ, {"FILTER_UBOL_CACHE_DIR": cache}),
                 patch.object(addon, "SHA256", hashlib.sha256(payload).hexdigest()),
                 patch.object(addon, "validate_lock", return_value=None),
@@ -142,7 +142,7 @@ class RealUBOLReleaseTests(unittest.TestCase):
         payload = b"synthetic official release archive bytes"
         fake_lock = {"size_bytes": len(payload), "max_archive_bytes": 1000}
         digest = hashlib.sha256(payload).hexdigest()
-        with __import__("tempfile").TemporaryDirectory() as cache, (
+        with (__import__("tempfile").TemporaryDirectory() as cache,
                 patch.dict(os.environ, {"FILTER_UBOL_CACHE_DIR": cache}),
                 patch.object(addon, "SHA256", digest),
                 patch.object(addon, "validate_lock", return_value=None),
