@@ -91,7 +91,7 @@ jobs:
         run: node scripts/check_engine.mjs --engine-dir "$RUNNER_TEMP/filter-engine" --ghostery-entry verification/ghostery/node_modules/@ghostery/adblocker/dist/esm/index.js
 
   browser:
-    name: browser fixture (no extension)
+    name: browser integration (isolated, no live sites)
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -113,3 +113,11 @@ jobs:
         run: python scripts/ubol_real_addon_fixture.py --report "$RUNNER_TEMP/real-ubol-fixture.json"
       - name: Import held candidate rules into official uBO Lite (localhost only)
         run: python scripts/ubol_imported_list_fixture.py --report "$RUNNER_TEMP/ubol-import-fixture.json"
+      - name: Verify reversible browser integration and no-release gates
+        run: |
+          python scripts/verify_browser_gates.py \
+            --surrogate "$RUNNER_TEMP/browser-fixture.json" \
+            --native "$RUNNER_TEMP/chromium-dnr-fixture.json" \
+            --stock "$RUNNER_TEMP/real-ubol-fixture.json" \
+            --imported "$RUNNER_TEMP/ubol-import-fixture.json" \
+            --github-summary "$GITHUB_STEP_SUMMARY"
