@@ -35,7 +35,7 @@ class SubscriptionCoverageTests(unittest.TestCase):
         self.assertIn("v2_balanced", rows)
         self.assertEqual(rows["ad.txt"]["covered_by_exact_or_parent"], 1)
         self.assertEqual(rows["tracking.txt"]["covered_by_exact_or_parent"], 1)
-        self.assertEqual(rows["v2/tracking-extra.txt"]["covered_by_exact_or_parent"], 1)
+        self.assertEqual(rows["v2/tracking-extra.txt"]["covered_by_exact_or_parent"], 0)
         self.assertEqual(rows["stable_combined"]["covered_by_exact_or_parent"], 2)
         self.assertEqual(rows["v2_balanced"]["covered_by_exact_or_parent"], 2)
         for item in rows.values():
@@ -51,7 +51,8 @@ class SubscriptionCoverageTests(unittest.TestCase):
         }
         report = analyze(self.profiles, self.evidence, "", "", baselines=sources)
         rows = report["proposed_candidate_evidence"]
-        self.assertEqual(report["proposed_candidate_count"], 7)
+        self.assertEqual(report["proposed_candidate_count"], 0)
+        self.assertEqual(report["retired_stock_overlap_count"], 7)
         self.assertEqual(len(rows), 7)
         by_host = {row["host"]: row for row in rows}
         for host, parent in {
@@ -65,18 +66,19 @@ class SubscriptionCoverageTests(unittest.TestCase):
                      "id5-sync.com", "pixel.wetracked.io"):
             self.assertIsNone(by_host[host]["selected_easyprivacy_match_shape"])
         self.assertTrue(all(row["adopted_to_stable"] is False for row in rows))
+        self.assertTrue(all(row["status"] == "RETIRED_STOCK_OVERLAP" and row["active_rule"] is False for row in rows))
         self.assertTrue(all(row["incremental_blocking_value"] == "NOT_ESTABLISHED" for row in rows))
         self.assertTrue(all(row["real_site_compatibility"] == "NOT_RUN" for row in rows))
 
     def test_proposed_candidate_rule_removed_is_not_silently_ignored(self):
         changed = copy.deepcopy(self.profiles)
-        changed["rule_sets"]["privacy-v2"]["rules"].remove("||sync.adkernel.com^$third-party")
-        with self.assertRaisesRegex(ValueError, "missing or altered"):
+        changed["rule_sets"]["privacy-v2"]["rules"].append("||sync.adkernel.com^$third-party")
+        with self.assertRaisesRegex(ValueError, "leaked"):
             analyze(changed, self.evidence, "", "")
         changed = copy.deepcopy(self.profiles)
         changed["rule_sets"]["privacy-optional-20261030"]["rules"].append(
             "||another.example^$third-party")
-        with self.assertRaisesRegex(ValueError, "four unique"):
+        with self.assertRaisesRegex(ValueError, "leaked"):
             analyze(changed, self.evidence, "", "")
 
     def test_optional_not_silently_added_to_stable(self):
