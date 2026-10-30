@@ -107,3 +107,5 @@ jobs:
         run: python -m playwright install --with-deps chromium firefox
       - name: Check synthetic browser fixture with request-abort surrogate
         run: python scripts/browser_fixture_smoke.py --report "$RUNNER_TEMP/browser-fixture.json"
+      - name: Check Chromium native MV3 DNR browser engine (local fixture only)
+        run: python scripts/chromium_dnr_fixture.py --report "$RUNNER_TEMP/chromium-dnr-fixture.json"
