@@ -41,6 +41,10 @@ jobs:
         run: python scripts/validate_lists.py
       - name: Check generated network lists
         run: python scripts/generate_lists.py --check
+      - name: Validate opt-in candidate evidence (offline)
+        run: python scripts/audit_filter_candidates.py
+      - name: Verify pinned upstream candidate sources and scoped allowlist
+        run: python scripts/audit_filter_candidates.py --fetch-upstream
   engine:
     runs-on: ubuntu-latest
     timeout-minutes: 10
