@@ -52,6 +52,7 @@ python scripts/audit_upstream.py --cache ../work/upstream-audit --fetch --report
 python scripts/audit_filter_candidates.py --fetch-upstream
 python scripts/scan_upstream_delta.py --fetch-upstream --crosscheck-independent --limit 40
 python scripts/check_upstream_drift.py
+python scripts/check_stable_fidelity.py
 ```
 
 変更内容は[更新記録](CHANGELOG.md)、検証に使うバージョンは[エンジン固定情報](verification/engine-lock.json)です。公開ページの通信確認や合成画面テストは、認証・動画再生のE2Eとは区別します。
