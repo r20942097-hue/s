@@ -1,5 +1,6 @@
 """Regression fixtures for stable subscription immutability and owner-review lock."""
 import copy
+import subprocess
 import json
 from pathlib import Path
 import sys
@@ -7,7 +8,7 @@ from tempfile import TemporaryDirectory
 import unittest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
-from check_stable_fidelity import FILES, LOCK, ROOT, git_blob_sha, validate_manifest, verify
+from check_stable_fidelity import FILES, LOCK, ROOT, git_blob_sha, validate_manifest, verify, pinned_git_tree
 
 
 class StableFidelityTests(unittest.TestCase):
@@ -68,6 +69,39 @@ class StableFidelityTests(unittest.TestCase):
         manifest["files"]["../../other.txt"] = manifest["files"].pop("ad.txt")
         with self.assertRaises(ValueError):
             validate_manifest(manifest)
+
+    def test_independent_base_tree_prevents_pin_self_rewrite(self):
+        with TemporaryDirectory() as dirname:
+            root = Path(dirname)
+            manifest = self.make_fixture(root)
+            subprocess.run(["git", "-C", str(root), "init", "-q"], check=True)
+            subprocess.run(["git", "-C", str(root), "add", *sorted(FILES)], check=True)
+            subprocess.run(["git", "-C", str(root), "-c", "user.name=Filter CI",
+                            "-c", "user.email=ci@example.invalid", "commit", "-qm",
+                            "baseline"], check=True)
+            actual_commit = subprocess.check_output(
+                ["git", "-C", str(root), "rev-parse", "HEAD"], text=True).strip()
+            manifest["baseline_commit"] = actual_commit
+            base = pinned_git_tree(root, manifest)
+            self.assertEqual(base, manifest["files"])
+            self.assertEqual(verify(root, manifest, base_tree=base)[0], [])
+            # A malicious or accidental pin refresh may match edited files, but
+            # the historical tree still rejects the rewriting of expected data.
+            changed_data = b"unreviewed stable file mutation\n"
+            (root / "ad.txt").write_bytes(changed_data)
+            manifest["files"]["ad.txt"] = git_blob_sha(changed_data)
+            errors, report = verify(root, manifest, base_tree=base)
+            self.assertEqual(report["status"], "FAIL")
+            self.assertTrue(any("editable pin conflicts" in e for e in errors))
+            self.assertEqual(report["independent_base_tree"], "FAIL")
+
+    def test_git_base_tree_bad_or_missing_commit_fails_closed(self):
+        with TemporaryDirectory() as dirname:
+            root = Path(dirname)
+            self.make_fixture(root)
+            subprocess.run(["git", "-C", str(root), "init", "-q"], check=True)
+            with self.assertRaises(ValueError):
+                pinned_git_tree(root, self.manifest)
 
     def test_owner_approval_gate_and_malformed_shas(self):
         for key, value in (("publication_hold", False),
