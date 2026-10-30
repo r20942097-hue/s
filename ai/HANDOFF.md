@@ -50,6 +50,13 @@
 - `scripts/verify_browser_gates.py` が隔離テスト4系統のレポートと状態を統合。CIのJob Summaryに記録する。現実のサイトへの通信、ログイン・決済・映像の実動作、Firefox上の公式フルuBOはNOT_RUN。
 - `docs/RELEASE_ACCEPTANCE.md` のC4を完成。D～Fは未達。main/既存購読/安定版保全、Draft/NO_GOを維持。
 
+## 2026-10-30｜URLパラメーター実検証と安全な追加候補（最新）
+
+- 公式uBO Lite 2026.1026.1812に対して仮想20ケース＋予約済み.testホスト上の実HTTPを実施。stock既定でfbclid/gclid除去・utm_source保持、個別のstate/code/X-Amz-Signature保持を確認。
+- scripts/ubol_param_import_lab.pyは単一の試験ルール removeparam=utm_source を非公開ローカルHTTPから公式拡張に取り込み、実HTTPでPRESENT→REMOVED→PRESENTを確認した。公開中のリストには追加しない。署名を伴うURLにutm_sourceが共存する場合の安全性は未検証。
+- scripts/ubol_query_param_probe.py、scripts/ubol_local_param_http_probe.py、tests/test_ubol_*とdocs/URL_TRACKING_PARAMETER_AUDIT.md、verification/url-parameter-lab.jsonを正本として継続。正式採用にはFirefoxフルuBO・実サイト上の対照比較と署名URL複合対照が必要。
+- CIはrunner.tempの公式uBO Lite ZIPをジョブ内のみ共有し、読み込みごとに長さ/SHA-256を検証。pushはmainのみ、Draft PRはPRイベントで検証し旧CIをキャンセル。main・公開購読URLは不変更、NO_GO。
+
 ## 2026-10-30｜追跡防止機能は維持（追加ユーザー指定）
 
 - ユーザーは「追跡防止要素は入れる」と明示。重複除去は追跡防止機能の削除を意味しない。安定版tracking.txtは9件、Draft v2/tracking.txtは38件、v2/tracking-extra.txtは重複隔離で0件。
