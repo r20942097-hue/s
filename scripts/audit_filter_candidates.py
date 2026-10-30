@@ -71,7 +71,7 @@ def overlaps(first, second):
 
 def audit(records, profiles, snapshots=None):
     errors = []
-    result = {"record_schema": "filter-candidates/v1", "candidate_count": 0,
+    result = {"record_schema": "filter-candidates/v1", "candidate_count": 0, "quarantined_count": 0,
               "metadata": "FAIL", "upstream_snapshot": "NOT_RUN",
               "live_site_e2e": "NOT_RUN", "publication": "NEEDS_HUMAN"}
     if not isinstance(records, dict) or records.get("schema") != result["record_schema"]:
@@ -126,8 +126,25 @@ def audit(records, profiles, snapshots=None):
     if not isinstance(candidates, list) or len(candidates) == 0:
         errors.append("missing candidate evidence rows")
         candidates = []
-    if len(candidates) != len(candidate_rules):
-        errors.append("candidate evidence does not cover all candidate rules")
+    if candidate_rules != [] or candidate_set.get("disabled") is not True:
+        errors.append("quarantined proposal still has active candidate rules")
+    quarantine = records.get("quarantine")
+    expected_archived = {
+        "||match.prod.bidr.io^$third-party",
+        "||sync.adkernel.com^$third-party",
+        "||sync.richaudience.com^$third-party"
+    }
+    if (not isinstance(quarantine, dict)
+            or quarantine.get("schema") != "stock-overlap-quarantine/v1"
+            or quarantine.get("release") != "2026.1026.1812"
+            or quarantine.get("active_rule_count") != 0
+            or quarantine.get("quarantined_rule_count") != 7
+            or quarantine.get("publication") != "NO_GO"
+            or set(quarantine.get("three_v2_rules", [])) != expected_archived
+            or len(candidates) != 4
+            or set(quarantine.get("four_extra_rules", []))
+              != {row.get("rule") for row in candidates if isinstance(row, dict)}):
+        errors.append("seven quarantined rules and their evidence must remain intact")
     seen = set()
     existing = []
     for name, rule_set in profiles["rule_sets"].items():
@@ -151,11 +168,12 @@ def audit(records, profiles, snapshots=None):
         if host in seen:
             errors.append("duplicate evidence host " + host)
         seen.add(host)
-        if rule not in candidate_rules:
-            errors.append("unregistered candidate " + rule)
-        if any(overlaps(host, old) for _, old in existing):
-            errors.append("candidate overlaps existing filter family: " + host)
-        if (row.get("status") != "candidate" or row.get("risk") not in ("low", "medium", "high")
+        if rule in candidate_rules or any(overlaps(host, old) for _, old in existing):
+            errors.append("quarantined stock duplicate leaked into active rule set: " + host)
+        if (row.get("status") != "quarantined_stock_duplicate"
+                or row.get("in_active_subscription") is not False
+                or row.get("stock_ubol_check") != "block_action_match_for_third_party_image_2026.1026.1812"
+                or row.get("risk") not in ("low", "medium", "high")
                 or row.get("live_site_e2e") != "NOT_RUN"
                 or row.get("selected_allowlist") != "no_literal_reference_observed"
                 or not isinstance(row.get("impact"), str) or not row["impact"].strip()):
@@ -164,8 +182,12 @@ def audit(records, profiles, snapshots=None):
                 or not isinstance(row.get("line"), int) or isinstance(row["line"], bool)
                 or row["line"] < 1):
             errors.append("invalid pinned line evidence for " + host)
-    if set(candidate_rules) != {"||" + h + "^$third-party" for h in seen}:
-        errors.append("candidate registry/evidence parity failure")
+    if len(seen) != 4 or candidate_rules:
+        errors.append("quarantined evidence count/zero-active parity failure")
+    for rule in expected_archived:
+        if any(rule in group.get("rules", []) for group in profiles["rule_sets"].values()
+               if isinstance(group, dict)):
+            errors.append("quarantined former-v2 rule leaked into active output: " + rule)
     held = records.get("held")
     if not isinstance(held, list) or len(held) < 1:
         errors.append("missing rejected or held candidates")
@@ -175,7 +197,8 @@ def audit(records, profiles, snapshots=None):
                     or row["host"] in seen or not isinstance(row.get("reason"), str)
                     or len(row["reason"].strip()) < 30):
                 errors.append("invalid held candidate declaration")
-    result["candidate_count"] = len(candidates)
+    result["candidate_count"] = 0
+    result["quarantined_count"] = len(candidates) + len(expected_archived)
     if snapshots is not None:
         if set(snapshots) != {"tracking", "allowlist"}:
             errors.append("missing upstream blob snapshot")
