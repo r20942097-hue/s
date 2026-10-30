@@ -10,12 +10,13 @@
 |---|---|---|
 | A. 原本保全 | 安定版8ファイルの固定Git tree一致、生成・検証、ZIP防止 | CI PASS |
 | B. 候補監査 | 固定AdGuard・EasyPrivacy出典、例外、重複、2エンジン合成通信 | CI PASS |
-| C. ブラウザー試験環境 | 隔離Chromium/Firefoxで合成ページ・模擬通信遮断・フォームを試験 | CI結果で判定 |
+| C1. ブラウザー試験環境 | 隔離Chromium/Firefoxで合成ページ・模擬遮断・フォームを試験 | CI PASS |
+| C2. Chromium MV3標準遮断 | 使い捨ての最小拡張をインストールし、ブラウザー標準DNRで第三者画像を遮断、同一サイト通信を許可 | CI PASS（実uBOではない） |
 | D. 本物の拡張による実サイト試験 | 実際のuBlock Origin・対応ブラウザーで各購読構成を検証 | NOT_RUN |
 | E. 実質的な増分効果と安全性 | 既定リストとの差分とログイン・動画・フォームへの影響確認 | NOT_RUN |
 | F. 最終公開承認 | 変更ファイルと実サイト証拠をレビューし、所有者が明示承認 | NEEDS_HUMAN |
 
-A～CがPASSでもD～FはPASSにならず、正式公開のGOを自動発行しません。
+A～C2がPASSでもD～FはPASSにならず、正式公開のGOを自動発行しません。
 
 ## ブラウザー試験の手順
 
@@ -28,6 +29,21 @@ A～CがPASSでもD～FはPASSにならず、正式公開のGOを自動発行し
 ## 今回追加した実ブラウザー試験設備の限界
 
 scripts/browser_fixture_smoke.py は本物のChromium/Firefoxを起動して合成ローカルサイトを操作しますが、フィルターの代わりにPlaywrightのroute.abortを使用する試験設備です。模擬ログイン/決済と遮断ビーコンの陽性対照を検査します。**uBlock Origin/AdGuard拡張そのもの、実サイト、実映像再生は検証しません。** それらをPASSと記載しません。
+
+## ChromiumのManifest V3実拡張検証（模擬サイト限定）
+
+scripts/chromium_dnr_fixture.py は一時ディレクトリに最小のMV3拡張を生成し、Playwright付属Chromiumの永続コンテキストへ読み込みます。外部通信や配布物の生成はせず、127.0.0.1／localhostのローカルHTTPだけを使用します。次の陽性・陰性対照を取ります。
+
+- **拡張なし**では第三者側の画像通信が成功し、HTTPサーバーに到達する。
+- **拡張あり**ではブラウザーのdeclarativeNetRequestにより第三者画像が失敗し、HTTPサーバーへ到達しない。
+- 同じ拡張で、第一者側画像、模擬ログイン、模擬決済操作は維持される。
+- 拡張のManifest V3 service workerと静的ルールセットの有効化を確認する。
+
+これは**実際にChromium標準の拡張遮断エンジンを使う検証**ですが、候補ルールをDNR変換したものではなく、uBlock Origin／uBO Liteそのものでもありません。Firefoxでの実拡張検証、実サイトの互換性、動画再生の安全性はなおNOT_RUNです。ブラウザー環境の許可・拒否の基本挙動を実証するだけで、リリース判定のD/Eは解除しません。
+
+## 候補7件の選択資料重複
+
+scripts/compare_subscription_coverage.py の proposed_candidate_evidence は候補7件を個別に追跡し、選択したEasyPrivacyの2ファイルに同一または親ドメインのホスト全体ルールがあるかを照合します。**確認できたのは match.prod.bidr.io、event.getblue.io、sync.ebis.ne.jp の3件（親ドメイン参照）**です。残り4件はこの選択資料からは参照が見つからないだけで、EasyPrivacy全体・他のフィルターを通じた追加価値や安全性は未確定です。CIの集計とこの7件の台帳は自動採用を行いません。
 
 ## 上流資料の取得最適化
 
