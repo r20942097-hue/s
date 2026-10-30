@@ -175,12 +175,40 @@ def measure_hypothetical_dnr(worker):
                     type: 'image',
                     method: 'get'
                 });
-                const matches = (r.matchedRules || []).map(row => ({
-                    ruleset_id: row.rulesetId || null,
-                    rule_id: row.ruleId
-                }));
-                result.push({ host, matched_rule_count: matches.length,
-                              matched_rules: matches });
+                const matches = [];
+                for (const row of (r.matchedRules || [])) {
+                    let actionType = 'UNKNOWN';
+                    try {
+                        let found = [];
+                        if (row.rulesetId === '_dynamic') {
+                            found = await chrome.declarativeNetRequest.getDynamicRules(
+                                { ruleIds: [row.ruleId] });
+                        } else if (row.rulesetId === '_session') {
+                            found = await chrome.declarativeNetRequest.getSessionRules(
+                                { ruleIds: [row.ruleId] });
+                        } else {
+                            found = await chrome.declarativeNetRequest.getStaticRules({
+                                rulesetId: row.rulesetId,
+                                ruleIds: [row.ruleId]
+                            });
+                        }
+                        if (found.length === 1) {
+                            actionType = found[0].action.type;
+                        }
+                    } catch (_) {
+                        // Keep the observation, never assume a block action.
+                    }
+                    matches.push({
+                        ruleset_id: row.rulesetId || null,
+                        rule_id: row.ruleId,
+                        action_type: actionType
+                    });
+                }
+                result.push({
+                    host, matched_rule_count: matches.length,
+                    block_action_count: matches.filter(row => row.action_type === 'block').length,
+                    matched_rules: matches
+                });
             } catch (error) {
                 return { status: 'NOT_SUPPORTED', cases: [],
                          reason: String(error && error.message || error).slice(0, 160) };
@@ -276,6 +304,7 @@ def main():
     print("OFFICIAL uBOL EXTENSION: PASS; default rulesets:", report["active_rulesets"],
           "; hypothetical seven-host matching:", stock["status"],
           "; matched cases:", sum(x["matched_rule_count"] > 0 for x in stock.get("cases", [])),
+          "; block-action cases:", sum(x.get("block_action_count", 0) > 0 for x in stock.get("cases", [])),
           "; no candidate subscription or production-site test")
     return 0
 
