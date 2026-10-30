@@ -122,6 +122,14 @@ class CandidateAuditTests(unittest.TestCase):
         self.assertEqual(audit.git_blob_sha(data), target)
         self.assertNotEqual(audit.git_blob_sha(b"test\r\n"), target)
 
+    def test_missing_upstream_source_with_snapshot_fails_without_exception(self):
+        record = copy.deepcopy(self.records)
+        del record["sources"]["tracking"]
+        errors, report = audit.audit(record, self.profiles,
+            snapshots={"tracking": b"fixture", "allowlist": b"fixture"})
+        self.assertTrue(any("missing or malformed" in error for error in errors))
+        self.assertNotEqual(report["upstream_snapshot"], "PASS")
+
     def test_snapshot_detects_wrong_source_blob(self):
         record = copy.deepcopy(self.records)
         record["sources"]["tracking"]["git_blob_sha"] = audit.git_blob_sha(b"not real\n")
