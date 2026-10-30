@@ -50,6 +50,12 @@
 - `scripts/verify_browser_gates.py` が隔離テスト4系統のレポートと状態を統合。CIのJob Summaryに記録する。現実のサイトへの通信、ログイン・決済・映像の実動作、Firefox上の公式フルuBOはNOT_RUN。
 - `docs/RELEASE_ACCEPTANCE.md` のC4を完成。D～Fは未達。main/既存購読/安定版保全、Draft/NO_GOを維持。
 
+## 2026-10-30｜追跡防止機能は維持（追加ユーザー指定）
+
+- ユーザーは「追跡防止要素は入れる」と明示。重複除去は追跡防止機能の削除を意味しない。安定版tracking.txtは9件、Draft v2/tracking.txtは38件、v2/tracking-extra.txtは重複隔離で0件。
+- verification/tracking-protection-policy.json と scripts/check_tracking_protection.py により、計測・セッション記録・広告計測・ビーコンの活動ルールと、隔離7件の無断復活を検証。CIの結果確認は最新HEADで行う。
+- 新規URL追跡パラメーター除去/CNAME/フィンガープリンティング/GPCは、既定機能との重複・互換性・技術的対応範囲の確認後に限って追加検討。現状では実装済みと宣言しない。docs/TRACKING_PROTECTION_POLICY.md参照。
+
 ## 2026-10-30｜既定フィルター重複排除方針（最新）
 
 - **7つの旧候補は活動フィルターへ戻さない**。3つはv2/tracking.txt、4つはv2/tracking-extra.txtから除去済み。後者は厳密な`! Status: QUARANTINED_NO_ACTIVE_RULES`付き0ルール文書として残す。verification/filter-candidates.json/quarantineに元出典を保全。mainと既存公開リストは変更しない。
