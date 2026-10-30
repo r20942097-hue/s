@@ -1,0 +1,88 @@
+"""Tests for fail-closed CI evidence aggregation (no network)."""
+import copy
+import sys
+from pathlib import Path
+import unittest
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
+from summarize_filter_gates import gather, render
+
+
+class GateSummaryTests(unittest.TestCase):
+    def setUp(self):
+        self.stable = {
+            "schema": "filter-stable-fidelity-check/v1",
+            "status": "PASS", "protected_asset_count": 8,
+            "verified_asset_count": 8, "errors": [], "live_site_e2e": "NOT_RUN"
+        }
+        self.candidate = {
+            "record_schema": "filter-candidates/v1", "metadata": "PASS",
+            "upstream_snapshot": "PASS", "candidate_count": 4,
+            "errors": [], "publication": "NEEDS_HUMAN", "live_site_e2e": "NOT_RUN"
+        }
+        self.delta = {
+            "schema": "upstream-delta-review/v2", "queue_total": 3,
+            "new_candidate_hosts": 3, "selected_independent_easyprivacy_comparison": "PASS",
+            "candidate_hosts_also_observed_in_selected_easyprivacy": 2,
+            "candidate_hosts_with_selected_easyprivacy_full_host_rule": 1,
+            "candidate_hosts_with_selected_easyprivacy_scoped_rule_only": 1,
+            "candidate_hosts_with_selected_allowlist_exception": 0,
+            "publication": "NO_GO", "live_site_e2e": "NOT_RUN"
+        }
+        self.drift = {
+            "schema": "filter-upstream-drift/v1", "sources_checked": 4,
+            "drift_files": 0, "automatic_source_pin_update": False,
+            "publication": "NO_GO", "live_site_e2e": "NOT_RUN"
+        }
+
+    def check(self):
+        return gather(self.stable, self.candidate, self.delta, self.drift)
+
+    def test_four_valid_independent_reports_pass(self):
+        self.assertEqual(self.check(), [])
+        s = render(self.stable, self.candidate, self.delta, self.drift, [])
+        self.assertIn("PASS (automated only)", s)
+        self.assertIn("NOT_RUN", s)
+        self.assertIn("NO_GO", s)
+
+    def test_candidate_evidence_not_verified_fails(self):
+        self.candidate["upstream_snapshot"] = "NOT_RUN"
+        self.assertTrue(any("candidate source" in x for x in self.check()))
+
+    def test_accidental_or_disallowed_stable_mutation_fails(self):
+        self.stable["verified_asset_count"] = 7
+        self.assertTrue(any("stable asset" in x for x in self.check()))
+
+    def test_mixed_full_vs_scoped_baseline_totals_fail(self):
+        self.delta["candidate_hosts_with_selected_easyprivacy_full_host_rule"] = 3
+        self.assertTrue(any("inconsistent delta" in x for x in self.check()))
+
+    def test_silent_candidate_promotion_fails(self):
+        self.delta["publication"] = "GO"
+        self.assertTrue(any("publication" in x for x in self.check()))
+        self.delta["publication"] = "NO_GO"
+        self.candidate["publication"] = "GO"
+        self.assertTrue(any("owner" in x for x in self.check()))
+
+    def test_drift_is_information_not_fatal_if_pins_unchanged(self):
+        self.drift["drift_files"] = 2
+        self.assertEqual(self.check(), [])
+        self.drift["automatic_source_pin_update"] = True
+        self.assertTrue(any("auto-promotion" in x for x in self.check()))
+
+    def test_never_claim_live_site_e2e_pass(self):
+        for report in (self.stable, self.candidate, self.delta, self.drift):
+            with self.subTest(schema=report["schema"] if "schema" in report else report["record_schema"]):
+                report["live_site_e2e"] = "PASS"
+                self.assertTrue(any("live-browser" in x for x in self.check()))
+                report["live_site_e2e"] = "NOT_RUN"
+
+    def test_missing_metadata_fails_closed(self):
+        self.delta["candidate_hosts_with_selected_easyprivacy_full_host_rule"] = None
+        self.assertTrue(self.check())
+        self.drift["sources_checked"] = None
+        self.assertTrue(self.check())
+
+
+if __name__ == "__main__":
+    unittest.main()
