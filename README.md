@@ -57,6 +57,8 @@ python scripts/compare_subscription_coverage.py --crosscheck-independent
 # CIでは scripts/summarize_filter_gates.py が4検査結果を Job Summary に統合
 ```
 
+**追跡防止機能は維持しています。** 安定版 `tracking.txt` の9件とDraft版 `v2/tracking.txt` の38件は分析・セッション記録・広告計測・ビーコン通信を対象とします。[追跡防止方針](docs/TRACKING_PROTECTION_POLICY.md)で、その維持、重複除去、将来のURL追跡パラメーター・CNAME対策の採用条件を説明しています。
+
 **既定uBO Liteのblockルールと重複する7件は、Draftのv2活動リストから除外しました。** 活動候補0件とし、元の証拠は隔離台帳に保存。別途、既定uBO Liteで選択80ホストを画像・script・XHRで照合し、45件が既定遮断一致、34件が未一致、1件が未解決でした。追加ルールは未承認のままです。[根拠・候補一覧](docs/STOCK_GAP_REVIEW.md)。
 
 公式uBO Liteへの隔離済み旧候補7件の実登録・解除試験が成功しました。隔離された一時HTTP配信とChromium環境で、7候補＋1テスト専用ルールを読み込み、登録前0→登録後block一致→解除後0のDNR照合を確認しています。これらは**仮想リクエストに対する拡張機能の判定**であり、実サイトの互換性や広告遮断効果の実測ではありません。
