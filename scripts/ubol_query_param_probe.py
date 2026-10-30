@@ -193,6 +193,9 @@ def main():
             path.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
         print("STOCK PARAMETER PROBE:", len(findings), "synthetic cases", counts,
               "; NOT a query-removal/real-site test; zero new rules")
+        for result in findings:
+            print("STOCK PARAMETER CASE:", result["key"], result["request_type"],
+                  result["class"], result["stock_dnr_verdict"])
     except Exception as exc:
         print("STOCK PARAMETER PROBE FAILED:", type(exc).__name__, str(exc))
         traceback.print_exc()
