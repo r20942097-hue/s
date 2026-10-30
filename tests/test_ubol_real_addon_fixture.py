@@ -1,13 +1,17 @@
 """Safe inspection of real, officially hash-pinned extension fixture assets."""
 from io import BytesIO
+import hashlib
 import json
+import os
 from pathlib import Path
 import stat
 import sys
 import unittest
+from unittest.mock import patch
 from zipfile import ZipFile, ZipInfo, ZIP_DEFLATED
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
+import ubol_real_addon_fixture as addon
 from ubol_real_addon_fixture import inspect_zip, validate_lock, verify_archive_bytes, validate_runtime_identity, measure_hypothetical_dnr, resolve_official_rule_actions, LOCK_PATH
 
 
@@ -120,6 +124,37 @@ class RealUBOLReleaseTests(unittest.TestCase):
         runtime["name"] = "__MSG_extName__"
         with self.assertRaisesRegex(ValueError, "not verified"):
             validate_runtime_identity(runtime, source)
+
+    def test_official_asset_cache_reuses_verified_bytes(self):
+        payload = b"synthetic official release archive bytes"
+        fake_lock = {"size_bytes": len(payload), "max_archive_bytes": 1000}
+        with __import__("tempfile").TemporaryDirectory() as cache, (
+                patch.dict(os.environ, {"FILTER_UBOL_CACHE_DIR": cache}),
+                patch.object(addon, "SHA256", hashlib.sha256(payload).hexdigest()),
+                patch.object(addon, "validate_lock", return_value=None),
+                patch.object(addon, "urlopen", side_effect=lambda *a, **kw: BytesIO(payload)) as get):
+            self.assertEqual(addon.fetch_archive(fake_lock), payload)
+            self.assertEqual(addon.fetch_archive(fake_lock), payload)
+            self.assertEqual(get.call_count, 1)
+            self.assertEqual(len(list(Path(cache).glob("*.zip"))), 1)
+
+    def test_cached_official_asset_tamper_fails_closed(self):
+        payload = b"synthetic official release archive bytes"
+        fake_lock = {"size_bytes": len(payload), "max_archive_bytes": 1000}
+        digest = hashlib.sha256(payload).hexdigest()
+        with __import__("tempfile").TemporaryDirectory() as cache, (
+                patch.dict(os.environ, {"FILTER_UBOL_CACHE_DIR": cache}),
+                patch.object(addon, "SHA256", digest),
+                patch.object(addon, "validate_lock", return_value=None),
+                patch.object(addon, "urlopen", side_effect=AssertionError("should not refetch"))):
+            (Path(cache) / (digest + ".zip")).write_bytes(b"tampered-zip-bytes")
+            with self.assertRaisesRegex(ValueError, "length differs"):
+                addon.fetch_archive(fake_lock)
+
+    def test_cache_inside_checkout_is_forbidden(self):
+        with patch.dict(os.environ, {"FILTER_UBOL_CACHE_DIR": str(addon.ROOT)}):
+            with self.assertRaisesRegex(ValueError, "outside repository"):
+                addon.fetch_archive(self.lock)
 
     def test_pinned_release_governance_accepts_approved_sha(self):
         validate_lock(self.lock)
