@@ -8,6 +8,7 @@ import json
 from pathlib import Path
 import re
 from urllib.request import Request, urlopen
+from pinned_snapshot_cache import verified_read
 
 ROOT = Path(__file__).resolve().parents[1]
 REPO = "easylist/easylist"
@@ -52,16 +53,8 @@ def fetch_baselines(info, retrieve=None):
     result = {}
     for source in info["sources"]:
         uri = f'https://raw.githubusercontent.com/{REPO}/{source["commit"]}/{source["path"]}'
-        if retrieve is None:
-            request = Request(uri, headers={"User-Agent": "filter-crosscheck/1"})
-            with urlopen(request, timeout=30) as response:
-                data = response.read(MAX_BYTES + 1)
-        else:
-            data = retrieve(uri)
-        if not isinstance(data, bytes) or len(data) > MAX_BYTES:
-            raise ValueError("independent baseline oversized or malformed")
-        if git_blob_sha(data) != source["git_blob_sha"]:
-            raise ValueError("independent baseline blob digest mismatch")
+        data = verified_read(uri, source["git_blob_sha"], MAX_BYTES,
+                             "filter-crosscheck/1", retrieve=retrieve)
         result[source["path"]] = data.decode("utf-8-sig")
     return result
 
