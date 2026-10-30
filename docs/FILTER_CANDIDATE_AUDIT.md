@@ -33,7 +33,14 @@ Read-only upstream-delta review queue (suggestions only; **not** adopted as filt
     python scripts/scan_upstream_delta.py --fetch-upstream --limit 40
     python scripts/scan_upstream_delta.py --fetch-upstream --report /tmp/filter-delta-review.json
 
-This scan excludes already covered/overlapping host rules, checks only selected allowlist literal references, and emits source line anchors for manual triage. It does not check live site behavior, and the candidate ranking is not an empirical effectiveness ranking. It never writes to the repository or publishes changes.
+This scan now distinguishes **complete local parent coverage** from a higher-risk **parent-domain expansion**. It also separates literal text references in the selected allowlist from actual `@@` exception-form lines. The scanner indexes literal references once; regex-escaped or wildcard exceptions and runtime matching are not modeled. The output is a review queue, not a ranked list of proven-safe filters.
+
+Independent cross-project comparison (requires verification of all sources):
+
+    python scripts/scan_upstream_delta.py --fetch-upstream --crosscheck-independent --limit 40
+    python scripts/scan_upstream_delta.py --fetch-upstream --crosscheck-independent --report /tmp/filter-crosscheck.json
+
+The independent source registry is `verification/filter-independent-baselines.json`, with two source files pinned to one exact EasyPrivacy Git commit and each Git blob digest verified before use. Cross-check output labels an exact/ancestor host *observed in the selected EasyPrivacy files*. A match does not guarantee an installed list blocks it, and absence does not prove a new tracker. The sources may already appear in many users' baseline filters. The script never writes to this repository, adopts rules, or changes publication.
 
 The online check fetches only two explicitly pinned GitHub source files. It validates SHA-1 using the Git blob envelope (not bare SHA1), exact line text, candidate/output parity, and literal host references in the selected upstream allowlist. It imposes a bounded file size and a network timeout. A network failure results in FAIL, never a silent success. For stronger cryptographic attestations, SHA-1 Git blob identity does not replace signed supply-chain provenance.
 
