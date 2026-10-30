@@ -1,5 +1,13 @@
 # 更新記録
 
+## 2026-10-30 / URL追跡パラメーター差分と実HTTPの隔離試験（Draft、未公開）
+
+- 公式uBO Liteで追跡側5キー＋署名・認証側5キーの仮想ナビゲーション/XHR 20ケースを照合。既定redirect一致6件／一致なし14件を記録（これだけでは除去の証明ではない）。
+- Chromiumの一時DNS設定で予約済み.testホストをローカルHTTPへ向け、既定uBO Liteがfbclid/gclidを実際に削除し、utm_sourceは残すことを確認。state・code・X-Amz-Signatureは保持。
+- lab専用のremoveparam=utm_sourceを公式uBO Liteへ一時インポート。utm_sourceがPRESENT→REMOVED→PRESENTと変化し、既定クリックIDの除去と認証キーの個別保持も確認。**実サイトや複合署名URLは未検証、公開候補0**。
+- 同一CIジョブ内の公式ZIPのSHA-256再検証付き一時キャッシュを追加。PRとpushの重複CIを整理し、旧PR検証のキャンセルとmainのpush検証を維持。
+- 検証詳細：docs/URL_TRACKING_PARAMETER_AUDIT.md、verification/url-parameter-lab.json。
+
 ## 2026-10-30 / 追跡防止の維持をCIで明示（Draft PR、未公開）
 
 - 安定版トラッキング9件、Draft v2追跡防止38件を維持する品質ゲートを追加。第三者計測、セッション記録、広告計測、ビーコンの代表ルール消失や旧重複7ルール復活を検出。
