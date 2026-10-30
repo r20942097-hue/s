@@ -12,11 +12,12 @@
 | B. 候補監査 | 固定AdGuard・EasyPrivacy出典、例外、重複、2エンジン合成通信 | CI PASS |
 | C1. ブラウザー試験環境 | 隔離Chromium/Firefoxで合成ページ・模擬遮断・フォームを試験 | CI PASS |
 | C2. Chromium MV3標準遮断 | 使い捨ての最小拡張をインストールし、ブラウザー標準DNRで第三者画像を遮断、同一サイト通信を許可 | CI PASS（実uBOではない） |
+| C3. 公式uBO Lite実物の起動 | SHA-256固定の公式Chromium ZIPを一時展開し、拡張サービスワーカーと既定DNRルールセットを確認 | CI PASS（独立起動試験、購読候補の検証ではない） |
 | D. 本物の拡張による実サイト試験 | 実際のuBlock Origin・対応ブラウザーで各購読構成を検証 | NOT_RUN |
 | E. 実質的な増分効果と安全性 | 既定リストとの差分とログイン・動画・フォームへの影響確認 | NOT_RUN |
 | F. 最終公開承認 | 変更ファイルと実サイト証拠をレビューし、所有者が明示承認 | NEEDS_HUMAN |
 
-A～C2がPASSでもD～FはPASSにならず、正式公開のGOを自動発行しません。
+A～C3がPASSでもD～FはPASSにならず、正式公開のGOを自動発行しません。
 
 ## ブラウザー試験の手順
 
@@ -44,6 +45,16 @@ scripts/chromium_dnr_fixture.py は一時ディレクトリに最小のMV3拡張
 ## 候補7件の選択資料重複
 
 scripts/compare_subscription_coverage.py の proposed_candidate_evidence は候補7件を個別に追跡し、選択したEasyPrivacyの2ファイルに同一または親ドメインのホスト全体ルールがあるかを照合します。**確認できたのは match.prod.bidr.io、event.getblue.io、sync.ebis.ne.jp の3件（親ドメイン参照）**です。残り4件はこの選択資料からは参照が見つからないだけで、EasyPrivacy全体・他のフィルターを通じた追加価値や安全性は未確定です。CIの集計とこの7件の台帳は自動採用を行いません。
+
+## 公式uBO Lite Chromium版の隔離起動検査
+
+公式 [uBlockOrigin/uBOL-home](https://github.com/uBlockOrigin/uBOL-home) の2026年10月26日リリースを、GitHubが公開するSHA-256で固定してテスト時のみ取得します。検証レジストリは verification/ubol-release-lock.json です。ZIPをコミット・Release・公開購読URLへ配置せず、CIの一時ディレクトリでサイズ・ハッシュ・ZIP内の危険なパス／symlink／重複を点検して展開します。
+
+scripts/ubol_real_addon_fixture.py はPlaywright付属Chromiumへ**改変していない公式uBO Lite実体**を読み込み、Manifest V3のサービスワーカー、バージョン、標準DNRルールセットの有効化を検証します。最小のDNR試験用拡張とは別工程です。
+
+追加の開発用API testMatchOutcome が使用できる場合、候補7件を仮想第三者画像リクエストとしてuBO Liteの既定ルールと照合します。ただし返された「一致」はルールの動作種別や実際の通信遮断そのものを保証しません。APIが利用不能ならNOT_SUPPORTEDとして保持し、無理に遮断成功とみなしません。
+
+**依然として未検証**：このPRの候補7件をuBO Liteに購読登録したときの動作、Firefoxでの本物のuBOと実サイトの互換性、動画・ログイン・決済の実動作。公開ゲートD～Fは維持します。
 
 ## 上流資料の取得最適化
 
