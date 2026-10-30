@@ -28,6 +28,13 @@ Online immutable source check (no list is automatically modified):
     python scripts/audit_filter_candidates.py --fetch-upstream
     python scripts/audit_filter_candidates.py --fetch-upstream --report /tmp/filter-candidate-audit.json
 
+Read-only upstream-delta review queue (suggestions only; **not** adopted as filters):
+
+    python scripts/scan_upstream_delta.py --fetch-upstream --limit 40
+    python scripts/scan_upstream_delta.py --fetch-upstream --report /tmp/filter-delta-review.json
+
+This scan excludes already covered/overlapping host rules, checks only selected allowlist literal references, and emits source line anchors for manual triage. It does not check live site behavior, and the candidate ranking is not an empirical effectiveness ranking. It never writes to the repository or publishes changes.
+
 The online check fetches only two explicitly pinned GitHub source files. It validates SHA-1 using the Git blob envelope (not bare SHA1), exact line text, candidate/output parity, and literal host references in the selected upstream allowlist. It imposes a bounded file size and a network timeout. A network failure results in FAIL, never a silent success. For stronger cryptographic attestations, SHA-1 Git blob identity does not replace signed supply-chain provenance.
 
 The GitHub Actions test job runs the online pinned-source check. The engine job parses every .txt list in root and v2 and checks uBlock Origin and Ghostery network behavior using synthetic first-party, third-party and boundary requests. Both are necessary but do not provide proof about live websites.
