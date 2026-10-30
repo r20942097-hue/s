@@ -57,6 +57,8 @@ python scripts/compare_subscription_coverage.py --crosscheck-independent
 # CIでは scripts/summarize_filter_gates.py が4検査結果を Job Summary に統合
 ```
 
+公式uBO Liteの2026年10月26日版をSHA-256で固定し、CI中に一時取得してPlaywright Chromiumへ読み込む検証を追加しました。起動時の6つの既定DNRルールセットを確認していますが、**このPRの候補7ルールをuBO Liteへ登録する検証ではありません**。実サイトE2Eも未実施です。詳細は [受入ゲート](docs/RELEASE_ACCEPTANCE.md) を参照してください。
+
 Chromiumの実際のMV3ネットワーク遮断機能を、**CI一時生成の試験用拡張**で検証する工程を追加しました。これは本物の拡張エンジンの動作を試すもので、既定のuBlock Origin／uBO Liteを読み込む試験ではありません。7候補のEasyPrivacy照合も個別に記録しますが、実効的な追加遮断の証明ではありません。
 
 完成条件・公開前の未完了工程は [受入ゲート](docs/RELEASE_ACCEPTANCE.md) を参照してください。GitHub Actionsのbrowser fixtureは**実際のChromium/Firefox**で合成ページを検証しますが、模擬遮断にはPlaywrightのroute.abortを使用しており、実フィルター拡張のサイト互換性を実証しません。
