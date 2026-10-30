@@ -69,7 +69,7 @@ class DeltaScanTests(unittest.TestCase):
     def test_paginated_review_queue_is_complete_and_nonoverlapping(self):
         hosts = ["f-review.example", "a-review.example", "d-review.example",
                  "b-review.example", "e-review.example", "c-review.example"]
-        raw = "\\n".join("||" + host + "^$third-party" for host in hosts)
+        raw = "\n".join("||" + host + "^$third-party" for host in hosts)
         pages = [scan(self.profiles, self.evidence, raw, "", limit=2, offset=i)
                  for i in (0, 2, 4)]
         seen = [item["host"] for page in pages for item in page["queue"]]
