@@ -29,13 +29,15 @@ class DeltaScanTests(unittest.TestCase):
                 "||not-in-existing.example^$third-party\n")
         report = scan(self.profiles, self.evidence, text, "", 10)
         self.assertEqual(report["new_candidate_hosts"], 1)
-        self.assertEqual(report["already_covered_or_parent_overlap"], 3)
+        self.assertEqual(report["already_covered_by_local_parent_or_exact"], 3)
 
     def test_upstream_allowlist_literal_reference_fails_open_to_manual_review(self):
         text = "||novel-tracking.example^$third-party\n"
         allow = "@@||novel-tracking.example^$domain=checkout.example\n"
         report = scan(self.profiles, self.evidence, text, allow, 10)
         self.assertEqual(report["candidate_hosts_with_selected_allowlist_reference"], 1)
+        self.assertEqual(report["candidate_hosts_with_selected_allowlist_exception"], 1)
+        self.assertEqual(report["queue"][0]["selected_allowlist_exception_lines"], [1])
         self.assertEqual(report["queue"][0]["selected_allowlist_references"], [1])
         self.assertEqual(report["queue"][0]["status"], "REVIEW_REQUIRED")
 
@@ -65,11 +67,56 @@ class DeltaScanTests(unittest.TestCase):
                          ["a-new.example", "b-new.example"])
 
     def test_invalid_limit_or_text_rejected(self):
-        for value in (0, 201, -10, 1.5):
+        for value in (0, 201, -10, 1.5, True):
             with self.subTest(value=value), self.assertRaises(ValueError):
                 scan(self.profiles, self.evidence, "", "", value)
         with self.assertRaises(ValueError):
             scan(self.profiles, self.evidence, b"not text", "", 10)
+
+    def test_parent_domain_expansion_is_flagged_and_not_counted_as_covered(self):
+        # An ancestor of an already blocked host is not automatically redundant.
+        text = ("||wetracked.io^$third-party\\n"
+                "||pixel.wetracked.io^$third-party\\n"
+                "||brand-new-review.example^$third-party\\n")
+        report = scan(self.profiles, self.evidence, text, "", 10)
+        self.assertEqual(report["already_covered_by_local_parent_or_exact"], 1)
+        self.assertEqual(report["parent_expansion_candidates"], 1)
+        self.assertEqual(report["new_candidate_hosts"], 2)
+        expanded = next(x for x in report["queue"] if x["host"] == "wetracked.io")
+        self.assertEqual(expanded["coverage"], "expands-existing-child")
+        self.assertIn("parent_domain_expansion", expanded["risk_flags"])
+        self.assertEqual(report["queue"][0]["host"], "brand-new-review.example")
+
+    def test_comment_mention_separated_from_actual_allow_rule(self):
+        tracking = ("||somehost.example^$third-party\\n"
+                    "||anotherhost.example^$third-party\\n")
+        allow = ("! somehost.example is a recorded tracker\\n"
+                 "@@||anotherhost.example^$domain=checkout.example\\n"
+                 "@@||somehost.example-lookalike.org^$domain=foo.test\\n")
+        report = scan(self.profiles, self.evidence, tracking, allow, 10)
+        self.assertEqual(report["candidate_hosts_with_selected_allowlist_reference"], 2)
+        self.assertEqual(report["candidate_hosts_with_selected_allowlist_exception"], 1)
+        by_name = {row["host"]: row for row in report["queue"]}
+        self.assertEqual(by_name["somehost.example"]["selected_allowlist_references"], [1])
+        self.assertEqual(by_name["somehost.example"]["selected_allowlist_exception_lines"], [])
+        self.assertIn("selected_allowlist_literal_mention", by_name["somehost.example"]["risk_flags"])
+        self.assertEqual(by_name["anotherhost.example"]["selected_allowlist_exception_lines"], [2])
+        self.assertIn("selected_allowlist_exception", by_name["anotherhost.example"]["risk_flags"])
+
+    def test_literal_reference_deduplicated_per_line(self):
+        report = scan(self.profiles, self.evidence,
+                      "||unseen-tracker.example^$third-party",
+                      "@@||unseen-tracker.example^$domain=unseen-tracker.example",
+                      10)
+        self.assertEqual(report["queue"][0]["selected_allowlist_references"], [1])
+        self.assertEqual(report["queue"][0]["selected_allowlist_exception_lines"], [1])
+
+    def test_review_queue_not_a_live_or_baseline_effectiveness_claim(self):
+        report = scan(self.profiles, self.evidence, "||novel.example^$third-party", "")
+        self.assertEqual(report["schema"], "upstream-delta-review/v2")
+        self.assertEqual(report["live_site_e2e"], "NOT_RUN")
+        self.assertEqual(report["publication"], "NO_GO")
+        self.assertTrue(any("EasyPrivacy" in note for note in report["limitations"]))
 
     def test_no_mutations_of_inputs(self):
         before_profile = copy.deepcopy(self.profiles)
