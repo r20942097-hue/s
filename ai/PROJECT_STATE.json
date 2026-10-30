@@ -47,7 +47,10 @@
     "python scripts/chromium_dnr_fixture.py (Playwright Chromium, temporary native MV3 DNR extension)",
     "python scripts/ubol_real_addon_fixture.py --report /tmp/real-ubol.json (Playwright Chromium; official ZIP fetched and SHA256-verified)",
     "python scripts/ubol_imported_list_fixture.py --report /tmp/ubol-import.json",
-    "python scripts/verify_browser_gates.py --surrogate <json> --native <json> --stock <json> --imported <json>"
+    "python scripts/verify_browser_gates.py --surrogate <json> --native <json> --stock <json> --imported <json>",
+    "python scripts/ubol_query_param_probe.py --report /tmp/param-baseline.json",
+    "python scripts/ubol_local_param_http_probe.py --report /tmp/param-real-local.json",
+    "python scripts/ubol_param_import_lab.py --report /tmp/param-import-lab.json"
   ],
   "downstream": {
     "repository": "r20942097-hue/faaff",
@@ -151,6 +154,40 @@
       "recommended_active_additions": 0,
       "real_site_e2e": "NOT_RUN",
       "docs": "docs/STOCK_GAP_REVIEW.md"
+    },
+    "tracking_parameter_validation": {
+      "status": "LAB_PASS_ONLY",
+      "official_ubol": "2026.1026.1812",
+      "stock_query_hypothetical": {
+        "cases": 20,
+        "redirect_matches": 6,
+        "no_redirect_matches": 14,
+        "indeterminate": 0
+      },
+      "local_http_stock": {
+        "fbclid": "REMOVED",
+        "gclid": "REMOVED",
+        "utm_source": "PRESENT",
+        "state": "PRESERVED",
+        "code": "PRESERVED",
+        "X-Amz-Signature": "PRESERVED"
+      },
+      "imported_rule_lab": {
+        "rule": "*$removeparam=utm_source",
+        "before": "PRESENT",
+        "with_import": "REMOVED",
+        "after_unsubscribe": "PRESENT",
+        "signed_real_url": "NOT_RUN",
+        "public_adoption": "NO_GO"
+      },
+      "new_active_rules": 0,
+      "report": "docs/URL_TRACKING_PARAMETER_AUDIT.md",
+      "evidence": "verification/url-parameter-lab.json"
+    },
+    "ci_optimization": {
+      "official_zip_cache": "runner.temp per job; SHA256 verified on each read; no cross-run persistence",
+      "workflow": "push main only, pull_request all branches, cancel outdated PR checks",
+      "status": "CI latest-head verification required"
     }
   }
 }
