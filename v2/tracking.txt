@@ -1,6 +1,6 @@
 [Adblock Plus 2.0]
 ! Title: Universal Web Tracking Filter v2 (Global Optional)
-! Version: 20261030.1
+! Version: 20261030.2
 ! Expires: 5 days
 ! Homepage: https://github.com/r20942097-hue/s
 ! Subscription: https://raw.githubusercontent.com/r20942097-hue/s/main/v2/tracking.txt
@@ -9,7 +9,7 @@
 ! Compatibility: uBlock Origin / AdGuard / ABP-compatible syntax where supported.
 ! Last reviewed: 2026-10-11
 ! Sources reviewed: EasyPrivacy, AdGuard Tracking Protection, uBlock Origin privacy filters.
-! Candidate delta reviewed: 2026-10-30 (three narrowly scoped cookie-sync hosts; real-site E2E NOT_RUN).
+! Candidate delta: seven stock-duplicate rules removed 2026-10-30; review retained in verification.
 ! License: GPL-3.0-only
 ! Generated: filter-profiles.json via scripts/generate_lists.py
 !
@@ -52,7 +52,4 @@
 ||static.ads-twitter.com^$third-party
 ||beacon.geniee.jp^$third-party
 ||genieedmp.com^$third-party
-||match.prod.bidr.io^$third-party
-||sync.adkernel.com^$third-party
-||sync.richaudience.com^$third-party
 !
