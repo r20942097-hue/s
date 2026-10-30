@@ -178,6 +178,7 @@ def measure_hypothetical_dnr(worker):
                 const matches = [];
                 for (const row of (r.matchedRules || [])) {
                     let actionType = 'UNKNOWN';
+                    let reason = null;
                     try {
                         let found = [];
                         if (row.rulesetId === '_dynamic') {
@@ -195,13 +196,15 @@ def measure_hypothetical_dnr(worker):
                         if (found.length === 1) {
                             actionType = found[0].action.type;
                         }
-                    } catch (_) {
+                    } catch (error) {
                         // Keep the observation, never assume a block action.
+                        reason = String(error && error.message || error).slice(0, 120);
                     }
                     matches.push({
                         ruleset_id: row.rulesetId || null,
                         rule_id: row.ruleId,
-                        action_type: actionType
+                        action_type: actionType,
+                        action_lookup_error: reason
                     });
                 }
                 result.push({
@@ -306,6 +309,10 @@ def main():
           "; matched cases:", sum(x["matched_rule_count"] > 0 for x in stock.get("cases", [])),
           "; block-action cases:", sum(x.get("block_action_count", 0) > 0 for x in stock.get("cases", [])),
           "; no candidate subscription or production-site test")
+    for case in stock.get("cases", []):
+        print("STOCK DNR CASE:", case["host"], "; matches:",
+              [(item["ruleset_id"], item["action_type"], item["action_lookup_error"])
+               for item in case["matched_rules"]])
     return 0
 
 
