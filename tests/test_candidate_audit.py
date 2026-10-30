@@ -100,6 +100,17 @@ class CandidateAuditTests(unittest.TestCase):
         data["rule_sets"]["privacy-optional-20261030"]["license"] = "CC0-1.0"
         self.check_error("invalid candidate rule set/license", profiles=data)
 
+    def test_candidate_cannot_be_silently_included_in_stable_or_v2_output(self):
+        for modification in ("rule_set", "include"):
+            with self.subTest(modification=modification):
+                data = copy.deepcopy(self.profiles)
+                stable = next(item for item in data["outputs"] if item["path"] == "tracking.txt")
+                if modification == "rule_set":
+                    stable["rule_sets"].append("privacy-optional-20261030")
+                else:
+                    stable["includes"].append("tracking-extra.txt")
+                self.check_error("opt-in candidate must never be included", profiles=data)
+
     def test_held_item_cannot_be_accepted_without_review(self):
         record = copy.deepcopy(self.records)
         record["held"][0]["host"] = record["candidates"][0]["host"]
