@@ -115,6 +115,40 @@ def extract_verified(data, lock, destination):
     return extension_root, manifest
 
 
+def validate_runtime_identity(runtime, source):
+    """Manifest names are localized from __MSG_*__; versions are invariant."""
+    if (not isinstance(runtime, dict)
+            or runtime.get("manifest_version") != 3
+            or runtime.get("version") != source.get("version")
+            or not isinstance(runtime.get("name"), str)
+            or not runtime["name"].strip()
+            or runtime["name"].startswith("__MSG_")
+            or not isinstance(runtime.get("enabled_ruleset_ids"), list)
+            or not runtime["enabled_ruleset_ids"]):
+        raise ValueError(
+            "uBO Lite identity or default DNR rulesets not verified: "
+            + json.dumps({
+                "version": runtime.get("version") if isinstance(runtime, dict) else None,
+                "name": runtime.get("name") if isinstance(runtime, dict) else None,
+                "enabled_ruleset_count": len(runtime.get("enabled_ruleset_ids", []))
+                    if isinstance(runtime, dict)
+                    and isinstance(runtime.get("enabled_ruleset_ids"), list) else None
+            }, ensure_ascii=False)
+        )
+    # Preserve signed package identity; resolved display names are expected to
+    # differ from localization tokens in the original manifest.
+    if not source.get("name", "").startswith("__MSG_"):
+        if runtime["name"] != source["name"]:
+            raise ValueError("unexpected extension display name")
+    declared = {item["id"] for item in
+                source.get("declarative_net_request", {}).get("rule_resources", [])
+                if item.get("enabled") is True}
+    if not declared or not set(runtime["enabled_ruleset_ids"]).issubset(
+            {item["id"] for item in source["declarative_net_request"]["rule_resources"]}):
+        raise ValueError("enabled DNR rulesets differ from official manifest")
+    return True
+
+
 def exercise_browser(extension_root, manifest):
     from playwright.sync_api import sync_playwright
     with tempfile.TemporaryDirectory(prefix="ubol-profile-") as profile, sync_playwright() as p:
@@ -144,11 +178,7 @@ def exercise_browser(extension_root, manifest):
                     enabled_ruleset_ids: ids
                 };
             }""")
-            if (result["manifest_version"] != 3
-                    or result["name"] != manifest["name"]
-                    or result["version"] != manifest["version"]
-                    or not result["enabled_ruleset_ids"]):
-                raise ValueError("real uBOL did not activate a default ruleset")
+            validate_runtime_identity(result, manifest)
             page = context.new_page()
             page.goto("about:blank")
             if page.evaluate("document.readyState") != "complete":
