@@ -10,6 +10,7 @@ activation verifies extension boot, NOT the efficacy of proposed filters.
 import argparse
 import hashlib
 import json
+import os
 from pathlib import Path, PurePosixPath
 import stat
 import tempfile
@@ -55,11 +56,46 @@ def verify_archive_bytes(data, lock):
 
 
 def fetch_archive(lock):
+    """Allow a per-CI-job copy of the *exact* signed-off release asset.
+
+    Every hit verifies byte length and SHA256. Tampering fails closed rather
+    than falling back to a different network asset. No persistent CI cache.
+    """
     validate_lock(lock)
+    destination = None
+    cache_dir = os.environ.get("FILTER_UBOL_CACHE_DIR")
+    if cache_dir:
+        directory = Path(cache_dir).resolve()
+        if directory.is_relative_to(ROOT.resolve()):
+            raise ValueError("official extension cache must be outside repository")
+        directory.mkdir(parents=True, exist_ok=True)
+        destination = directory / (SHA256 + ".zip")
+        if destination.is_symlink():
+            raise ValueError("official extension cache symlink forbidden")
+        if destination.exists():
+            if not destination.is_file():
+                raise ValueError("official extension cached asset is not a file")
+            data = destination.read_bytes()
+            verify_archive_bytes(data, lock)
+            return data
     with urlopen(Request(RELEASE_URL, headers={"User-Agent": "isolated-real-ubol-test/1"}),
                  timeout=60) as response:
         data = response.read(lock["max_archive_bytes"] + 1)
     verify_archive_bytes(data, lock)
+    if destination is not None:
+        with tempfile.NamedTemporaryFile(dir=destination.parent, delete=False) as handle:
+            temp = Path(handle.name)
+            try:
+                handle.write(data)
+            except BaseException:
+                temp.unlink(missing_ok=True)
+                raise
+        try:
+            if destination.is_symlink():
+                raise ValueError("official extension cache symlink forbidden")
+            os.replace(temp, destination)
+        finally:
+            temp.unlink(missing_ok=True)
     return data
 
 
