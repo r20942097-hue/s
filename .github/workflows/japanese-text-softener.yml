@@ -60,6 +60,7 @@ jobs:
             --candidate "$RUNNER_TEMP/filter-candidate-evidence.json" \
             --delta "$RUNNER_TEMP/filter-review-queue.json" \
             --drift "$RUNNER_TEMP/filter-upstream-drift.json" \
+            --matrix "$RUNNER_TEMP/filter-subscription-matrix.json" \
             --github-summary "$GITHUB_STEP_SUMMARY"
   engine:
     runs-on: ubuntu-latest
