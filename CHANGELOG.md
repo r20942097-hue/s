@@ -1,5 +1,12 @@
 # 更新記録
 
+## 2026-10-30 / Chromium MV3実遮断ゲート・7候補の個別証拠（Draft PR、未公開）
+
+- Playwright付属Chromiumの永続プロファイルに、CI一時生成の最小MV3拡張を読み込む実験を追加。ブラウザー標準declarativeNetRequestによる第三者通信遮断、第一者通信許可、未導入時の陽性対照、模擬ログイン/決済維持を確認。**実uBlock Origin／uBO Liteや実サイトを使用していない**。
+- 新規候補7件を選択EasyPrivacy 2資料と個別照合。bidr.io、getblue.io、ebis.ne.jpの親ドメインルールに対応する3件を確認。残る4件はこの2資料で一致なし。**増分価値・互換性は全件NOT_ESTABLISHED／NOT_RUN**。
+- scripts/compare_subscription_coverage.py と統合品質ゲートに候補別証拠を追加し、追加採用／公開成功の誤判定を拒否する回帰テストを拡張。
+- main、安定版8ファイル、既存購読URL、faaff同期、Releaseには変更なし。Draft PRはNO_GOを維持。
+
 ## 2026-10-30 / vNext完成ゲート・隔離ブラウザー試験・上流取得最適化（Draft PR、未公開）
 
 - 最終受入条件を docs/RELEASE_ACCEPTANCE.md に統合。自動CIと実拡張・実サイト検証の境界、残課題、所有者承認を明確化。
