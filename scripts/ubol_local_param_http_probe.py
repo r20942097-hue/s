@@ -137,8 +137,8 @@ def smoke():
     from playwright.sync_api import sync_playwright
     lock = json.loads(LOCK_PATH.read_text(encoding="utf-8"))
     data = fetch_archive(lock)
-    with tempfile.TemporaryDirectory(prefix="ubol-local-http-") as work, (
-            server() as fixture, sync_playwright() as pw):
+    with (tempfile.TemporaryDirectory(prefix="ubol-local-http-") as work,
+          server() as fixture, sync_playwright() as pw):
         extension_root, manifest = extract_verified(
             data, lock, Path(work) / "official-release")
         cases = build_urls(fixture.server_port)
