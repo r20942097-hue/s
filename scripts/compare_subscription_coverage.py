@@ -123,6 +123,13 @@ def main():
     print("SUBSCRIPTION COVERAGE READ_ONLY:", len(report["outputs"]),
           "subscription/group scopes;", report["source_host_universe"],
           "source hosts; NO_GO for auto adoption", file=sys.stderr)
+    for item in report["outputs"]:
+        print("SUBSCRIPTION SCOPE:", item["name"],
+              "matched", item["covered_by_exact_or_parent"],
+              "unmatched", item["not_covered_by_exact_or_parent"],
+              "selected EasyPrivacy overlap",
+              item["selected_easyprivacy_overlap_among_not_covered"],
+              file=sys.stderr)
     return 0
 
 
