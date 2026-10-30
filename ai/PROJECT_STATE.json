@@ -2,7 +2,7 @@
   "schema": "project-state/v1",
   "repository": "r20942097-hue/s",
   "role": "ブラウザー用フィルターの公開配布元（release authority）",
-  "updated": "2026-10-28",
+  "updated": "2026-10-30",
   "default_branch": "main",
   "heads": {
     "main_before_governance_pr": "a3bb00a94c2c44ad882a85078a4e3e74730290a2",
@@ -14,8 +14,22 @@
     "NO_NEW_INTERNAL_PUSH": "active: main への直接 push 禁止（作業ブランチへの push と PR 作成は可）"
   },
   "permissions": {
-    "always_allowed": ["read", "create proposal/feature branches", "push to proposal/feature branches", "open draft/normal PRs", "rerun CI", "run local verification"],
-    "requires_owner_approval": ["merge to main", "delete original branches/files", "visibility/publication changes", "force-push / history rewrite", "production deploy", "add ZIP/binary artifacts"]
+    "always_allowed": [
+      "read",
+      "create proposal/feature branches",
+      "push to proposal/feature branches",
+      "open draft/normal PRs",
+      "rerun CI",
+      "run local verification"
+    ],
+    "requires_owner_approval": [
+      "merge to main",
+      "delete original branches/files",
+      "visibility/publication changes",
+      "force-push / history rewrite",
+      "production deploy",
+      "add ZIP/binary artifacts"
+    ]
   },
   "protection": {
     "main_ruleset": "PR必須（承認0）・必須チェック test / engine（Filter list checks）・force-push禁止・削除禁止",
@@ -24,16 +38,38 @@
   "verification_commands": [
     "python -m unittest discover -s tests -p 'test_*.py' -v",
     "python scripts/validate_lists.py",
-    "python scripts/generate_lists.py --check"
+    "python scripts/generate_lists.py --check",
+    "python scripts/audit_filter_candidates.py --fetch-upstream",
+    "python scripts/scan_upstream_delta.py --fetch-upstream --crosscheck-independent --limit 5",
+    "python scripts/check_stable_fidelity.py --verify-base-tree",
+    "python scripts/compare_subscription_coverage.py --crosscheck-independent",
+    "python scripts/browser_fixture_smoke.py (requires playwright==1.64.1 and bundled browsers)"
   ],
   "downstream": {
     "repository": "r20942097-hue/faaff",
     "pinned_import": "faaff/ai/imports/s.json（本リポジトリ main 変更後は faaff 側で別PRにより再取り込み）"
   },
   "open_items": [
+    "v2候補の実ブラウザー＋本物のフィルター拡張によるサイト互換性、既定リスト比の増分効果：NOT_RUN。docs/RELEASE_ACCEPTANCE.md参照",
     "git 履歴に RPLAY_*.zip（約4MB×10）が残存。完全削除には filter-repo + force-push + GitHub Support 依頼が必要（要承認・未実施）",
     "LICENSE ファイル未配置（ライセンスは各フィルターのヘッダーで宣言）",
     "has_wiki が有効（未使用と推定・未検証）",
     "Actions に main に存在しないワークフロー「Validate v2 filters」が登録残り"
-  ]
+  ],
+  "active_candidate": {
+    "pull_request": "https://github.com/r20942097-hue/s/pull/14",
+    "branch": "proposal/filter-v2-privacy-cookie-sync-20261030",
+    "publication_status": "NO_GO",
+    "review_status": "DRAFT",
+    "proposed_changes": "v2/tracking.txt narrow delta plus opt-in v2/tracking-extra.txt; verified-source audit and read-only discovery",
+    "existing_main_subscriptions": "UNCHANGED",
+    "protected_asset_count": 8,
+    "new_rules_auto_promoted": 0,
+    "confirmed_automated_tests": "Python/engine checks, provenance and byte parity; check latest CI run for exact counts",
+    "browser_fixture": "PASS (synthetic localhost, Chromium+Firefox, Playwright surrogate; not real extension)",
+    "real_extension_live_site_e2e": "NOT_RUN",
+    "owner_merge_approval": "NEEDS_HUMAN",
+    "acceptance_document": "docs/RELEASE_ACCEPTANCE.md",
+    "caution": "Source drift comparison and CI fixtures are not proof of incremental blocking efficacy or site compatibility"
+  }
 }
