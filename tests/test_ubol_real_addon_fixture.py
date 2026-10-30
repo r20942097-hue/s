@@ -8,7 +8,7 @@ import unittest
 from zipfile import ZipFile, ZipInfo, ZIP_DEFLATED
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
-from ubol_real_addon_fixture import inspect_zip, validate_lock, verify_archive_bytes, LOCK_PATH
+from ubol_real_addon_fixture import inspect_zip, validate_lock, verify_archive_bytes, validate_runtime_identity, LOCK_PATH
 
 
 class RealUBOLReleaseTests(unittest.TestCase):
@@ -22,6 +22,32 @@ class RealUBOLReleaseTests(unittest.TestCase):
                 zipfile.writestr(name, content)
         output.seek(0)
         return ZipFile(output, "r")
+
+    def test_locale_message_key_is_not_raw_runtime_display_name(self):
+        source = {
+            "manifest_version": 3, "version": "2026.1026.1812",
+            "name": "__MSG_extName__",
+            "declarative_net_request": {"rule_resources": [
+                {"id": "easylist", "enabled": True},
+                {"id": "easyprivacy", "enabled": True}
+            ]}
+        }
+        runtime = {
+            "manifest_version": 3, "version": "2026.1026.1812",
+            "name": "uBlock Origin Lite",
+            "enabled_ruleset_ids": ["easylist", "easyprivacy"]
+        }
+        self.assertTrue(validate_runtime_identity(runtime, source))
+        runtime["enabled_ruleset_ids"] = []
+        with self.assertRaisesRegex(ValueError, "not verified"):
+            validate_runtime_identity(runtime, source)
+        runtime["enabled_ruleset_ids"] = ["unknown"]
+        with self.assertRaisesRegex(ValueError, "differ"):
+            validate_runtime_identity(runtime, source)
+        runtime["enabled_ruleset_ids"] = ["easylist"]
+        runtime["name"] = "__MSG_extName__"
+        with self.assertRaisesRegex(ValueError, "not verified"):
+            validate_runtime_identity(runtime, source)
 
     def test_pinned_release_governance_accepts_approved_sha(self):
         validate_lock(self.lock)
