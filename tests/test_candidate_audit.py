@@ -43,6 +43,26 @@ class CandidateAuditTests(unittest.TestCase):
         record["candidates"][0]["rule"] = "||id5-sync.com^$third-party,important"
         self.check_error("invalid narrowed third-party", record)
 
+    def test_invalid_host_labels_and_ip_addresses_rejected(self):
+        for bad in ("bad..example", "127.0.0.1", "bad-.example", "example"):
+            record = copy.deepcopy(self.records)
+            record["candidates"][0]["host"] = bad
+            record["candidates"][0]["rule"] = "||" + bad + "^$third-party"
+            self.check_error("invalid narrowed third-party", record)
+
+    def test_source_path_traversal_and_unapproved_source_rejected(self):
+        for unsafe in ("SpywareFilter/sections/../../secrets.txt",
+                       "SpywareFilter/sections/other.txt",
+                       "SpywareFilter/sections/allowlist.txt/../tracking_servers.txt"):
+            record = copy.deepcopy(self.records)
+            record["sources"]["tracking"]["path"] = unsafe
+            self.check_error("invalid pinned source tracking", record)
+
+    def test_missing_candidate_ruleset_is_a_validation_error_not_crash(self):
+        data = copy.deepcopy(self.profiles)
+        del data["rule_sets"]["privacy-optional-20261030"]
+        self.check_error("invalid candidate rule set/license", profiles=data)
+
     def test_unknown_source_and_missing_pin_rejected(self):
         record = copy.deepcopy(self.records)
         record["sources"]["tracking"]["repository"] = "other/unknown"
