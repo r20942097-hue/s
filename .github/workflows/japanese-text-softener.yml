@@ -121,6 +121,8 @@ jobs:
         run: python scripts/ubol_stock_gap_probe.py --limit 80 --report "$RUNNER_TEMP/ubol-stock-gap.json"
       - name: Compare query tracking IDs with stock uBO Lite on synthetic URLs
         run: python scripts/ubol_query_param_probe.py --report "$RUNNER_TEMP/ubol-query-param.json"
+      - name: Observe actual loopback HTTP query parameters in official uBO Lite
+        run: python scripts/ubol_local_param_http_probe.py --report "$RUNNER_TEMP/ubol-local-param-http.json"
       - name: Verify reversible browser integration and no-release gates
         run: |
           python scripts/verify_browser_gates.py \
