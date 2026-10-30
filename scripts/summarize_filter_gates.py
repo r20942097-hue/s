@@ -79,6 +79,34 @@ def gather(stable, candidate, delta, drift, matrix=None):
                     errors.append("scope coverage count does not reconcile")
             if not {"ad.txt", "tracking.txt", "stable_combined", "v2_balanced"}.issubset(names):
                 errors.append("missing stable or v2 comparison scope")
+        candidates = matrix.get("proposed_candidate_evidence")
+        if (type(matrix.get("proposed_candidate_count")) is not int
+                or matrix["proposed_candidate_count"] != 7
+                or not isinstance(candidates, list) or len(candidates) != 7):
+            errors.append("candidate-by-candidate comparison missing")
+        else:
+            hosts = set()
+            counts = {"v2/tracking.txt": 0, "v2/tracking-extra.txt": 0}
+            for item in candidates:
+                if not isinstance(item, dict):
+                    errors.append("malformed proposed candidate evidence row")
+                    continue
+                host, source = item.get("host"), item.get("output")
+                if not isinstance(host, str) or not host or host in hosts:
+                    errors.append("duplicate or missing proposed candidate host")
+                else:
+                    hosts.add(host)
+                if source not in counts:
+                    errors.append("unrecognized proposed candidate source")
+                else:
+                    counts[source] += 1
+                if (item.get("adopted_to_stable") is not False
+                        or item.get("real_site_compatibility") != "NOT_RUN"
+                        or item.get("incremental_blocking_value") != "NOT_ESTABLISHED"
+                        or item.get("selected_easyprivacy_match_shape") not in ("full", "restricted", None)):
+                    errors.append("unsafe proposed candidate status or unsupported match claim")
+            if counts != {"v2/tracking.txt": 3, "v2/tracking-extra.txt": 4}:
+                errors.append("proposed candidate split differs from 3+4 reviewed rules")
     return errors
 
 
@@ -102,6 +130,22 @@ def render(stable, candidate, delta, drift, errors, matrix=None):
         "",
         "The figures do not establish actual user-visible blocking, accuracy on live websites, installed-list coverage or permission to publish. CI logs and summaries have finite retention."
     ]
+    if matrix is not None and isinstance(matrix.get("proposed_candidate_evidence"), list):
+        rows = matrix["proposed_candidate_evidence"]
+        lines.extend(["", "### Seven proposed rules: selected EasyPrivacy shape only", "",
+                      "| Proposed host | List | Selected independent reference | Incremental effect |",
+                      "|---|---|---|---|"])
+        for entry in rows:
+            if not isinstance(entry, dict):
+                continue
+            # User-controlled data from pinned JSON must never be interpreted
+            # as Markdown table markup.
+            def cell(value):
+                return str(value if value is not None else "not observed").replace("|", "&#124;").replace("\n", " ")
+            lines.append("| " + " | ".join([
+                cell(entry.get("host")), cell(entry.get("output")),
+                cell(entry.get("selected_easyprivacy_match_shape")), "NOT_ESTABLISHED"
+            ]) + " |")
     if matrix is not None and isinstance(matrix.get("outputs"), list):
         lines.extend(["", "### Subscription scope comparison (not installed-list coverage)", "",
                       "| Source rule sets | Upstream hosts matched | Unmatched; review only |",
