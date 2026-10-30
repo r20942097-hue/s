@@ -44,7 +44,8 @@
     "python scripts/check_stable_fidelity.py --verify-base-tree",
     "python scripts/compare_subscription_coverage.py --crosscheck-independent",
     "python scripts/browser_fixture_smoke.py (requires playwright==1.64.1 and bundled browsers)",
-    "python scripts/chromium_dnr_fixture.py (Playwright Chromium, temporary native MV3 DNR extension)"
+    "python scripts/chromium_dnr_fixture.py (Playwright Chromium, temporary native MV3 DNR extension)",
+    "python scripts/ubol_real_addon_fixture.py --report /tmp/real-ubol.json (Playwright Chromium; official ZIP fetched and SHA256-verified)"
   ],
   "downstream": {
     "repository": "r20942097-hue/faaff",
@@ -68,7 +69,7 @@
     "new_rules_auto_promoted": 0,
     "confirmed_automated_tests": "Python 146/146; uBO+Ghostery synthetic network 1,075/1,075; Chromium+Firefox local browser fixture; Chromium native MV3 DNR fixture; CI at latest head must be checked",
     "browser_fixture": "PASS: Chromium+Firefox synthetic site / Playwright surrogate; Chromium ephemeral native MV3 declarativeNetRequest block on localhost. No uBO/uBOL loaded.",
-    "real_extension_live_site_e2e": "NOT_RUN: uBO/uBOL/AdGuard on production sites",
+    "real_extension_live_site_e2e": "NOT_RUN: official uBO Lite boot is not candidate subscription or live-site compatibility",
     "owner_merge_approval": "NEEDS_HUMAN",
     "acceptance_document": "docs/RELEASE_ACCEPTANCE.md",
     "caution": "Source drift comparison and CI fixtures are not proof of incremental blocking efficacy or site compatibility",
@@ -78,6 +79,15 @@
       "parent_or_exact_host_rule": 3,
       "no_match_in_selected_two_files": 4,
       "incremental_effect": "NOT_ESTABLISHED"
-    }
+    },
+    "official_ubol_release": {
+      "version": "2026.1026.1812",
+      "asset_sha256": "d3788eac9f0a44c67f3745a43c3fd446ef33d56b1121f469b19e0fa0a836c2b5",
+      "browser": "Playwright Chromium",
+      "status": "PASS: real official MV3 service worker and six stock DNR rulesets",
+      "candidate_list_loaded": false,
+      "real_site_compatibility": "NOT_RUN"
+    },
+    "official_ubol_stock_hypothetical": "OBSERVATION_IN_PROGRESS: developer API optional, not candidate-list E2E"
   }
 }
