@@ -12,11 +12,12 @@ import re
 import sys
 from urllib.request import Request, urlopen
 
+from generate_lists import valid_hostname
+
 ROOT = Path(__file__).resolve().parents[1]
 SOURCE_REPO = "AdguardTeam/AdguardFilters"
 SHA40 = re.compile(r"[a-f0-9]{40}\Z")
 PATH_RE = re.compile(r"[A-Za-z0-9_.-]+(?:/[A-Za-z0-9_.-]+)*\Z")
-HOST_RE = re.compile(r"[a-z0-9](?:[a-z0-9.-]*[a-z0-9])?\.[a-z]{2,}\Z")
 RULE_RE = re.compile(r"\|\|([a-z0-9.-]+)\^\$third-party\Z")
 
 
@@ -47,7 +48,8 @@ def valid_source(source):
             and bool(SHA40.fullmatch(source["git_blob_sha"]))
             and isinstance(source.get("path"), str)
             and bool(PATH_RE.fullmatch(source["path"]))
-            and source["path"].startswith("SpywareFilter/sections/"))
+            and source["path"] in {"SpywareFilter/sections/tracking_servers.txt",
+                                   "SpywareFilter/sections/allowlist.txt"})
 
 
 def git_blob_sha(content):
@@ -112,7 +114,7 @@ def audit(records, profiles, snapshots=None):
         target = []
     candidate_set = profiles["rule_sets"].get("privacy-optional-20261030")
     candidate_rules = candidate_set.get("rules", []) if isinstance(candidate_set, dict) else []
-    if not isinstance(candidate_rules, list) or candidate_set.get("license") != "GPL-3.0-only":
+    if not isinstance(candidate_rules, list) or not isinstance(candidate_set, dict) or candidate_set.get("license") != "GPL-3.0-only":
         errors.append("invalid candidate rule set/license")
         candidate_rules = []
     candidates = records.get("candidates")
@@ -137,7 +139,7 @@ def audit(records, profiles, snapshots=None):
             continue
         host, rule = row.get("host"), row.get("rule")
         matched = RULE_RE.fullmatch(rule) if isinstance(rule, str) else None
-        if (not isinstance(host, str) or not HOST_RE.fullmatch(host)
+        if (not isinstance(host, str) or not valid_hostname(host)
                 or matched is None or matched.group(1) != host):
             errors.append("invalid narrowed third-party host rule")
             continue
