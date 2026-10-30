@@ -42,6 +42,8 @@ Subscribe to all three lists. `strict.txt` additionally blocks tag managers, ide
 
 ## Status
 
-Candidate. The 20261011.1 update is local and has not been published. The advertising profile has 93 network rules; privacy has 38; Strict has 13. Amazon's broad advertising domain was removed after exception review. Broad New Relic and Sentry SDK domains were isolated in Strict.
+Candidate: files exist on main, but are not promoted to the recommended root stable lists. The initial 20261011.1 candidate had 93 ad rules, 38 privacy rules and 13 Strict rules. Amazon's broad advertising domain was removed after exception review; New Relic and Sentry remain Strict-only.
+
+Proposed 20261030.1 privacy-only update (Draft PR, not live): 41 privacy rules, adding only `match.prod.bidr.io`, `sync.adkernel.com` and `sync.richaudience.com` as third-party cookie/ID-sync endpoint filters. Evidence: named-host references in tracker/blocklist datasets; no new parent-domain block. Root stable, v2 ads, v2 Strict and subscriber URLs do not change. Historical full-profile review remains 2026-10-11; the three-rule delta was reviewed on 2026-10-30. No real-browser or production-site breakage verification is claimed.
 
 Pinned upstream references and actual uBO/Ghostery engines were checked. Public-page network smoke checks and synthetic DOM tests do not establish login, form or video-playback compatibility. v2 is not automatically promoted over the root stable lists.
