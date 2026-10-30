@@ -27,14 +27,15 @@ class CandidateAuditTests(unittest.TestCase):
         self.assertEqual(summary["upstream_snapshot"], "NOT_RUN")
         self.assertEqual(summary["live_site_e2e"], "NOT_RUN")
         self.assertEqual(summary["publication"], "NEEDS_HUMAN")
-        self.assertEqual(summary["candidate_count"], 4)
+        self.assertEqual(summary["candidate_count"], 0)
+        self.assertEqual(summary["quarantined_count"], 7)
         self.assertEqual(validate_profiles(self.profiles), [])
 
     def test_duplicate_host_and_unregistered_rule(self):
         record = copy.deepcopy(self.records)
         record["candidates"].append(copy.deepcopy(record["candidates"][0]))
         self.check_error("duplicate evidence host", record)
-        self.check_error("does not cover all candidate rules", record)
+        self.check_error("seven quarantined rules", record)
 
     def test_non_third_party_or_overbroad_candidate_rejected(self):
         record = copy.deepcopy(self.records)
@@ -90,12 +91,12 @@ class CandidateAuditTests(unittest.TestCase):
     def test_duplicate_or_parent_rule_elsewhere_is_detected(self):
         data = copy.deepcopy(self.profiles)
         data["rule_sets"]["ads-v2"]["rules"].append("||wetracked.io^$third-party")
-        self.check_error("overlaps existing filter family", profiles=data)
+        self.check_error("quarantined stock duplicate leaked", profiles=data)
 
     def test_missing_evidence_mapping_and_wrong_license(self):
         data = copy.deepcopy(self.profiles)
-        data["rule_sets"]["privacy-optional-20261030"]["rules"].pop()
-        self.check_error("does not cover all candidate rules", profiles=data)
+        data["rule_sets"]["privacy-optional-20261030"]["rules"].append("||leaked.example^$third-party")
+        self.check_error("quarantined proposal still has active", profiles=data)
         data = copy.deepcopy(self.profiles)
         data["rule_sets"]["privacy-optional-20261030"]["license"] = "CC0-1.0"
         self.check_error("invalid candidate rule set/license", profiles=data)
