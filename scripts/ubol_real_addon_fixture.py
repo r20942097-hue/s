@@ -226,6 +226,70 @@ def measure_hypothetical_dnr(worker):
     return observed
 
 
+def resolve_official_rule_actions(extension_root, manifest, observation):
+    """Lookup Chrome-reported rule IDs in verified, unmodified release JSON.
+
+    Only after reading the SHA-verified ZIP do we resolve action types. This
+    never writes to the extension or infers an action from hostname alone.
+    A match can still be overridden by browser behavior/runtime exceptions.
+    """
+    if observation.get("status") != "OBSERVED":
+        return observation
+    extension_root = Path(extension_root).resolve()
+    sources = {}
+    for row in manifest["declarative_net_request"]["rule_resources"]:
+        rel = row["path"].lstrip("/")
+        candidate = extension_root / rel
+        if (not candidate.resolve().is_relative_to(extension_root)
+                or any(p.is_symlink() for p in (candidate, *candidate.parents)
+                       if p != extension_root)
+                or row["id"] in sources):
+            raise ValueError("unsafe or duplicate official static ruleset path")
+        sources[row["id"]] = candidate
+    needed = {}
+    for case in observation["cases"]:
+        for match in case["matched_rules"]:
+            ruleset = match["ruleset_id"]
+            if ruleset in ("_dynamic", "_session"):
+                continue
+            if ruleset not in sources:
+                raise ValueError("browser-reported ruleset absent from official manifest")
+            needed.setdefault(ruleset, set()).add(match["rule_id"])
+    resolved = {}
+    for ruleset, rule_ids in needed.items():
+        src = sources[ruleset]
+        if not src.is_file() or src.stat().st_size > 150_000_000:
+            raise ValueError("unreadable or oversized official ruleset")
+        raw_rules = json.loads(src.read_text(encoding="utf-8"))
+        if not isinstance(raw_rules, list):
+            raise ValueError("unexpected official static ruleset shape")
+        entries = {}
+        for rule in raw_rules:
+            identifier = rule.get("id")
+            if identifier not in rule_ids:
+                continue
+            action = rule.get("action", {}).get("type")
+            if action not in ("block", "allow", "allowAllRequests", "redirect",
+                              "upgradeScheme", "modifyHeaders"):
+                raise ValueError("unknown DNR action type in official rule")
+            if identifier in entries:
+                raise ValueError("duplicate official static rule ID")
+            entries[identifier] = action
+        resolved[ruleset] = entries
+    for case in observation["cases"]:
+        for item in case["matched_rules"]:
+            kind = resolved.get(item["ruleset_id"], {}).get(item["rule_id"])
+            if kind is not None:
+                item["action_type"] = kind
+                item["action_lookup_error"] = None
+        case["block_action_count"] = sum(
+            item["action_type"] == "block" for item in case["matched_rules"])
+        case["unresolved_actions"] = sum(
+            item["action_type"] == "UNKNOWN" for item in case["matched_rules"])
+    observation["action_lookup"] = "SHA256_VERIFIED_OFFICIAL_STATIC_RULES"
+    return observation
+
+
 def exercise_browser(extension_root, manifest):
     from playwright.sync_api import sync_playwright
     with tempfile.TemporaryDirectory(prefix="ubol-profile-") as profile, sync_playwright() as p:
@@ -256,7 +320,8 @@ def exercise_browser(extension_root, manifest):
                 };
             }""")
             validate_runtime_identity(result, manifest)
-            result["hypothetical_dnr"] = measure_hypothetical_dnr(sw)
+            result["hypothetical_dnr"] = resolve_official_rule_actions(
+                extension_root, manifest, measure_hypothetical_dnr(sw))
             page = context.new_page()
             page.goto("about:blank")
             if page.evaluate("document.readyState") != "complete":
