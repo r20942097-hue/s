@@ -13,6 +13,7 @@ import sys
 from urllib.request import Request, urlopen
 
 from generate_lists import valid_hostname
+from pinned_snapshot_cache import verified_read
 
 ROOT = Path(__file__).resolve().parents[1]
 SOURCE_REPO = "AdguardTeam/AdguardFilters"
@@ -60,14 +61,8 @@ def git_blob_sha(content):
 def fetch_pinned(source):
     if not valid_source(source):
         raise ValueError("unsafe upstream source metadata")
-    request = Request(pinned_url(source), headers={"User-Agent": "candidate-filter-audit/1"})
-    with urlopen(request, timeout=30) as response:
-        body = response.read(4_000_001)
-    if len(body) > 4_000_000:
-        raise ValueError("upstream source exceeds 4MB bound")
-    if git_blob_sha(body) != source["git_blob_sha"]:
-        raise ValueError("pinned upstream Git blob digest mismatch")
-    return body
+    return verified_read(pinned_url(source), source["git_blob_sha"], 4_000_000,
+                         "candidate-filter-audit/1")
 
 
 def overlaps(first, second):
