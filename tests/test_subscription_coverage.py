@@ -42,6 +42,43 @@ class SubscriptionCoverageTests(unittest.TestCase):
             self.assertEqual(item["covered_by_exact_or_parent"]
                              + item["not_covered_by_exact_or_parent"], 4)
 
+    def test_all_seven_proposed_candidates_have_individual_evidence(self):
+        sources = {
+            "easyprivacy/easyprivacy_trackingservers_thirdparty.txt":
+                "||bidr.io^$third-party\n||getblue.io^$third-party\n",
+            "easyprivacy/easyprivacy_trackingservers_international.txt":
+                "||ebis.ne.jp^$third-party\n"
+        }
+        report = analyze(self.profiles, self.evidence, "", "", baselines=sources)
+        rows = report["proposed_candidate_evidence"]
+        self.assertEqual(report["proposed_candidate_count"], 7)
+        self.assertEqual(len(rows), 7)
+        by_host = {row["host"]: row for row in rows}
+        for host, parent in {
+            "match.prod.bidr.io": "bidr.io",
+            "event.getblue.io": "getblue.io",
+            "sync.ebis.ne.jp": "ebis.ne.jp"
+        }.items():
+            self.assertEqual(by_host[host]["selected_easyprivacy_match_shape"], "full")
+            self.assertEqual(by_host[host]["selected_easyprivacy_matching_host"], parent)
+        for host in ("sync.adkernel.com", "sync.richaudience.com",
+                     "id5-sync.com", "pixel.wetracked.io"):
+            self.assertIsNone(by_host[host]["selected_easyprivacy_match_shape"])
+        self.assertTrue(all(row["adopted_to_stable"] is False for row in rows))
+        self.assertTrue(all(row["incremental_blocking_value"] == "NOT_ESTABLISHED" for row in rows))
+        self.assertTrue(all(row["real_site_compatibility"] == "NOT_RUN" for row in rows))
+
+    def test_proposed_candidate_rule_removed_is_not_silently_ignored(self):
+        changed = copy.deepcopy(self.profiles)
+        changed["rule_sets"]["privacy-v2"]["rules"].remove("||sync.adkernel.com^$third-party")
+        with self.assertRaisesRegex(ValueError, "missing or altered"):
+            analyze(changed, self.evidence, "", "")
+        changed = copy.deepcopy(self.profiles)
+        changed["rule_sets"]["privacy-optional-20261030"]["rules"].append(
+            "||another.example^$third-party")
+        with self.assertRaisesRegex(ValueError, "four unique"):
+            analyze(changed, self.evidence, "", "")
+
     def test_optional_not_silently_added_to_stable(self):
         rules = matching_sets(self.profiles, ("ad.txt", "tracking.txt"))
         self.assertNotIn("privacy-optional-20261030", rules)
