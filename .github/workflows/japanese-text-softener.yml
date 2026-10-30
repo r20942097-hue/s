@@ -142,6 +142,18 @@ jobs:
         env:
           FILTER_UBOL_CACHE_DIR: ${{ runner.temp }}/filter-ubol-official-verified
         run: python scripts/ubol_param_import_lab.py --report "$RUNNER_TEMP/ubol-param-import-lab.json"
+      - name: Verify actual local HTTP query and synthetic signed-URL risk
+        run: |
+          python scripts/verify_url_param_lab.py \
+            --stock "$RUNNER_TEMP/ubol-local-param-http.json" \
+            --experimental "$RUNNER_TEMP/ubol-param-import-lab.json" \
+            --github-summary "$GITHUB_STEP_SUMMARY"
+      - name: Probe path-scoped removeparam with signed-path negative controls
+        env:
+          FILTER_UBOL_CACHE_DIR: ${{ runner.temp }}/filter-ubol-official-verified
+        run: python scripts/ubol_scoped_param_lab.py --report "$RUNNER_TEMP/ubol-scoped-param-lab.json"
+      - name: Verify scoped real HTTP lab evidence without release approval
+        run: python scripts/verify_scoped_param_lab.py --report "$RUNNER_TEMP/ubol-scoped-param-lab.json" --github-summary "$GITHUB_STEP_SUMMARY"
       - name: Verify reversible browser integration and no-release gates
         run: |
           python scripts/verify_browser_gates.py \

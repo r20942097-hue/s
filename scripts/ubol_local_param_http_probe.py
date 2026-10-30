@@ -32,7 +32,7 @@ RULES = (f"--host-resolver-rules=MAP {HOST} 127.0.0.1", "--no-proxy-server")
 def server():
     class Handler(BaseHTTPRequestHandler):
         def do_GET(self):
-            if urlsplit(self.path).path != "/fixture":
+            if urlsplit(self.path).path not in ("/fixture", "/telemetry/collect", "/telemetry/collect-extra", "/checkout", "/oauth/callback", "/media/chunk"):
                 self.send_error(404)
                 return
             with self.server.records_lock:

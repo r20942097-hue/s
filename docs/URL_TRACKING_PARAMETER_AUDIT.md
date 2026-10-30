@@ -59,3 +59,11 @@ scripts/ubol_local_param_http_probe.py は予約済み tracking-fixture.test を
 ## CI効率化
 
 複数のブラウザーテストが同じ公式ZIPを重複ダウンロードしていたため、FILTER_UBOL_CACHE_DIRに指定した**そのCIジョブ限りの一時保存**に変更。毎回、固定リリースのバイト数とSHA-256を検証し、破損なら失敗。永続キャッシュ・Git管理へのZIP保存は行わない。
+
+## 第4段階：架空の計測パス限定ルールと署名付きURLの対照
+
+`scripts/ubol_scoped_param_lab.py` は、一時プロファイルの公式uBO Liteに、架空の計測パス `/telemetry/collect` のみを対象とする試験ルールを取り込む。実通信は予約済み `.test` ドメインをループバックへ解決して実行し、ユーザーのブラウザー設定・既存購読・公開ファイルは変更しない。
+
+対象の通常URL、**同じ対象パスの架空署名付きURL**、隣接する非対象パス、決済・OAuth・メディア用の架空署名付きURLを、OFF → ON → OFFで比較する。パスを限定しても、そのパスで署名付きURLが発生すれば署名破損を起こし得るため、対象パスだけを根拠に実サイトへの採用を決定しない。
+
+`scripts/verify_url_param_lab.py` は既存の実HTTPと全域除去の危険性を、`scripts/verify_scoped_param_lab.py` は新しい限定パスの陽性・陰性対照を、CIで別々に検査する。いずれも外部実サイト・FirefoxフルuBOの試験ではなく、CI成功は公開可否を意味しない。新規採用ルール0、正式公開NO_GOを継続する。
