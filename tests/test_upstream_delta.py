@@ -75,9 +75,9 @@ class DeltaScanTests(unittest.TestCase):
 
     def test_parent_domain_expansion_is_flagged_and_not_counted_as_covered(self):
         # An ancestor of an already blocked host is not automatically redundant.
-        text = ("||wetracked.io^$third-party\\n"
-                "||pixel.wetracked.io^$third-party\\n"
-                "||brand-new-review.example^$third-party\\n")
+        text = ("||wetracked.io^$third-party\n"
+                "||pixel.wetracked.io^$third-party\n"
+                "||brand-new-review.example^$third-party\n")
         report = scan(self.profiles, self.evidence, text, "", 10)
         self.assertEqual(report["already_covered_by_local_parent_or_exact"], 1)
         self.assertEqual(report["parent_expansion_candidates"], 1)
@@ -88,11 +88,11 @@ class DeltaScanTests(unittest.TestCase):
         self.assertEqual(report["queue"][0]["host"], "brand-new-review.example")
 
     def test_comment_mention_separated_from_actual_allow_rule(self):
-        tracking = ("||somehost.example^$third-party\\n"
-                    "||anotherhost.example^$third-party\\n")
-        allow = ("! somehost.example is a recorded tracker\\n"
-                 "@@||anotherhost.example^$domain=checkout.example\\n"
-                 "@@||somehost.example-lookalike.org^$domain=foo.test\\n")
+        tracking = ("||somehost.example^$third-party\n"
+                    "||anotherhost.example^$third-party\n")
+        allow = ("! somehost.example is a recorded tracker\n"
+                 "@@||anotherhost.example^$domain=checkout.example\n"
+                 "@@||somehost.example-lookalike.org^$domain=foo.test\n")
         report = scan(self.profiles, self.evidence, tracking, allow, 10)
         self.assertEqual(report["candidate_hosts_with_selected_allowlist_reference"], 2)
         self.assertEqual(report["candidate_hosts_with_selected_allowlist_exception"], 1)
