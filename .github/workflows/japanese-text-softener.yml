@@ -2,6 +2,8 @@ name: Filter list checks
 
 on:
   push:
+    branches:
+      - main
     paths:
       - '*.txt'
       - 'v2/**'
@@ -14,6 +16,10 @@ on:
   pull_request:
 
   workflow_dispatch:
+
+concurrency:
+  group: filter-lists-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 permissions:
   contents: read
