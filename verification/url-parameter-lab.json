@@ -45,5 +45,21 @@
   "added_to_generated_filter_lists": false,
   "publication": "NO_GO",
   "owner_approval": "NEEDS_HUMAN",
-  "conclusion": "Global removeparam=utm_source changes HTTP requests and breaks a synthetic HMAC-signed URL. A narrowly scoped alternative requires real site safety evidence; zero active additions, NO_GO."
+  "conclusion": "Global removeparam=utm_source changes HTTP requests and breaks a synthetic HMAC-signed URL. A narrowly scoped alternative requires real site safety evidence; zero active additions, NO_GO.",
+  "scoped_endpoint_lab": {
+    "result": "ISOLATED_LOCAL_HTTP_OBSERVED",
+    "rule": "||tracking-fixture.test^*/telemetry/collect?$removeparam=utm_source",
+    "environment": "official pinned uBO Lite, isolated Chromium, reserved test domain mapped to local HTTP",
+    "source_script": "scripts/ubol_scoped_param_lab.py",
+    "source_run": "https://github.com/r20942097-hue/s/actions/runs/41072019098",
+    "report_validation_at_source_run": "FAILED_MISSING_FIELD_LATER_FIXED",
+    "target_utm_source": "REMOVED_AND_RESTORED",
+    "adjacent_path": "PRESERVED",
+    "unrelated_signed_checkout_oauth_media": "PRESERVED",
+    "signed_same_endpoint": "BROKEN_SYNTHETIC_HMAC",
+    "real_website_compatibility": "NOT_RUN",
+    "firefox_full_ubo": "NOT_RUN",
+    "approved_for_publication": false,
+    "published_rule_count": 0
+  }
 }
