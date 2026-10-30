@@ -49,3 +49,11 @@
 - 追加の`isolated-import-test.invalid`は純粋なテスト制御用で、配布対象・候補7件には含めない。制御用ホストのDNR一致が0→block→0と可逆に変化することを、実際のuBO Lite拡張に対するChromium仮想通信APIで確認した。
 - `scripts/verify_browser_gates.py` が隔離テスト4系統のレポートと状態を統合。CIのJob Summaryに記録する。現実のサイトへの通信、ログイン・決済・映像の実動作、Firefox上の公式フルuBOはNOT_RUN。
 - `docs/RELEASE_ACCEPTANCE.md` のC4を完成。D～Fは未達。main/既存購読/安定版保全、Draft/NO_GOを維持。
+
+## 2026-10-30｜既定フィルター重複排除方針（最新）
+
+- **7つの旧候補は活動フィルターへ戻さない**。3つはv2/tracking.txt、4つはv2/tracking-extra.txtから除去済み。後者は厳密な`! Status: QUARANTINED_NO_ACTIVE_RULES`付き0ルール文書として残す。verification/filter-candidates.json/quarantineに元出典を保全。mainと既存公開リストは変更しない。
+- scripts/audit_filter_candidates.pyが7件の隔離・活動ルール0件を検証。実uBO Liteのインポート試験は隔離した元証拠を使う実験だけで、PRの活動出力に復活させない。
+- scripts/ubol_stock_gap_probe.pyで固定AdGuardレビュー先頭の低リスク80件を実uBO Lite既定DNRへ読み取り専用照合：既定遮断45、3種通信未一致34、未解決1。これは非代表標本・仮想通信であり、34を安全／追加価値ありと認定しない。
+- 次の審査候補はadtrace.ai、adbrix.io、adtasukaru.com。用途は外部資料で確認したがサービスドメインのため、ホスト全体遮断ではなく個別エンドポイント・サイト正常動作を確認する。
+- 詳細なデータと許容範囲: docs/STOCK_GAP_REVIEW.md、docs/RELEASE_ACCEPTANCE.md。新規活動ルール0、公開NO_GOのまま。
