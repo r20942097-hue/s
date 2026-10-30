@@ -96,8 +96,6 @@ jobs:
     name: browser integration (isolated, no live sites)
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    env:
-      FILTER_UBOL_CACHE_DIR: ${{ runner.temp }}/filter-ubol-official-verified
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -114,14 +112,24 @@ jobs:
       - name: Check Chromium native MV3 DNR browser engine (local fixture only)
         run: python scripts/chromium_dnr_fixture.py --report "$RUNNER_TEMP/chromium-dnr-fixture.json"
       - name: Load official, SHA256-pinned uBO Lite release in isolated Chromium
+        env:
+          FILTER_UBOL_CACHE_DIR: ${{ runner.temp }}/filter-ubol-official-verified
         run: python scripts/ubol_real_addon_fixture.py --report "$RUNNER_TEMP/real-ubol-fixture.json"
       - name: Import held candidate rules into official uBO Lite (localhost only)
+        env:
+          FILTER_UBOL_CACHE_DIR: ${{ runner.temp }}/filter-ubol-official-verified
         run: python scripts/ubol_imported_list_fixture.py --report "$RUNNER_TEMP/ubol-import-fixture.json"
       - name: Screen alternate upstream hosts against stock uBO Lite DNR (read-only)
+        env:
+          FILTER_UBOL_CACHE_DIR: ${{ runner.temp }}/filter-ubol-official-verified
         run: python scripts/ubol_stock_gap_probe.py --limit 80 --report "$RUNNER_TEMP/ubol-stock-gap.json"
       - name: Compare query tracking IDs with stock uBO Lite on synthetic URLs
+        env:
+          FILTER_UBOL_CACHE_DIR: ${{ runner.temp }}/filter-ubol-official-verified
         run: python scripts/ubol_query_param_probe.py --report "$RUNNER_TEMP/ubol-query-param.json"
       - name: Observe actual loopback HTTP query parameters in official uBO Lite
+        env:
+          FILTER_UBOL_CACHE_DIR: ${{ runner.temp }}/filter-ubol-official-verified
         run: python scripts/ubol_local_param_http_probe.py --report "$RUNNER_TEMP/ubol-local-param-http.json"
       - name: Verify reversible browser integration and no-release gates
         run: |
