@@ -37,8 +37,10 @@ jobs:
           fi
       - name: Run filter regression tests
         run: python -m unittest discover -s tests -p 'test_*.py' -v
-      - name: Check stable subscription fidelity (8 pinned public assets)
-        run: python scripts/check_stable_fidelity.py --report "$RUNNER_TEMP/filter-stable-fidelity.json"
+      - name: Fetch pinned immutable baseline Git tree (read-only)
+        run: git fetch --no-tags --depth=1 origin 20a26610db8970abef1bd7016f5f641ce25b7063
+      - name: Check stable subscription fidelity against immutable Git tree
+        run: python scripts/check_stable_fidelity.py --verify-base-tree --report "$RUNNER_TEMP/filter-stable-fidelity.json"
       - name: Validate all filter lists
         run: python scripts/validate_lists.py
       - name: Check generated network lists
