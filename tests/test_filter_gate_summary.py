@@ -77,6 +77,43 @@ class GateSummaryTests(unittest.TestCase):
                 self.assertTrue(any("live-browser" in x for x in self.check()))
                 report["live_site_e2e"] = "NOT_RUN"
 
+    def test_subscription_coverage_matrix_is_checked(self):
+        # Stable and optional filters have different membership by design.
+        self.delta["already_covered_by_local_parent_or_exact"] = 1
+        rows = [{"name": name, "covered_by_exact_or_parent": 1,
+                 "not_covered_by_exact_or_parent": 3}
+                for name in ("ad.txt", "tracking.txt", "v2/ad.txt",
+                             "v2/tracking.txt", "v2/strict.txt",
+                             "v2/tracking-extra.txt", "stable_combined", "v2_balanced")]
+        matrix = {
+            "schema": "filter-subscription-coverage/v1",
+            "independent_comparison": "PASS",
+            "source_host_universe": 4,
+            "publication": "NO_GO",
+            "live_site_e2e": "NOT_RUN",
+            "outputs": rows
+        }
+        self.assertEqual(gather(self.stable, self.candidate, self.delta, self.drift,
+                                matrix=matrix), [])
+        rendered = render(self.stable, self.candidate, self.delta, self.drift,
+                          [], matrix=matrix)
+        self.assertIn("stable_combined", rendered)
+        matrix["outputs"][0]["covered_by_exact_or_parent"] = 2
+        self.assertTrue(any("scope coverage" in x for x in
+                            gather(self.stable, self.candidate, self.delta, self.drift,
+                                   matrix=matrix)))
+        matrix["outputs"][0]["covered_by_exact_or_parent"] = 1
+        matrix["publication"] = "GO"
+        self.assertTrue(any("nonpublishable" in x for x in
+                            gather(self.stable, self.candidate, self.delta, self.drift,
+                                   matrix=matrix)))
+        matrix["publication"] = "NO_GO"
+        matrix["outputs"].pop()
+        matrix["outputs"].pop()
+        self.assertTrue(any("matrix total" in x for x in
+                            gather(self.stable, self.candidate, self.delta, self.drift,
+                                   matrix=matrix)))
+
     def test_missing_metadata_fails_closed(self):
         self.delta["candidate_hosts_with_selected_easyprivacy_full_host_rule"] = None
         self.assertTrue(self.check())
