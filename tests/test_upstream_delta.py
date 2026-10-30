@@ -66,6 +66,28 @@ class DeltaScanTests(unittest.TestCase):
         self.assertEqual([x["host"] for x in report["queue"]],
                          ["a-new.example", "b-new.example"])
 
+    def test_paginated_review_queue_is_complete_and_nonoverlapping(self):
+        hosts = ["f-review.example", "a-review.example", "d-review.example",
+                 "b-review.example", "e-review.example", "c-review.example"]
+        raw = "\\n".join("||" + host + "^$third-party" for host in hosts)
+        pages = [scan(self.profiles, self.evidence, raw, "", limit=2, offset=i)
+                 for i in (0, 2, 4)]
+        seen = [item["host"] for page in pages for item in page["queue"]]
+        self.assertEqual(seen, sorted(hosts))
+        self.assertEqual(len(set(seen)), 6)
+        self.assertTrue(all(p["queue_total"] == 6 for p in pages))
+        self.assertEqual([p["next_offset"] for p in pages], [2, 4, None])
+        self.assertEqual([p["queue_offset"] for p in pages], [0, 2, 4])
+        beyond = scan(self.profiles, self.evidence, raw, "", limit=2, offset=10)
+        self.assertEqual(beyond["queue"], [])
+        self.assertIsNone(beyond["next_offset"])
+        self.assertEqual(beyond["queue_total"], 6)
+
+    def test_invalid_queue_offset_rejected(self):
+        for offset in (-1, 1_000_001, 1.3, True, None):
+            with self.subTest(offset=offset), self.assertRaisesRegex(ValueError, "offset"):
+                scan(self.profiles, self.evidence, "", "", offset=offset)
+
     def test_invalid_limit_or_text_rejected(self):
         for value in (0, 201, -10, 1.5, True):
             with self.subTest(value=value), self.assertRaises(ValueError):
