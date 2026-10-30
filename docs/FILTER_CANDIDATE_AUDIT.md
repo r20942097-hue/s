@@ -62,6 +62,20 @@ Use the new read-only checker to compare the four pinned sources against the two
 
 The report marks each source as `UNCHANGED_CONTENT` or `DRIFT_OBSERVED`, retains pinned and observed Git blob SHA identities and indicates `rule_adoption: FORBIDDEN`. Source changes are expected over time and **do not** automatically update `verification/*.json`, filter rules or release status. A network or schema error returns an unknown/error state instead of silently reporting unchanged content. CI checks it without committing the report.
 
+## Immutable stable asset guard
+
+The read-only `verification/stable-fidelity-lock.json` pins eight legacy/main public assets to their **exact Git blob identities at main commit `20a26610`** (root `ad.txt`, `tracking.txt`, `ad-ubo.txt`, the two Japanese font filters, the optional Twitch rules, and `v2/ad.txt` plus `v2/strict.txt`). It deliberately does **not** pin the separately proposed `v2/tracking.txt` candidate or the new opt-in extra file. CI checks content bytes, missing files and symlinks:
+
+    python scripts/check_stable_fidelity.py
+
+This is an accidental-release-regression check, not a signature or immutable external approval. PR authors can edit the guard's registry and code; any future intentional stable change must be reviewed by the owner and documented with a new pin. Changes to the lock itself need human review. This guard never pushes or publishes.
+
+## More precise exception and independent baseline interpretation
+
+- ABP/uBO `@@||request-host^` exception targets can cover host subdomains; candidate host names are checked against literal target ancestors. The `domain=` option is the **site where a rule applies**, not the blocked/allowed request host. Comments and incidental tokens are retained only as low-confidence mentions.
+- Selected EasyPrivacy observations separate whole-host blocking shapes (`||host^`, `||host^$third-party`) from `script`, path or other option-restricted references; the latter are **not** counted as complete coverage.
+- Neither parse models the full filter syntax. Runtime behavior, scoped exceptions, engine differences and baseline list activation remain NOT_RUN or out of scope.
+
 ## Quality gates
 1. All accepted rules must remain narrow and third-party-only. No broad exception weakening and no hidden auto-promote.
 2. Existing network rules and stable paths remain byte-identical.
