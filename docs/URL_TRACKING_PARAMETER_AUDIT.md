@@ -22,6 +22,27 @@ scripts/ubol_local_param_http_probe.py は予約済み tracking-fixture.test を
 
 外部サイトにアクセスせず、ユーザーのブラウザープロファイルは変更せず、ローカルの一時環境のみで行う。この結果は本番EC・ログイン・動画・決済サイトの互換性を保証しない。
 
+## 第2段階の実測結果・第3段階の試験用ルール
+
+2026-10-30の[CI実測](https://github.com/r20942097-hue/s/actions/runs/41064756619)では、同じローカルHTTPサイトで**公式uBO Liteあり／なし**を比較した結果、次のように観測された。
+
+| 実HTTPで受信したパラメーター | 公式uBO Lite既定状態 |
+|---|---|
+| fbclid、gclid | 既定で除去された |
+| utm_source | そのまま残った |
+| state、code、X-Amz-Signature | すべて保持された |
+
+仮想通信のDNR照合20件では、fbclid/gclid/msclkidに対する2通信種別の計6件がredirectへ一致。utm_sourceとutm_campaignはredirect一致なし。この結果はループバック環境での観測であり、インターネット上の個別サイトへの適用や安全性は未確定。
+
+**第3段階（新実装）** scripts/ubol_param_import_lab.py は、公式uBO Liteに試験用の単一ルール「removeparam=utm_source」をローカルHTTPから取り込み、同じローカルサイトで実HTTPによる削除と解除後の復帰を確認する。
+
+- 登録前：utm_sourceがURLに残る。
+- 試験ルール登録後：utm_sourceが削除される。
+- リスト登録解除後：utm_sourceが再び残る。
+- fbclid/gclidの既定除去は維持。state・code・X-Amz-Signature単独の保持も確認する。
+
+**この実験は一般サイト向けの新しいルールを承認するものではない。** 全URLへ適用する除去ルールは、署名の計算対象にutm_sourceが含まれるサイトでは検証・決済・認証を破損し得る。**utm_sourceと実際の署名が同居するURL**などの複合条件、Firefox版uBO、実サイトE2Eは未検証。一般公開せず、[検査記録](../verification/url-parameter-lab.json)に保全する。
+
 ## 採用条件
 
 - 既定uBO Lite／Firefox uBO／AdGuardと重複する除去処理は追加しない。
