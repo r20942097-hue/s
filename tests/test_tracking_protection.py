@@ -51,6 +51,33 @@ class TrackingProtectionTests(unittest.TestCase):
             "||sync.adkernel.com^$third-party")
         self.assertTrue(any("archived stock-overlap" in x for x in self.audit()[0]))
 
+    def test_unrepresented_v2_rule_removal_is_rejected(self):
+        self.profiles["rule_sets"]["privacy-v2"]["rules"].remove(
+            "||analytics.tiktok.com^$third-party")
+        self.assertTrue(any("protected tracking rule removed" in x
+                            for x in self.audit()[0]))
+
+    def test_same_count_substitution_does_not_hide_tracking_loss(self):
+        active = self.profiles["rule_sets"]["privacy-v2"]["rules"]
+        active.remove("||analytics.tiktok.com^$third-party")
+        active.append("||made-up-tracker.invalid^$third-party")
+        self.assertTrue(any("protected tracking rule removed" in x
+                            for x in self.audit()[0]))
+
+    def test_truncated_or_rewritten_baseline_fails(self):
+        self.policy["protected_rule_baseline"]["candidate"].pop()
+        self.assertTrue(any("protected tracking baseline invalid" in x
+                            for x in self.audit()[0]))
+        self.policy["protected_rule_baseline"]["candidate"] = ["x"] * 38
+        self.assertTrue(any("protected tracking baseline invalid" in x
+                            for x in self.audit()[0]))
+
+    def test_duplicate_active_rule_fails(self):
+        active = self.profiles["rule_sets"]["privacy-v2"]["rules"]
+        active.append(active[0])
+        self.assertTrue(any("duplicate active tracking rules" in x
+                            for x in self.audit()[0]))
+
     def test_quarantine_cannot_gain_active_rules(self):
         self.profiles["rule_sets"]["privacy-optional-20261030"]["rules"].append(
             "||new-unreviewed-host.example^$third-party")

@@ -70,6 +70,27 @@ def audit(profiles, policy, evidence, rendered):
         if path not in rendered or active_lines(rendered[path]) != active:
             errors.append("anti-tracking generated file differs from source: " + path)
         rules[key] = active
+    # Preserve every previously active rule, not only category representatives.
+    # New rules may be reviewed separately; silent removal/substitution is forbidden.
+    baseline = policy.get("protected_rule_baseline")
+    if not isinstance(baseline, dict) or set(baseline) != {"stable", "candidate"}:
+        errors.append("protected tracking rule baseline missing")
+    else:
+        for scope, expected_count in (("stable", 9), ("candidate", 38)):
+            protected = baseline.get(scope)
+            current = rules.get(scope, [])
+            if (not isinstance(protected, list)
+                    or len(protected) != expected_count
+                    or any(not isinstance(item, str) or not item for item in protected)
+                    or len(set(protected)) != expected_count):
+                errors.append("protected tracking baseline invalid: " + scope)
+                continue
+            if len(current) != len(set(current)):
+                errors.append("duplicate active tracking rules: " + scope)
+            missing = sorted(set(protected) - set(current))
+            if missing:
+                errors.append("protected tracking rule removed: " + scope
+                              + " (" + ", ".join(missing) + ")")
     families = policy.get("observed_rule_families")
     required_groups = {
         "third_party_analytics", "session_replay",

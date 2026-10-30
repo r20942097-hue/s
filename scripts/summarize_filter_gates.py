@@ -9,7 +9,7 @@ from pathlib import Path
 import sys
 
 
-def gather(stable, candidate, delta, drift, matrix=None):
+def gather(stable, candidate, delta, drift, matrix=None, tracking=None):
     errors = []
     if stable.get("schema") != "filter-stable-fidelity-check/v1" or stable.get("status") != "PASS":
         errors.append("stable byte-fidelity gate not PASS")
@@ -48,6 +48,20 @@ def gather(stable, candidate, delta, drift, matrix=None):
         errors.append("unexpected live-browser E2E status")
     if candidate.get("publication") != "NEEDS_HUMAN":
         errors.append("candidate publication must require owner")
+    if tracking is not None:
+        if (tracking.get("schema") != "filter-tracking-protection-check/v1"
+                or tracking.get("status") != "PASS"
+                or tracking.get("tracking_core_rule_count") != 9
+                or tracking.get("tracking_v2_rule_count") != 38
+                or tracking.get("active_experimental_rule_count") != 0
+                or tracking.get("protected_feature_families") != 4
+                or tracking.get("stock_overlaps_quarantined") != 7
+                or tracking.get("tracking_url_parameter_stripping")
+                   != "NOT_IMPLEMENTED_BY_THIS_LIST"
+                or tracking.get("live_site_e2e") != "NOT_RUN"
+                or tracking.get("publication") != "NO_GO"
+                or tracking.get("errors")):
+            errors.append("tracking protection preservation gate not PASS")
     if matrix is not None:
         if (matrix.get("schema") != "filter-subscription-coverage/v1"
                 or matrix.get("independent_comparison") != "PASS"
@@ -115,7 +129,7 @@ def gather(stable, candidate, delta, drift, matrix=None):
     return errors
 
 
-def render(stable, candidate, delta, drift, errors, matrix=None):
+def render(stable, candidate, delta, drift, errors, matrix=None, tracking=None):
     status = "FAIL" if errors else "PASS (automated only)"
     lines = [
         "## Filter candidate CI quality gate",
@@ -135,6 +149,17 @@ def render(stable, candidate, delta, drift, errors, matrix=None):
         "",
         "The figures do not establish actual user-visible blocking, accuracy on live websites, installed-list coverage or permission to publish. CI logs and summaries have finite retention."
     ]
+    if tracking is not None:
+        lines.extend([
+            "",
+            "### Tracking prevention retention (not live-site efficacy)",
+            "",
+            "| Stable tracking rules | v2 tracking rules | Experimental active rules | Retired stock duplicates |",
+            "|---:|---:|---:|---:|",
+            f"| {tracking.get('tracking_core_rule_count', '?')} | {tracking.get('tracking_v2_rule_count', '?')} | {tracking.get('active_experimental_rule_count', '?')} | {tracking.get('stock_overlaps_quarantined', '?')} |",
+            "",
+            "All original active tracking rules are protected against deletion; URL-parameter removal, CNAME and fingerprinting extensions remain research-only."
+        ])
     if matrix is not None and isinstance(matrix.get("proposed_candidate_evidence"), list):
         rows = matrix["proposed_candidate_evidence"]
         lines.extend(["", "### Seven RETIRED redundant rules: source-history reference only", "",
@@ -173,6 +198,8 @@ def main():
         parser.add_argument("--" + name, type=Path, required=True)
     parser.add_argument("--matrix", type=Path,
                         help="optional per-subscription matrix (CI supplies a verified one)")
+    parser.add_argument("--tracking", type=Path, required=True,
+                        help="mandatory tracking-protection audit report")
     parser.add_argument("--github-summary", type=Path, help="append markdown to GitHub job summary")
     args = parser.parse_args()
     try:
@@ -180,8 +207,9 @@ def main():
         for name in ("stable", "candidate", "delta", "drift"):
             reports.append(json.loads(getattr(args, name).read_text(encoding="utf-8")))
         matrix = json.loads(args.matrix.read_text(encoding="utf-8")) if args.matrix else None
-        errors = gather(*reports, matrix=matrix)
-        markdown = render(*reports, errors, matrix=matrix)
+        tracking = json.loads(args.tracking.read_text(encoding="utf-8"))
+        errors = gather(*reports, matrix=matrix, tracking=tracking)
+        markdown = render(*reports, errors, matrix=matrix, tracking=tracking)
         if args.github_summary:
             with args.github_summary.open("a", encoding="utf-8") as output:
                 output.write(markdown)

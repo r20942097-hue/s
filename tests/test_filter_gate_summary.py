@@ -45,6 +45,32 @@ class GateSummaryTests(unittest.TestCase):
         self.assertIn("NOT_RUN", s)
         self.assertIn("NO_GO", s)
 
+    def test_tracking_preservation_report_is_required_by_ci_aggregator(self):
+        tracking = {
+            "schema": "filter-tracking-protection-check/v1",
+            "status": "PASS", "tracking_core_rule_count": 9,
+            "tracking_v2_rule_count": 38, "active_experimental_rule_count": 0,
+            "protected_feature_families": 4, "stock_overlaps_quarantined": 7,
+            "tracking_url_parameter_stripping": "NOT_IMPLEMENTED_BY_THIS_LIST",
+            "live_site_e2e": "NOT_RUN", "publication": "NO_GO", "errors": []
+        }
+        self.assertEqual(gather(self.stable, self.candidate, self.delta,
+                                self.drift, tracking=tracking), [])
+        summary = render(self.stable, self.candidate, self.delta,
+                         self.drift, [], tracking=tracking)
+        self.assertIn("Tracking prevention retention", summary)
+        self.assertIn("| 9 | 38 | 0 | 7 |", summary)
+        for field, unsafe in (("tracking_v2_rule_count", 37),
+                              ("status", "FAIL"),
+                              ("live_site_e2e", "PASS"),
+                              ("publication", "GO")):
+            with self.subTest(field=field):
+                bad = dict(tracking, **{field: unsafe})
+                self.assertTrue(any("tracking protection preservation" in x
+                                    for x in gather(self.stable, self.candidate,
+                                                    self.delta, self.drift,
+                                                    tracking=bad)))
+
     def test_candidate_evidence_not_verified_fails(self):
         self.candidate["upstream_snapshot"] = "NOT_RUN"
         self.assertTrue(any("candidate source" in x for x in self.check()))
