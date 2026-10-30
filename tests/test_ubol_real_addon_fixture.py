@@ -1,0 +1,93 @@
+"""Safe inspection of real, officially hash-pinned extension fixture assets."""
+from io import BytesIO
+import json
+from pathlib import Path
+import stat
+import sys
+import unittest
+from zipfile import ZipFile, ZipInfo, ZIP_DEFLATED
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
+from ubol_real_addon_fixture import inspect_zip, validate_lock, verify_archive_bytes, LOCK_PATH
+
+
+class RealUBOLReleaseTests(unittest.TestCase):
+    def setUp(self):
+        self.lock = json.loads(LOCK_PATH.read_text(encoding="utf-8"))
+
+    def mkzip(self, names):
+        output = BytesIO()
+        with ZipFile(output, "w", ZIP_DEFLATED) as zipfile:
+            for name, content in names:
+                zipfile.writestr(name, content)
+        output.seek(0)
+        return ZipFile(output, "r")
+
+    def test_pinned_release_governance_accepts_approved_sha(self):
+        validate_lock(self.lock)
+        self.assertEqual(self.lock["publication"], "NO_GO")
+        self.assertTrue(self.lock["never_commit_archive"])
+        self.assertEqual(len(self.lock["sha256"]), 64)
+
+    def test_archive_integrity_rejects_wrong_lengths_before_decompression(self):
+        with self.assertRaisesRegex(ValueError, "asset length"):
+            verify_archive_bytes(b"bad", self.lock)
+
+    def test_unrecognized_release_identity_fails(self):
+        for key, value in [("asset_url", "https://example.com/malicious.zip"),
+                           ("sha256", "0" * 64),
+                           ("asset_name", "wrong.zip"),
+                           ("never_commit_archive", False),
+                           ("publication", "GO")]:
+            with self.subTest(key=key):
+                changed = dict(self.lock)
+                changed[key] = value
+                with self.assertRaisesRegex(ValueError, "unapproved"):
+                    validate_lock(changed)
+
+    def test_single_nested_manifest_supported_without_extraction(self):
+        with self.mkzip([("build/manifest.json", "{}"),
+                         ("build/rules.json", "[]")]) as archive:
+            self.assertEqual(str(inspect_zip(archive, self.lock)), "build/manifest.json")
+
+    def test_path_traversal_is_rejected(self):
+        for bad in ("../manifest.json", "/manifest.json", "a/../manifest.json",
+                    r"a\manifest.json", "C:/manifest.json"):
+            with self.subTest(bad=bad), self.mkzip([(bad, "{}")]) as archive:
+                with self.assertRaisesRegex(ValueError, "unsafe"):
+                    inspect_zip(archive, self.lock)
+
+    def test_duplicate_archive_names_and_manifests_fail(self):
+        with self.mkzip([("manifest.json", "{}"), ("manifest.json", "{}")]) as archive:
+            with self.assertRaisesRegex(ValueError, "duplicate"):
+                inspect_zip(archive, self.lock)
+        with self.mkzip([("manifest.json", "{}"),
+                         ("nested/manifest.json", "{}")]) as archive:
+            with self.assertRaisesRegex(ValueError, "exactly one"):
+                inspect_zip(archive, self.lock)
+
+    def test_symlink_member_rejected(self):
+        out = BytesIO()
+        with ZipFile(out, "w") as archive:
+            symlink = ZipInfo("manifest.json")
+            symlink.create_system = 3
+            symlink.external_attr = (stat.S_IFLNK | 0o777) << 16
+            archive.writestr(symlink, "outside")
+        out.seek(0)
+        with ZipFile(out, "r") as archive:
+            with self.assertRaisesRegex(ValueError, "symlink"):
+                inspect_zip(archive, self.lock)
+
+    def test_bad_sizes_and_member_caps_fail(self):
+        changed = dict(self.lock)
+        changed["max_total_extracted_bytes"] = 150000000
+        with self.mkzip([("manifest.json", "x" * 1024)]) as archive:
+            with self.assertRaisesRegex(ValueError, "unapproved"):
+                inspect_zip(archive, {**changed, "max_total_extracted_bytes": 5})
+        with self.mkzip([("missing.txt", "ok")]) as archive:
+            with self.assertRaisesRegex(ValueError, "exactly one"):
+                inspect_zip(archive, self.lock)
+
+
+if __name__ == "__main__":
+    unittest.main()
