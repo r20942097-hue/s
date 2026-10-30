@@ -28,3 +28,10 @@
 - 開発優先度: 既存テストがPASSしたら無制限な追加ルールの収集は中断。実サイト検証と不具合対応を優先。候補を安全と断言しない。
 - 本ブランチでの検証: python -m unittest discover -s tests -p 'test_*.py' -v、python scripts/validate_lists.py、python scripts/generate_lists.py --check、GitHub Actions「Filter list checks」（test / engine / browser fixture）。
 - **完成/公開**と**合成テスト成功**を混同しない。後続AIはPRの最新HEAD・CI runの結論を毎回取得し、古いメモリのPASS件数をそのまま引用しない。
+
+## 2026-10-30｜公式uBO Lite実物起動ゲート（追加）
+
+- verification/ubol-release-lock.json は公式リリース2026.1026.1812のChromium ZIP（9,009,606 B）とSHA-256を固定。実行時のみ取得し、ZIP自体はGitに追加しない。
+- scripts/ubol_real_addon_fixture.py はChromiumの一時プロファイルで **改変のない実際のuBO Lite** を起動して、MV3サービスワーカーおよび標準DNR 6ルールセット有効化を確認。CI初回はローカライズ済み表示名とManifestの__MSGキーを比較して誤失敗したため修正し、起動PASSを取得済み。
+- 開発専用testMatchOutcomeによる7候補の仮想通信への既定ルール照合は、使用可能な場合のみ「一致したルール」扱い（実際の遮断とは区別）。本件は実uBO Liteへ候補リストをインポートしておらず、Firefox実uBO・本番サイトも未検証。
+- docs/RELEASE_ACCEPTANCE.md を正本とし、C3とD/E/Fを混同しない。Draft PR #14はNO_GO、mainおよび公開URLは変更しない。
