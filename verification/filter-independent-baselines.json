@@ -1,0 +1,21 @@
+{
+  "schema": "filter-independent-baselines/v1",
+  "reviewed_at": "2026-10-30",
+  "purpose": "Cross-check only selected independent EasyPrivacy network-rule sources. A match is NOT proof of installed-list coverage; an absence is NOT proof of safety or novelty.",
+  "sources": [
+    {
+      "repository": "easylist/easylist",
+      "commit": "61ef31cb407c2214452f84802b25f760db11020b",
+      "path": "easyprivacy/easyprivacy_trackingservers_thirdparty.txt",
+      "git_blob_sha": "b3f08c333e2d612967f4f4a6c9404f47f248a6c7"
+    },
+    {
+      "repository": "easylist/easylist",
+      "commit": "61ef31cb407c2214452f84802b25f760db11020b",
+      "path": "easyprivacy/easyprivacy_trackingservers_international.txt",
+      "git_blob_sha": "30f619393a010ae527bd3ac5de24ca8bf8c37401"
+    }
+  ],
+  "auto_promote": false,
+  "live_site_e2e": "NOT_RUN"
+}
