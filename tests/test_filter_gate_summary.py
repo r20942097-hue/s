@@ -17,7 +17,7 @@ class GateSummaryTests(unittest.TestCase):
         }
         self.candidate = {
             "record_schema": "filter-candidates/v1", "metadata": "PASS",
-            "upstream_snapshot": "PASS", "candidate_count": 4,
+            "upstream_snapshot": "PASS", "candidate_count": 0, "quarantined_count": 7,
             "errors": [], "publication": "NEEDS_HUMAN", "live_site_e2e": "NOT_RUN"
         }
         self.delta = {
@@ -92,13 +92,15 @@ class GateSummaryTests(unittest.TestCase):
             "publication": "NO_GO",
             "live_site_e2e": "NOT_RUN",
             "outputs": rows,
-            "proposed_candidate_count": 7,
+            "proposed_candidate_count": 0, "retired_stock_overlap_count": 7,
             "proposed_candidate_evidence": [
                 {
                     "host": "candidate-%d.example" % i,
                     "output": "v2/tracking.txt" if i < 3 else "v2/tracking-extra.txt",
                     "selected_easyprivacy_match_shape": None,
-                    "adopted_to_stable": False,
+                    "adopted_to_stable": False, "active_rule": False,
+                    "status": "RETIRED_STOCK_OVERLAP",
+                    "stock_ubol_block_action_tested": True,
                     "real_site_compatibility": "NOT_RUN",
                     "incremental_blocking_value": "NOT_ESTABLISHED"
                 } for i in range(7)
@@ -136,7 +138,9 @@ class GateSummaryTests(unittest.TestCase):
             {"host": "candidate-%d.example" % i,
              "output": "v2/tracking.txt" if i < 3 else "v2/tracking-extra.txt",
              "selected_easyprivacy_match_shape": None,
-             "adopted_to_stable": False,
+             "adopted_to_stable": False, "active_rule": False,
+                    "status": "RETIRED_STOCK_OVERLAP",
+                    "stock_ubol_block_action_tested": True,
              "real_site_compatibility": "NOT_RUN",
              "incremental_blocking_value": "NOT_ESTABLISHED"} for i in range(7)
         ]
@@ -144,7 +148,7 @@ class GateSummaryTests(unittest.TestCase):
                   "independent_comparison": "PASS",
                   "source_host_universe": 4, "publication": "NO_GO",
                   "live_site_e2e": "NOT_RUN",
-                  "outputs": rows, "proposed_candidate_count": 7,
+                  "outputs": rows, "proposed_candidate_count": 0, "retired_stock_overlap_count": 7,
                   "proposed_candidate_evidence": evidence}
         self.assertEqual(gather(self.stable, self.candidate, self.delta,
                                 self.drift, matrix=matrix), [])
