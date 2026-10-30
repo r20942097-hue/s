@@ -50,6 +50,12 @@
 - `scripts/verify_browser_gates.py` が隔離テスト4系統のレポートと状態を統合。CIのJob Summaryに記録する。現実のサイトへの通信、ログイン・決済・映像の実動作、Firefox上の公式フルuBOはNOT_RUN。
 - `docs/RELEASE_ACCEPTANCE.md` のC4を完成。D～Fは未達。main/既存購読/安定版保全、Draft/NO_GOを維持。
 
+## 2026-10-30｜utm_source広域除去の署名破損を実測（最新）
+
+- CI run 41066213386：公式uBO Liteに全URL向け試験用removeparam=utm_sourceをインポートし、予約済み.testローカルHTTP上のHMAC署名を検査。登録前PASS→グローバル除去中BROKEN→解除後PASSを確認。個別のstate/code/X-Amz-Signatureは保持されても、署名の計算対象にutm_sourceが含まれる場合は破損する。
+- **グローバル除去ルールを活動／公開リストに採用しない**。後続の対象は追跡専用ホスト／パスに限定し、実サイトの正・負の対照、署名URL併用試験を行う。Firefox版uBOや実サイト互換性はまだNOT_RUN。
+- verification/url-parameter-lab.jsonとdocs/URL_TRACKING_PARAMETER_AUDIT.mdに証拠保存。正式公開NO_GO。
+
 ## 2026-10-30｜URLパラメーター実検証と安全な追加候補（最新）
 
 - 公式uBO Lite 2026.1026.1812に対して仮想20ケース＋予約済み.testホスト上の実HTTPを実施。stock既定でfbclid/gclid除去・utm_source保持、個別のstate/code/X-Amz-Signature保持を確認。
