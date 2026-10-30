@@ -12,7 +12,7 @@ import sys
 
 from audit_filter_candidates import ROOT, fetch_pinned, read_json
 from generate_lists import valid_hostname
-from independent_baseline import fetch_baselines, observed_network_hosts, observed_reference
+from independent_baseline import fetch_baselines, observed_network_hosts, observed_scope
 
 RULE = re.compile(r"\|\|([a-z0-9.-]+)\^\$third-party\Z")
 FULL_RULE = re.compile(r"\|\|([a-z0-9.-]+)\^\$third-party\Z")
@@ -20,6 +20,9 @@ PARTIAL_RULE = re.compile(r"\|\|([a-z0-9.-]+)(?:\^|/)")
 # Conservative literal-host tokens; regex-escaped and wildcard references are NOT
 # decoded and must remain outside the claims of this limited allowlist search.
 HOST_TOKEN = re.compile(r"(?<![A-Za-z0-9_.-])([A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)+)(?![A-Za-z0-9_.-])")
+# Only an explicitly hostname-anchored exception has a clear request target.
+# The domain= filter option specifies where a rule applies, NOT its request host.
+EXCEPTION_TARGET = re.compile(r"^@@\|\|([a-z0-9.-]+)(?:\^|/)")
 
 
 def filter_hosts(profiles):
@@ -57,15 +60,22 @@ def coverage(host, existing):
 
 
 def allowlist_index(text):
-    """Single-pass index for *literal* host appearances; never equate with safety."""
-    found = defaultdict(lambda: {"mentions": [], "exception_rules": []})
+    """Single-pass literal-reference and anchored-exception-target indexes.
+
+    'mentions' includes comments / $domain= applicability tokens and is *not*
+    a blocking or allow rule verdict. 'targets' only records the request host
+    following @@||host^ or @@||host/path; parent-host exceptions are looked
+    up by the scanner. This does not evaluate types, paths or domain options.
+    """
+    mentions = defaultdict(list)
+    targets = defaultdict(list)
     for line_no, line in enumerate(text.splitlines(), 1):
-        hosts = {match.group(1).lower() for match in HOST_TOKEN.finditer(line)}
-        for host in hosts:
-            found[host]["mentions"].append(line_no)
-            if line.lstrip().startswith("@@"):
-                found[host]["exception_rules"].append(line_no)
-    return found
+        for host in {match.group(1).lower() for match in HOST_TOKEN.finditer(line)}:
+            mentions[host].append(line_no)
+        match = EXCEPTION_TARGET.match(line.lstrip())
+        if match is not None and valid_hostname(match.group(1)):
+            targets[match.group(1)].append(line_no)
+    return mentions, targets
 
 
 def scan(profiles, evidence, tracking_text, allowlist_text, limit=40, baseline_sources=None, offset=0):
@@ -77,7 +87,7 @@ def scan(profiles, evidence, tracking_text, allowlist_text, limit=40, baseline_s
         raise ValueError("upstream snapshots must decode as text")
     source = evidence["sources"]["tracking"]
     existing = filter_hosts(profiles)
-    references = allowlist_index(allowlist_text)
+    references, exception_targets = allowlist_index(allowlist_text)
     independent = observed_network_hosts(baseline_sources) if baseline_sources is not None else None
     also_seen_independently = 0
     reviewed = set()
@@ -88,6 +98,9 @@ def scan(profiles, evidence, tracking_text, allowlist_text, limit=40, baseline_s
     restricted_expansions = 0
     with_references = 0
     with_exception_rules = 0
+    independent_full_scope = 0
+    independent_restricted_scope = 0
+    with_ancestor_exceptions = 0
     for line_no, line in enumerate(tracking_text.splitlines(), 1):
         m = RULE.fullmatch(line.strip())
         if m is None:
@@ -105,16 +118,27 @@ def scan(profiles, evidence, tracking_text, allowlist_text, limit=40, baseline_s
             expanded += 1
         elif status == "expands-existing-restricted":
             restricted_expansions += 1
-        evidence_rows = references.get(host, {"mentions": [], "exception_rules": []})
-        mentions = evidence_rows["mentions"]
-        exceptions = evidence_rows["exception_rules"]
+        parts = host.split(".")
+        parents = [".".join(parts[i:]) for i in range(len(parts) - 1)]
+        ancestor_exception_lines = {
+            n for parent in parents[1:] for n in exception_targets.get(parent, [])
+        }
+        exceptions = sorted({n for parent in parents for n in exception_targets.get(parent, [])})
+        mentions = sorted(set(references.get(host, [])) | set(exceptions))
         if mentions:
             with_references += 1
         if exceptions:
             with_exception_rules += 1
-        baseline_reference = observed_reference(host, independent) if independent is not None else None
-        if baseline_reference:
+        if ancestor_exception_lines:
+            with_ancestor_exceptions += 1
+        baseline_match = observed_scope(host, independent) if independent is not None else None
+        baseline_reference = baseline_match["path"] if baseline_match else None
+        if baseline_match:
             also_seen_independently += 1
+            if baseline_match["scope"] == "full":
+                independent_full_scope += 1
+            else:
+                independent_restricted_scope += 1
         flags = []
         if status == "expands-existing-child":
             flags.append("parent_domain_expansion")
@@ -122,6 +146,8 @@ def scan(profiles, evidence, tracking_text, allowlist_text, limit=40, baseline_s
             flags.append("type_or_path_scope_expansion")
         if baseline_reference:
             flags.append("selected_independent_easyprivacy_reference")
+        if ancestor_exception_lines:
+            flags.append("selected_allowlist_ancestor_exception")
         if exceptions:
             flags.append("selected_allowlist_exception")
         elif mentions:
@@ -132,8 +158,11 @@ def scan(profiles, evidence, tracking_text, allowlist_text, limit=40, baseline_s
                            + source["commit"] + "/" + source["path"] + "#L" + str(line_no)),
             "coverage": status,
             "selected_independent_easyprivacy_reference": baseline_reference,
+            "selected_independent_easyprivacy_scope": baseline_match["scope"] if baseline_match else None,
+            "selected_independent_easyprivacy_matched_host": baseline_match["matched_host"] if baseline_match else None,
             "selected_allowlist_references": mentions[:10],
             "selected_allowlist_exception_lines": exceptions[:10],
+            "selected_allowlist_ancestor_exception_lines": sorted(ancestor_exception_lines)[:10],
             "risk_flags": flags,
             "needs_manual_review": True,
             "status": "REVIEW_REQUIRED",
@@ -161,9 +190,12 @@ def scan(profiles, evidence, tracking_text, allowlist_text, limit=40, baseline_s
         "new_candidate_hosts": len(queue),
         "candidate_hosts_with_selected_allowlist_reference": with_references,
         "candidate_hosts_with_selected_allowlist_exception": with_exception_rules,
+        "candidate_hosts_with_ancestor_exception_target": with_ancestor_exceptions,
         "candidate_hosts_without_selected_allowlist_literal_reference": len(queue)-with_references,
         "selected_independent_easyprivacy_comparison": "PASS" if independent is not None else "NOT_RUN",
         "candidate_hosts_also_observed_in_selected_easyprivacy": also_seen_independently if independent is not None else None,
+        "candidate_hosts_with_selected_easyprivacy_full_host_rule": independent_full_scope if independent is not None else None,
+        "candidate_hosts_with_selected_easyprivacy_scoped_rule_only": independent_restricted_scope if independent is not None else None,
         "candidate_hosts_not_observed_in_selected_easyprivacy": len(queue)-also_seen_independently if independent is not None else None,
         "queue_limit": limit,
         "queue_offset": offset,
@@ -172,10 +204,13 @@ def scan(profiles, evidence, tracking_text, allowlist_text, limit=40, baseline_s
         "queue": page,
         "limitations": [
             "Local-only coverage: not equivalent to installed EasyList, EasyPrivacy or AdGuard even when independent cross-check is enabled.",
-            "Literal-host allowlist scan: regex-escaped, wildcard and semantic exceptions are not evaluated.",
+            "Only literal @@||host^ or @@||host/path request targets are considered possible allow exceptions; $domain applicability and comments are mentions only.",
+            "Parent-domain anchored exceptions may apply to candidate subdomains, but path/type/domain applicability is not evaluated.",
+            "Regex-escaped, wildcard and semantic exceptions are not evaluated.",
             "Only exact ||host^$third-party from local profiles is accepted as complete coverage; other rule scopes require manual review.",
             "Not all network filter options or first-party/CNAME behaviors are analyzed.",
-            "Independent cross-check only reads two named EasyPrivacy source files. Excludes other EasyPrivacy rules and other blocker configurations.",
+            "Independent cross-check only reads two named EasyPrivacy source files. Full-host vs scoped rules are distinguished, not simulated.",
+            "Excludes other EasyPrivacy rules, exceptions and other blocker configurations.",
             "No real-browser or production-site tests."
         ],
         "publication": "NO_GO",
@@ -235,6 +270,8 @@ def main():
           "with selected allowlist exceptions;",
           "EasyPrivacy crosscheck:", report["selected_independent_easyprivacy_comparison"],
           "; selected EasyPrivacy overlap:", report["candidate_hosts_also_observed_in_selected_easyprivacy"],
+          "(full:", report["candidate_hosts_with_selected_easyprivacy_full_host_rule"],
+          "scoped:", report["candidate_hosts_with_selected_easyprivacy_scoped_rule_only"], ")",
           "; review queue:", len(report["queue"]), "at", report["queue_offset"],
           "; next:", report["next_offset"],
           "; NO_GO for auto-promotion")
