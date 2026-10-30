@@ -8,6 +8,7 @@ import hashlib
 import json
 from pathlib import Path
 import re
+import subprocess
 import sys
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -39,9 +40,47 @@ def validate_manifest(manifest):
             raise ValueError("invalid pinned Git blob: " + path)
 
 
-def verify(root, manifest):
+def pinned_git_tree(root, manifest):
+    """Read independent blob identities from a fixed Git commit object.
+
+    Unlike the editable lock manifest, the referenced Git tree cannot be
+    rewritten without changing the historical commit's identity.
+    """
+    validate_manifest(manifest)
+    args = ["git", "-C", str(root), "ls-tree", "-rz", "--full-tree",
+            manifest["baseline_commit"], "--", *sorted(FILES)]
+    process = subprocess.run(args, capture_output=True, check=False, timeout=20)
+    if process.returncode:
+        raise ValueError("pinned base commit is not a readable Git tree")
+    observed = {}
+    for entry in process.stdout.split(b"\0"):
+        if not entry:
+            continue
+        try:
+            metadata, encoded_path = entry.split(b"\t", 1)
+            mode, kind, sha = metadata.split(b" ")
+            name = encoded_path.decode("utf-8")
+            digest = sha.decode("ascii")
+        except (UnicodeDecodeError, ValueError) as exc:
+            raise ValueError("malformed Git tree entry") from exc
+        if name not in FILES or mode != b"100644" or kind != b"blob" or not SHA40.fullmatch(digest):
+            raise ValueError("unexpected or non-regular protected asset in base tree")
+        observed[name] = digest
+    if set(observed) != FILES:
+        raise ValueError("missing protected assets in pinned Git tree")
+    return observed
+
+
+def verify(root, manifest, base_tree=None):
     validate_manifest(manifest)
     errors = []
+    if base_tree is not None:
+        if not isinstance(base_tree, dict) or set(base_tree) != FILES:
+            errors.append("missing or invalid independent Git base tree")
+        else:
+            for path in sorted(FILES):
+                if base_tree[path] != manifest["files"][path]:
+                    errors.append(path + ": editable pin conflicts with independent Git base tree")
     identities = {}
     root = root.resolve()
     for name, pinned in sorted(manifest["files"].items()):
@@ -63,6 +102,7 @@ def verify(root, manifest):
                     "protected_asset_count": len(manifest["files"]),
                     "verified_asset_count": len(identities),
                     "baseline_commit": manifest["baseline_commit"],
+                    "independent_base_tree": "PASS" if base_tree is not None and not any("base tree" in err for err in errors) else "NOT_RUN" if base_tree is None else "FAIL",
                     "publication_hold": True, "live_site_e2e": "NOT_RUN",
                     "status": "FAIL" if errors else "PASS",
                     "errors": errors}
@@ -71,10 +111,13 @@ def verify(root, manifest):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--report", type=Path, help="optional JSON report")
+    parser.add_argument("--verify-base-tree", action="store_true",
+                        help="cross-check editable pins against immutable Git tree; requires fetched base commit")
     args = parser.parse_args()
     try:
         manifest = json.loads(LOCK.read_text(encoding="utf-8"))
-        errors, report = verify(ROOT, manifest)
+        base_tree = pinned_git_tree(ROOT, manifest) if args.verify_base_tree else None
+        errors, report = verify(ROOT, manifest, base_tree=base_tree)
         if args.report:
             target = args.report.resolve()
             if target.is_relative_to(ROOT.resolve()):
