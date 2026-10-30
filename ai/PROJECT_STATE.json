@@ -2,11 +2,12 @@
   "schema": "project-state/v1",
   "repository": "r20942097-hue/s",
   "role": "ブラウザー用フィルターの公開配布元（release authority）",
-  "updated": "2026-10-28",
+  "updated": "2026-10-31",
   "default_branch": "main",
   "heads": {
     "main_before_governance_pr": "a3bb00a94c2c44ad882a85078a4e3e74730290a2",
-    "note": "最新の main head は `git rev-parse origin/main` で確認してください。この値は本ファイル作成時点の記録です。"
+    "note": "最新の main head は `git rev-parse origin/main` で確認してください。この値は本ファイル作成時点の記録です。",
+    "governance_policy_merge_2026_10_31": "c0fd5f57b7050ecd622c936f338d23ff66af3826"
   },
   "gates": {
     "P0": "active",
@@ -14,8 +15,22 @@
     "NO_NEW_INTERNAL_PUSH": "active: main への直接 push 禁止（作業ブランチへの push と PR 作成は可）"
   },
   "permissions": {
-    "always_allowed": ["read", "create proposal/feature branches", "push to proposal/feature branches", "open draft/normal PRs", "rerun CI", "run local verification"],
-    "requires_owner_approval": ["merge to main", "delete original branches/files", "visibility/publication changes", "force-push / history rewrite", "production deploy", "add ZIP/binary artifacts"]
+    "always_allowed": [
+      "read",
+      "create proposal/feature branches",
+      "push to proposal/feature branches",
+      "open draft/normal PRs",
+      "rerun CI",
+      "run local verification"
+    ],
+    "requires_owner_approval": [
+      "merge to main",
+      "delete original branches/files",
+      "visibility/publication changes",
+      "force-push / history rewrite",
+      "production deploy",
+      "add ZIP/binary artifacts"
+    ]
   },
   "protection": {
     "main_ruleset": "PR必須（承認0）・必須チェック test / engine（Filter list checks）・force-push禁止・削除禁止",
@@ -28,12 +43,27 @@
   ],
   "downstream": {
     "repository": "r20942097-hue/faaff",
-    "pinned_import": "faaff/ai/imports/s.json（本リポジトリ main 変更後は faaff 側で別PRにより再取り込み）"
+    "pinned_import": "faaff/ai/imports/s.json（本リポジトリ main 変更後は faaff 側で別PRにより再取り込み）",
+    "sync_rule": "Only update faaff pinned import when a tracked imported file actually changes; AGENTS.md, CLAUDE.md and ai/* are excluded by faaff/ai/imports/s.json."
   },
   "open_items": [
     "git 履歴に RPLAY_*.zip（約4MB×10）が残存。完全削除には filter-repo + force-push + GitHub Support 依頼が必要（要承認・未実施）",
     "LICENSE ファイル未配置（ライセンスは各フィルターのヘッダーで宣言）",
     "has_wiki が有効（未使用と推定・未検証）",
     "Actions に main に存在しないワークフロー「Validate v2 filters」が登録残り"
-  ]
+  ],
+  "governance": {
+    "authority": "AGENTS.md on current main; re-read exact main/PR HEAD and checks before each change",
+    "policy_merge": {
+      "pull_request": 15,
+      "commit": "c0fd5f57b7050ecd622c936f338d23ff66af3826",
+      "date_jst": "2026-10-31",
+      "scope": "AI instructions only (AGENTS.md)"
+    },
+    "scope": "Autonomous research, method selection, multilingual research, implementation and tests only within authorized permissions",
+    "approval_gate": "GitHub Ruleset requires 0 code reviews, but repository policy separately requires explicit owner approval for main merges; the 2026-10-31 governance PR merge received direct delegated approval",
+    "continuation": "News monitoring observes material AI changes; existing development quality audit checks applicability. Neither guarantees automatic memory synchronization or unattended commits.",
+    "production_impact": "No release, product runtime, public filter path, subscription URL, deployment, or distribution changed by the governance merge",
+    "verification_note": "PR test/engine successful; post-merge docs-only push is excluded from s workflow push paths"
+  }
 }
