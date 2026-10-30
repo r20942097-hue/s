@@ -16,7 +16,8 @@ PATHS = frozenset({
     "easyprivacy/easyprivacy_trackingservers_international.txt"
 })
 SHA40 = re.compile(r"[a-f0-9]{40}\Z")
-NETWORK = re.compile(r"^\|\|([a-z0-9.-]+)(?:\^|/)")
+NETWORK = re.compile(r"^\|\|([a-z0-9.-]+)(\^|/)")
+FULL_HOST = re.compile(r"^\|\|([a-z0-9.-]+)\^(?:\$third-party)?$")
 MAX_BYTES = 1_000_000
 
 
@@ -66,29 +67,57 @@ def fetch_baselines(info, retrieve=None):
 
 
 def observed_network_hosts(sources):
-    """Only recognizes literal ||host^/ style lines; no inference from cosmetic or exceptions."""
+    """Index literal host observations by their actual rule coverage *shape*.
+
+    This is an intentionally conservative syntax subset. A path, type, domain,
+    redirect, negated option or other modifier does not demonstrate an all-type
+    third-party block. A plain ||host^ covers third-party requests as well as
+    first-party; ||host^$third-party covers third-party requests.
+    """
     matches = {}
     for name, text in sources.items():
         if name not in PATHS or not isinstance(text, str):
             raise ValueError("unknown independent baseline source or invalid text")
-        hosts = set()
+        full, restricted = set(), set()
         for line in text.splitlines():
-            if line.startswith("@@") or line.startswith("!"):
+            if line.startswith(("@@", "!")):
                 continue
             match = NETWORK.match(line)
-            if match:
-                hosts.add(match.group(1))
-        matches[name] = hosts
+            if match is None:
+                continue
+            host = match.group(1)
+            if FULL_HOST.fullmatch(line):
+                full.add(host)
+            else:
+                restricted.add(host)
+        matches[name] = {"full": full, "restricted": restricted}
     if set(matches) != PATHS:
         raise ValueError("incomplete independent baseline text set")
     return matches
 
 
-def observed_reference(host, sources):
-    """Host or matching ancestor; no assertion that rule types match or filter applies."""
+def observed_scope(host, sources):
+    """Return selected file and scope of a host/ancestor match, not an engine verdict.
+
+    Full is prioritized over any restricted reference. This does not evaluate
+    other list exceptions, CNAMEs, content types or installed list settings.
+    """
+    if sources is None:
+        return None
     parts = host.split(".")
-    for path, hosts in sources.items():
-        for index in range(len(parts) - 1):
-            if ".".join(parts[index:]) in hosts:
-                return path
+    ancestors = (".".join(parts[i:]) for i in range(len(parts)-1))
+    for scope in ("full", "restricted"):
+        for path in sorted(sources):
+            groups = sources[path]
+            if not isinstance(groups, dict) or set(groups) != {"full", "restricted"}:
+                raise ValueError("unexpected independent match group")
+            for ancestor in ancestors:
+                if ancestor in groups[scope]:
+                    return {"path": path, "scope": scope, "matched_host": ancestor}
     return None
+
+
+def observed_reference(host, sources):
+    """Backwards-compatible source file lookup; use observed_scope for strength."""
+    match = observed_scope(host, sources)
+    return match["path"] if match is not None else None
