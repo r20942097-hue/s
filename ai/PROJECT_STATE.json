@@ -43,8 +43,8 @@
   ],
   "downstream": {
     "repository": "r20942097-hue/faaff",
-    "pinned_import": "faaff/ai/imports/s.json（本リポジトリ main 変更後は faaff 側で別PRにより再取り込み）",
-    "sync_rule": "Only update faaff pinned import when a tracked imported file actually changes; AGENTS.md, CLAUDE.md and ai/* are excluded by faaff/ai/imports/s.json."
+    "pinned_import": "faaff/ai/imports/s.json（取り込み対象ファイルに実差分がある場合のみ faaff 側で別PRを作成して検証）",
+    "sync_rule": "Check the exact faaff/ai/imports/s.json excluded_paths. The current excluded paths include AGENTS.md, CLAUDE.md, ai/HANDOFF.md, and ai/PROJECT_STATE.json; do not generalize to all ai/*."
   },
   "open_items": [
     "git 履歴に RPLAY_*.zip（約4MB×10）が残存。完全削除には filter-repo + force-push + GitHub Support 依頼が必要（要承認・未実施）",
