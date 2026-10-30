@@ -57,6 +57,8 @@ python scripts/compare_subscription_coverage.py --crosscheck-independent
 # CIでは scripts/summarize_filter_gates.py が4検査結果を Job Summary に統合
 ```
 
+Chromiumの実際のMV3ネットワーク遮断機能を、**CI一時生成の試験用拡張**で検証する工程を追加しました。これは本物の拡張エンジンの動作を試すもので、既定のuBlock Origin／uBO Liteを読み込む試験ではありません。7候補のEasyPrivacy照合も個別に記録しますが、実効的な追加遮断の証明ではありません。
+
 完成条件・公開前の未完了工程は [受入ゲート](docs/RELEASE_ACCEPTANCE.md) を参照してください。GitHub Actionsのbrowser fixtureは**実際のChromium/Firefox**で合成ページを検証しますが、模擬遮断にはPlaywrightのroute.abortを使用しており、実フィルター拡張のサイト互換性を実証しません。
 
 隔離された合成ブラウザーテストをローカルで実行する場合（Playwright 1.64.1とそのChromium/Firefoxバイナリが別途必要）:
