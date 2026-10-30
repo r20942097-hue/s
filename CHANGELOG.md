@@ -1,5 +1,12 @@
 # 更新記録
 
+## 2026-10-30 / 既定遮断の重複7件を活動候補から隔離、80件追加案を検査（Draft・未公開）
+
+- 公式uBO Liteの既定DNRが遮断する7件を`privacy-v2`から3件、実験`privacy-optional-20261030`から4件除外。v2の追跡リストを再生成し、実験リストは明示的な隔離マーカー付き0ルール。過去の根拠はverification/filter-candidates.jsonに保持。
+- `audit_filter_candidates.py`と回帰テストで7件の無断復活を拒否。安定版とmainは保全。
+- 新しい`ubol_stock_gap_probe.py`で固定AdGuard追跡リストの低リスク一次候補80件を、実uBO Lite（6既定DNR）の仮想3種類（image/script/XHR）と照合。45既定遮断、34未一致、1未解決。**新規活動ルール0件**。
+- 用途を確認できたadtrace.ai・adbrix.io・adtasukaru.comは追加前の要エンドポイント特定・実サイト検証に分類。詳細：docs/STOCK_GAP_REVIEW.md。正式公開NO_GO。
+
 ## 2026-10-30 / 公式uBO Liteの外部候補リスト導入・解除の往復試験（Draft PR、未公開）
 
 - SHA-256検証済みの公式uBO Liteを隔離Chromiumに読み込み、PRの候補7件をローカルHTTPで配信、公式の`importFilterList`経路から取り込み成功。配布URL・公開リストは未変更。
