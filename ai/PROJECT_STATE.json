@@ -88,6 +88,23 @@
       "candidate_list_loaded": false,
       "real_site_compatibility": "NOT_RUN"
     },
-    "official_ubol_stock_hypothetical": "OBSERVATION_IN_PROGRESS: developer API optional, not candidate-list E2E"
+    "official_ubol_stock_hypothetical": {
+      "status": "PASS_READONLY_DNR_MATCH",
+      "date": "2026-10-30",
+      "release": "2026.1026.1812",
+      "request_shape": "https://<candidate-host>/pixel.gif; image; 3p initiator https://example.org/",
+      "candidates_reviewed": 7,
+      "default_stock_block_action_matches": 7,
+      "matches_by_ruleset": {
+        "pgl": 3,
+        "easylist": 1,
+        "easyprivacy": 3
+      },
+      "action_lookup": "verified static rule JSON from same pinned SHA256 release ZIP",
+      "actual_live_requests": "NOT_RUN",
+      "incremental_value": "NOT_ESTABLISHED; likely redundant for tested uBOL default request shape",
+      "publication": "HOLD"
+    },
+    "release_decision": "NO_GO: 7/7 candidate hosts already matched default stock uBOL block actions in hypothetical case; do not auto-promote"
   }
 }
