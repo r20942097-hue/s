@@ -12,6 +12,7 @@ import sys
 
 from audit_filter_candidates import ROOT, fetch_pinned, read_json
 from generate_lists import valid_hostname
+from independent_baseline import fetch_baselines, observed_network_hosts, observed_reference
 
 RULE = re.compile(r"\|\|([a-z0-9.-]+)\^\$third-party\Z")
 ANY_RULE = re.compile(r"\|\|([a-z0-9.-]+)(?:\^|/)")
@@ -53,7 +54,7 @@ def allowlist_index(text):
     return found
 
 
-def scan(profiles, evidence, tracking_text, allowlist_text, limit=40):
+def scan(profiles, evidence, tracking_text, allowlist_text, limit=40, baseline_sources=None):
     if isinstance(limit, bool) or not isinstance(limit, int) or limit < 1 or limit > 200:
         raise ValueError("review queue limit must be an integer 1..200")
     if not isinstance(tracking_text, str) or not isinstance(allowlist_text, str):
@@ -61,6 +62,8 @@ def scan(profiles, evidence, tracking_text, allowlist_text, limit=40):
     source = evidence["sources"]["tracking"]
     existing = filter_hosts(profiles)
     references = allowlist_index(allowlist_text)
+    independent = observed_network_hosts(baseline_sources) if baseline_sources is not None else None
+    also_seen_independently = 0
     reviewed = set()
     queue = []
     exact_third_party = 0
@@ -90,9 +93,14 @@ def scan(profiles, evidence, tracking_text, allowlist_text, limit=40):
             with_references += 1
         if exceptions:
             with_exception_rules += 1
+        baseline_reference = observed_reference(host, independent) if independent is not None else None
+        if baseline_reference:
+            also_seen_independently += 1
         flags = []
         if status == "expands-existing-child":
             flags.append("parent_domain_expansion")
+        if baseline_reference:
+            flags.append("selected_independent_easyprivacy_reference")
         if exceptions:
             flags.append("selected_allowlist_exception")
         elif mentions:
@@ -102,6 +110,7 @@ def scan(profiles, evidence, tracking_text, allowlist_text, limit=40):
             "source_url": ("https://github.com/" + source["repository"] + "/blob/"
                            + source["commit"] + "/" + source["path"] + "#L" + str(line_no)),
             "coverage": status,
+            "selected_independent_easyprivacy_reference": baseline_reference,
             "selected_allowlist_references": mentions[:10],
             "selected_allowlist_exception_lines": exceptions[:10],
             "risk_flags": flags,
@@ -115,6 +124,7 @@ def scan(profiles, evidence, tracking_text, allowlist_text, limit=40):
         bool(item["selected_allowlist_exception_lines"]),
         item["coverage"] == "expands-existing-child",
         bool(item["selected_allowlist_references"]),
+        bool(item["selected_independent_easyprivacy_reference"]),
         item["host"]
     ))
     return {
@@ -128,12 +138,16 @@ def scan(profiles, evidence, tracking_text, allowlist_text, limit=40):
         "candidate_hosts_with_selected_allowlist_reference": with_references,
         "candidate_hosts_with_selected_allowlist_exception": with_exception_rules,
         "candidate_hosts_without_selected_allowlist_literal_reference": len(queue)-with_references,
+        "selected_independent_easyprivacy_comparison": "PASS" if independent is not None else "NOT_RUN",
+        "candidate_hosts_also_observed_in_selected_easyprivacy": also_seen_independently if independent is not None else None,
+        "candidate_hosts_not_observed_in_selected_easyprivacy": len(queue)-also_seen_independently if independent is not None else None,
         "queue_limit": limit,
         "queue": queue[:limit],
         "limitations": [
-            "Local-only coverage: not a comparison against installed EasyList, EasyPrivacy or AdGuard.",
+            "Local-only coverage: not equivalent to installed EasyList, EasyPrivacy or AdGuard even when independent cross-check is enabled.",
             "Literal-host allowlist scan: regex-escaped, wildcard and semantic exceptions are not evaluated.",
             "Not all network filter options or first-party/CNAME behaviors are analyzed.",
+            "Independent cross-check only reads two named EasyPrivacy source files. Excludes other EasyPrivacy rules and other blocker configurations.",
             "No real-browser or production-site tests."
         ],
         "publication": "NO_GO",
@@ -149,8 +163,12 @@ def main():
     parser.add_argument("--allowlist-file", type=Path, help="offline selected exception input")
     parser.add_argument("--report", type=Path, help="write JSON outside the repository only")
     parser.add_argument("--limit", type=int, default=40)
+    parser.add_argument("--crosscheck-independent", action="store_true",
+                        help="also fetch two immutable, independently pinned EasyPrivacy files; never imports rules")
     args = parser.parse_args()
     try:
+        if args.crosscheck_independent and not args.fetch_upstream:
+            raise ValueError("--crosscheck-independent requires --fetch-upstream for verified source provenance")
         profiles = read_json(ROOT / "filter-profiles.json")
         evidence = read_json(ROOT / "verification/filter-candidates.json")
         if args.fetch_upstream and (args.tracking_file or args.allowlist_file):
@@ -164,7 +182,11 @@ def main():
             allowlist = args.allowlist_file.read_text(encoding="utf-8-sig")
         else:
             raise ValueError("require --fetch-upstream or both --tracking-file and --allowlist-file")
-        report = scan(profiles, evidence, tracking, allowlist, args.limit)
+        baselines = None
+        if args.crosscheck_independent:
+            baseline_info = read_json(ROOT / "verification/filter-independent-baselines.json")
+            baselines = fetch_baselines(baseline_info)
+        report = scan(profiles, evidence, tracking, allowlist, args.limit, baseline_sources=baselines)
         if args.report:
             target = args.report.resolve()
             if target.is_relative_to(ROOT.resolve()):
@@ -178,7 +200,10 @@ def main():
           report["already_covered_by_local_parent_or_exact"], "covered;",
           report["parent_expansion_candidates"], "parent-expansion candidates;",
           report["candidate_hosts_with_selected_allowlist_exception"],
-          "with selected allowlist exceptions; review queue:", len(report["queue"]),
+          "with selected allowlist exceptions;",
+          "EasyPrivacy crosscheck:", report["selected_independent_easyprivacy_comparison"],
+          "; selected EasyPrivacy overlap:", report["candidate_hosts_also_observed_in_selected_easyprivacy"],
+          "; review queue:", len(report["queue"]),
           "; NO_GO for auto-promotion")
     if not args.report:
         print(json.dumps(report["queue"][:min(10, args.limit)], ensure_ascii=False, indent=2))
