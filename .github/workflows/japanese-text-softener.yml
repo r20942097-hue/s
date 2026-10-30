@@ -38,7 +38,7 @@ jobs:
       - name: Run filter regression tests
         run: python -m unittest discover -s tests -p 'test_*.py' -v
       - name: Check stable subscription fidelity (8 pinned public assets)
-        run: python scripts/check_stable_fidelity.py
+        run: python scripts/check_stable_fidelity.py --report "$RUNNER_TEMP/filter-stable-fidelity.json"
       - name: Validate all filter lists
         run: python scripts/validate_lists.py
       - name: Check generated network lists
@@ -46,11 +46,19 @@ jobs:
       - name: Validate opt-in candidate evidence (offline)
         run: python scripts/audit_filter_candidates.py
       - name: Verify pinned upstream candidate sources and scoped allowlist
-        run: python scripts/audit_filter_candidates.py --fetch-upstream
+        run: python scripts/audit_filter_candidates.py --fetch-upstream --report "$RUNNER_TEMP/filter-candidate-evidence.json"
       - name: Review pinned upstream delta and independent EasyPrivacy (read-only)
-        run: python scripts/scan_upstream_delta.py --fetch-upstream --crosscheck-independent --limit 5
+        run: python scripts/scan_upstream_delta.py --fetch-upstream --crosscheck-independent --limit 5 --report "$RUNNER_TEMP/filter-review-queue.json"
       - name: Observe latest upstream drift (read-only, never updates pins)
         run: python scripts/check_upstream_drift.py --report "$RUNNER_TEMP/filter-upstream-drift.json"
+      - name: Show candidate quality-gate summary (no publication)
+        run: |
+          python scripts/summarize_filter_gates.py \
+            --stable "$RUNNER_TEMP/filter-stable-fidelity.json" \
+            --candidate "$RUNNER_TEMP/filter-candidate-evidence.json" \
+            --delta "$RUNNER_TEMP/filter-review-queue.json" \
+            --drift "$RUNNER_TEMP/filter-upstream-drift.json" \
+            --github-summary "$GITHUB_STEP_SUMMARY"
   engine:
     runs-on: ubuntu-latest
     timeout-minutes: 10
