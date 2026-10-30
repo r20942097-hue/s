@@ -20,7 +20,8 @@ def gather(stable, candidate, delta, drift, matrix=None):
     if (candidate.get("record_schema") != "filter-candidates/v1"
             or candidate.get("metadata") != "PASS"
             or candidate.get("upstream_snapshot") != "PASS"
-            or candidate.get("candidate_count") != 4 or candidate.get("errors")):
+            or candidate.get("candidate_count") != 0
+            or candidate.get("quarantined_count") != 7 or candidate.get("errors")):
         errors.append("candidate source/evidence audit not PASS")
     if (delta.get("schema") != "upstream-delta-review/v2"
             or delta.get("selected_independent_easyprivacy_comparison") != "PASS"
@@ -81,7 +82,8 @@ def gather(stable, candidate, delta, drift, matrix=None):
                 errors.append("missing stable or v2 comparison scope")
         candidates = matrix.get("proposed_candidate_evidence")
         if (type(matrix.get("proposed_candidate_count")) is not int
-                or matrix["proposed_candidate_count"] != 7
+                or matrix["proposed_candidate_count"] != 0
+                or matrix.get("retired_stock_overlap_count") != 7
                 or not isinstance(candidates, list) or len(candidates) != 7):
             errors.append("candidate-by-candidate comparison missing")
         else:
@@ -101,6 +103,9 @@ def gather(stable, candidate, delta, drift, matrix=None):
                 else:
                     counts[source] += 1
                 if (item.get("adopted_to_stable") is not False
+                        or item.get("active_rule") is not False
+                        or item.get("status") != "RETIRED_STOCK_OVERLAP"
+                        or item.get("stock_ubol_block_action_tested") is not True
                         or item.get("real_site_compatibility") != "NOT_RUN"
                         or item.get("incremental_blocking_value") != "NOT_ESTABLISHED"
                         or item.get("selected_easyprivacy_match_shape") not in ("full", "restricted", None)):
@@ -120,7 +125,7 @@ def render(stable, candidate, delta, drift, errors, matrix=None):
         "| Check | Observation |",
         "|---|---|",
         f"| Protected main assets | {stable.get('verified_asset_count', '?')}/8 exact pinned Git blobs |",
-        f"| Experimental candidate provenance | {candidate.get('candidate_count', '?')} rules; pinned sources: {candidate.get('upstream_snapshot', '?')} |",
+        f"| Active candidate rules / quarantined stock overlaps | {candidate.get('candidate_count', '?')} / {candidate.get('quarantined_count', '?')}; pinned sources: {candidate.get('upstream_snapshot', '?')} |",
         f"| Local candidate review queue | {delta.get('queue_total', '?')} hosts, not safety-reviewed |",
         f"| Selected independent EasyPrivacy | {delta.get('candidate_hosts_also_observed_in_selected_easyprivacy', '?')} observed; full-host-shaped: {delta.get('candidate_hosts_with_selected_easyprivacy_full_host_rule', '?')}, scoped: {delta.get('candidate_hosts_with_selected_easyprivacy_scoped_rule_only', '?')} |",
         f"| Selected allowlist possible exceptions | {delta.get('candidate_hosts_with_selected_allowlist_exception', '?')}; may be path/type/site-restricted |",
@@ -132,7 +137,7 @@ def render(stable, candidate, delta, drift, errors, matrix=None):
     ]
     if matrix is not None and isinstance(matrix.get("proposed_candidate_evidence"), list):
         rows = matrix["proposed_candidate_evidence"]
-        lines.extend(["", "### Seven proposed rules: selected EasyPrivacy shape only", "",
+        lines.extend(["", "### Seven RETIRED redundant rules: source-history reference only", "",
                       "| Proposed host | List | Selected independent reference | Incremental effect |",
                       "|---|---|---|---|"])
         for entry in rows:
