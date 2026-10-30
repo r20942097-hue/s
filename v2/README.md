@@ -24,6 +24,13 @@ Subscribe to `ad.txt` and `tracking.txt`. This additionally blocks third-party a
 ### Strict Privacy
 Subscribe to all three lists. `strict.txt` additionally blocks tag managers, identity-linked measurement, and attribution frameworks. It has a materially higher site-breakage risk.
 
+### Experimental tracking extra (opt-in only)
+
+The separate [tracking-extra.txt](tracking-extra.txt) is a narrow review queue of **four** third-party tracker hosts:
+`id5-sync.com`, `event.getblue.io`, `sync.ebis.ne.jp`, `pixel.wetracked.io`. It is not included from other lists and has no effect until separately subscribed to, after publication approval.
+
+The exact candidate rules, pinned AdGuard classification lines, a selected allowlist review, and rejected/held hosts are recorded in [filter-candidates.json](../verification/filter-candidates.json). The read-only [candidate-audit script](../scripts/audit_filter_candidates.py) verifies registry parity; with `--fetch-upstream` it verifies immutable Git blob bytes and exact line anchors. This does **not** mean the rules are proven safe on live websites. Users already subscribing to AdGuard/EasyPrivacy may get little incremental blocking benefit.
+
 ## Design rules
 
 - Network rules are narrowed to third-party requests where practical.
