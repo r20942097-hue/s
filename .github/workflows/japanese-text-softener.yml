@@ -45,8 +45,8 @@ jobs:
         run: python scripts/audit_filter_candidates.py
       - name: Verify pinned upstream candidate sources and scoped allowlist
         run: python scripts/audit_filter_candidates.py --fetch-upstream
-      - name: Review pinned upstream delta (read-only; never publishes)
-        run: python scripts/scan_upstream_delta.py --fetch-upstream --limit 5
+      - name: Review pinned upstream delta and independent EasyPrivacy (read-only)
+        run: python scripts/scan_upstream_delta.py --fetch-upstream --crosscheck-independent --limit 5
   engine:
     runs-on: ubuntu-latest
     timeout-minutes: 10
