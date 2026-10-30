@@ -149,6 +149,52 @@ def validate_runtime_identity(runtime, source):
     return True
 
 
+def measure_hypothetical_dnr(worker):
+    """Best-effort, read-only rule-match observations in official stock uBOL.
+
+    testMatchOutcome is a developer-only API for unpacked extensions. It may
+    be denied without debug/feedback permissions; that is NOT_RUN, not a
+    fabricated PASS. Rule matches do not necessarily mean 'block' actions.
+    """
+    candidate_hosts = (
+        "match.prod.bidr.io", "sync.adkernel.com", "sync.richaudience.com",
+        "id5-sync.com", "event.getblue.io", "sync.ebis.ne.jp",
+        "pixel.wetracked.io"
+    )
+    observed = worker.evaluate("""async hosts => {
+        const result = [];
+        const api = chrome.declarativeNetRequest.testMatchOutcome;
+        if (typeof api !== 'function') {
+            return { status: 'NOT_SUPPORTED', cases: [], reason: 'API unavailable' };
+        }
+        for (const host of hosts) {
+            try {
+                const r = await api({
+                    url: 'https://' + host + '/pixel.gif',
+                    initiator: 'https://example.org/',
+                    type: 'image',
+                    method: 'get'
+                });
+                const matches = (r.matchedRules || []).map(row => ({
+                    ruleset_id: row.rulesetId || null,
+                    rule_id: row.ruleId
+                }));
+                result.push({ host, matched_rule_count: matches.length,
+                              matched_rules: matches });
+            } catch (error) {
+                return { status: 'NOT_SUPPORTED', cases: [],
+                         reason: String(error && error.message || error).slice(0, 160) };
+            }
+        }
+        return { status: 'OBSERVED', cases: result };
+    }""", list(candidate_hosts))
+    if observed["status"] == "OBSERVED":
+        if (len(observed["cases"]) != 7
+                or [r["host"] for r in observed["cases"]] != list(candidate_hosts)):
+            raise ValueError("incomplete hypothetical DNR request observations")
+    return observed
+
+
 def exercise_browser(extension_root, manifest):
     from playwright.sync_api import sync_playwright
     with tempfile.TemporaryDirectory(prefix="ubol-profile-") as profile, sync_playwright() as p:
@@ -179,6 +225,7 @@ def exercise_browser(extension_root, manifest):
                 };
             }""")
             validate_runtime_identity(result, manifest)
+            result["hypothetical_dnr"] = measure_hypothetical_dnr(sw)
             page = context.new_page()
             page.goto("about:blank")
             if page.evaluate("document.readyState") != "complete":
@@ -213,6 +260,7 @@ def main():
             report["extension_loaded"] = "PASS"
             report["active_rulesets"] = len(result["enabled_ruleset_ids"])
             report["extension_version"] = result["version"]
+            report["stock_dnr_hypothetical"] = result["hypothetical_dnr"]
         if args.report:
             path = args.report.resolve()
             if path.is_relative_to(ROOT.resolve()):
@@ -224,7 +272,10 @@ def main():
         print("OFFICIAL uBOL EXTENSION FIXTURE FAILED:", type(error).__name__, str(error))
         traceback.print_exc()
         return 1
+    stock = report["stock_dnr_hypothetical"]
     print("OFFICIAL uBOL EXTENSION: PASS; default rulesets:", report["active_rulesets"],
+          "; hypothetical seven-host matching:", stock["status"],
+          "; matched cases:", sum(x["matched_rule_count"] > 0 for x in stock.get("cases", [])),
           "; no candidate subscription or production-site test")
     return 0
 
