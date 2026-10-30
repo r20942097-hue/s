@@ -50,7 +50,7 @@ def verified_read(uri, expected_blob, max_bytes, user_agent, retrieve=None):
     else:
         data = retrieve(uri)
     if not isinstance(data, bytes) or len(data) > max_bytes:
-        raise ValueError("upstream source exceeds byte limit")
+        raise ValueError("upstream source oversized: exceeds byte limit")
     if git_blob_sha(data) != expected_blob:
         raise ValueError("pinned upstream Git blob digest mismatch")
     if cache is not None:
