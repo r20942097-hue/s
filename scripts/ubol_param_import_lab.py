@@ -8,14 +8,17 @@ An incremental observation on a synthetic .test host does not prove safety on
 any signed URL or live site and cannot authorize automatic adoption.
 """
 import argparse
+import hashlib
+import hmac
 import json
+from urllib.parse import urlencode, urlsplit, parse_qsl
 from pathlib import Path
 import tempfile
 import traceback
 
 from audit_filter_candidates import ROOT
 from ubol_imported_list_fixture import serve_list
-from ubol_local_param_http_probe import server, build_urls, exercise, compare, RULES
+from ubol_local_param_http_probe import server, build_urls, exercise, compare, RULES, HOST
 from ubol_real_addon_fixture import LOCK_PATH, fetch_archive, extract_verified, validate_runtime_identity
 
 RULE = "*$removeparam=utm_source"
@@ -42,6 +45,48 @@ def check_import(items, url, minimum):
     if item.get("enabled") is not True or type(accepted) is not int or accepted < minimum:
         raise ValueError("official uBO Lite did not accept/enable test removeparam")
     return {"accepted": accepted, "rules": item.get("rules")}
+
+
+def fixture_signature_check(request_path):
+    """Validate fake HMAC over *all* unsigned parameters, not real credentials."""
+    parsed = urlsplit(request_path)
+    parameters = parse_qsl(parsed.query, keep_blank_values=True)
+    if (parsed.path != "/fixture"
+            or len(parameters) != len({key for key, _ in parameters})):
+        raise ValueError("signed fixture request was malformed")
+    values = dict(parameters)
+    signature = values.get("X-Amz-Signature")
+    unsigned = [(key, value) for key, value in parameters if key != "X-Amz-Signature"]
+    expected = hmac.new(b"isolated-fixture-test-key", urlencode(unsigned).encode("utf-8"),
+                        hashlib.sha256).hexdigest()
+    return {
+        "signature_valid": isinstance(signature, str) and
+                           hmac.compare_digest(signature, expected),
+        "signature_preserved": signature is not None,
+        "utm_source_present": "utm_source" in values
+    }
+
+
+def observe_signed_fixture(context, site):
+    """Signed URL is synthetic: used only to demonstrate broad-rule breakage."""
+    original = (("utm_source", "synthetic"), ("keep", "ok"))
+    query = urlencode(original)
+    signature = hmac.new(b"isolated-fixture-test-key", query.encode("utf-8"),
+                         hashlib.sha256).hexdigest()
+    request_url = (f"http://{HOST}:{site.server_port}/fixture?"
+                   + query + "&X-Amz-Signature=" + signature)
+    before_count = len(site.paths)
+    page = context.new_page()
+    try:
+        response = page.goto(request_url, wait_until="load", timeout=20000)
+        if response is None or response.status != 200:
+            raise ValueError("signed local HTTP request was not delivered")
+    finally:
+        page.close()
+    paths = site.paths[before_count:]
+    if len(paths) != 1:
+        raise ValueError("signed local HTTP request count incorrect")
+    return fixture_signature_check(paths[0])
 
 
 def exercise_import(root, manifest, source_url, feed, site):
@@ -71,6 +116,9 @@ def exercise_import(root, manifest, source_url, feed, site):
                 raise ValueError("unable to read default uBO Lite list configuration")
             rows = subset(build_urls(site.server_port))
             before = exercise(context, rows, site)
+            signed_before = observe_signed_fixture(context, site)
+            if signed_before["signature_valid"] is not True:
+                raise ValueError("signed-url baseline HMAC failed before experimental filter")
             baseline = next(x for x in before if x["key"] == "utm_source")
             if not baseline["parameter_present"]:
                 raise ValueError("utm_source already stripped by baseline; no possible incremental value")
@@ -93,6 +141,9 @@ def exercise_import(root, manifest, source_url, feed, site):
                 return Boolean(data[key]);
             }""", arg=source_url, timeout=20000)
             after = exercise(context, rows, site)
+            signed_after = observe_signed_fixture(context, site)
+            if signed_after["signature_preserved"] is not True:
+                raise ValueError("experimental filter removed signature parameter")
             # Existing stock uBOL already removes fbclid/gclid; they are
             # retention controls, NOT part of the before/after delta's
             # "all baseline params present" precondition.
@@ -116,6 +167,9 @@ def exercise_import(root, manifest, source_url, feed, site):
                 return Array.isArray(lists) && !lists.some(x => x.id === url);
             }""", arg=source_url, timeout=20000)
             restored = exercise(context, rows, site)
+            signed_restored = observe_signed_fixture(context, site)
+            if signed_restored["signature_valid"] is not True:
+                raise ValueError("signed-url integrity did not recover after unsubscribe")
             original_utm = next(x for x in restored if x["key"] == "utm_source")
             if not original_utm["parameter_present"]:
                 raise ValueError("removeparam effect not reverted by official unsubscribe")
@@ -130,7 +184,11 @@ def exercise_import(root, manifest, source_url, feed, site):
                 "utm_source_before": "PRESENT",
                 "utm_source_with_import": "REMOVED",
                 "utm_source_after_unsubscribe": "PRESENT",
-                "signature_and_auth_controls": "PRESERVED",
+                "signature_and_auth_controls": "PRESERVED_IN_ISOLATION",
+                "synthetic_signed_url_integrity_before": "PASS",
+                "synthetic_signed_url_integrity_with_global_rule":
+                    "PASS" if signed_after["signature_valid"] else "BROKEN",
+                "synthetic_signed_url_integrity_after_unsubscribe": "PASS",
                 "stock_click_id_protection": "RETAINED",
                 "synthetic_only": True
             }
@@ -170,8 +228,9 @@ def main():
         traceback.print_exc()
         return 1
     print("URL REMOVE PARAM LAB: PASS - utm_source PRESENT/REMOVED/PRESENT;",
-          "stock fbclid/gclid preserved; OAuth/signature controls maintained;",
-          "local HTTP only; no production adoption")
+          "synthetic signed URL with global rule:",
+          report["observations"]["synthetic_signed_url_integrity_with_global_rule"],
+          "; stock fbclid/gclid preserved; local HTTP only; no adoption")
     return 0
 
 
