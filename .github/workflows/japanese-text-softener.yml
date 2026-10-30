@@ -60,3 +60,25 @@ jobs:
         run: npm ci --prefix verification/ghostery --ignore-scripts --no-audit --no-fund
       - name: Check with uBlock Origin and Ghostery engines
         run: node scripts/check_engine.mjs --engine-dir "$RUNNER_TEMP/filter-engine" --ghostery-entry verification/ghostery/node_modules/@ghostery/adblocker/dist/esm/index.js
+
+  # Standalone, non-required check: preserves Ruleset-required test and engine
+  # names while verifying the latest CPython security patch separately.
+  python315-compat:
+    name: Python 3.15.2 compatibility
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.15.2'
+      - name: Show interpreter version
+        run: python --version
+      - name: Run filter regression tests
+        run: python -m unittest discover -s tests -p 'test_*.py' -v
+      - name: Validate all filter lists
+        run: python scripts/validate_lists.py
+      - name: Verify generated network lists
+        run: python scripts/generate_lists.py --check
