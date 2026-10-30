@@ -47,6 +47,8 @@ jobs:
         run: python scripts/generate_lists.py --check
       - name: Validate opt-in candidate evidence (offline)
         run: python scripts/audit_filter_candidates.py
+      - name: Enforce active tracking prevention while excluding stock duplicate rules
+        run: python scripts/check_tracking_protection.py --report "$RUNNER_TEMP/filter-tracking-protection.json"
       - name: Verify pinned upstream candidate sources and scoped allowlist
         env:
           FILTER_PINNED_CACHE_DIR: ${{ runner.temp }}/filter-pinned-blobs
