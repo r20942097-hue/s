@@ -110,8 +110,12 @@ def exercise(context, rows, fixture):
 
 
 def compare(baseline, active):
-    if len(baseline) != len(active) or len(baseline) != len(TRACKING) + len(PRESERVE):
-        raise ValueError("missing local HTTP comparison cases")
+    if (len(baseline) != len(active) or not baseline
+            or len(baseline) > len(TRACKING) + len(PRESERVE)):
+        raise ValueError("missing or invalid local HTTP comparison cases")
+    keys = [item.get("key") for item in baseline]
+    if len(set(keys)) != len(keys) or any(key not in TRACKING + PRESERVE for key in keys):
+        raise ValueError("invalid or duplicate local HTTP comparison keys")
     rows = []
     for before, after in zip(baseline, active):
         if (before["key"] != after["key"]
