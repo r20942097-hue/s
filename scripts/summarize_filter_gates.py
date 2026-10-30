@@ -9,7 +9,7 @@ from pathlib import Path
 import sys
 
 
-def gather(stable, candidate, delta, drift):
+def gather(stable, candidate, delta, drift, matrix=None):
     errors = []
     if stable.get("schema") != "filter-stable-fidelity-check/v1" or stable.get("status") != "PASS":
         errors.append("stable byte-fidelity gate not PASS")
@@ -47,10 +47,42 @@ def gather(stable, candidate, delta, drift):
         errors.append("unexpected live-browser E2E status")
     if candidate.get("publication") != "NEEDS_HUMAN":
         errors.append("candidate publication must require owner")
+    if matrix is not None:
+        if (matrix.get("schema") != "filter-subscription-coverage/v1"
+                or matrix.get("independent_comparison") != "PASS"
+                or matrix.get("publication") != "NO_GO"
+                or matrix.get("live_site_e2e") != "NOT_RUN"):
+            errors.append("subscription scope matrix must be verified and nonpublishable")
+        expected_universe = (delta.get("new_candidate_hosts", 0)
+                             + delta.get("already_covered_by_local_parent_or_exact", 0))
+        rows = matrix.get("outputs")
+        if (not isinstance(rows, list) or len(rows) < 7
+                or isinstance(expected_universe, bool)
+                or not isinstance(expected_universe, int)
+                or matrix.get("source_host_universe") != expected_universe):
+            errors.append("inconsistent subscription matrix total")
+        else:
+            names = set()
+            for row in rows:
+                if not isinstance(row, dict):
+                    errors.append("invalid subscription scope row")
+                    continue
+                name = row.get("name")
+                if not isinstance(name, str) or name in names:
+                    errors.append("duplicate/invalid subscription scope name")
+                names.add(name)
+                covered = row.get("covered_by_exact_or_parent")
+                remaining = row.get("not_covered_by_exact_or_parent")
+                if (type(covered) is not int or type(remaining) is not int
+                        or covered < 0 or remaining < 0
+                        or covered + remaining != expected_universe):
+                    errors.append("scope coverage count does not reconcile")
+            if not {"ad.txt", "tracking.txt", "stable_combined", "v2_balanced"}.issubset(names):
+                errors.append("missing stable or v2 comparison scope")
     return errors
 
 
-def render(stable, candidate, delta, drift, errors):
+def render(stable, candidate, delta, drift, errors, matrix=None):
     status = "FAIL" if errors else "PASS (automated only)"
     lines = [
         "## Filter candidate CI quality gate",
@@ -70,6 +102,17 @@ def render(stable, candidate, delta, drift, errors):
         "",
         "The figures do not establish actual user-visible blocking, accuracy on live websites, installed-list coverage or permission to publish. CI logs and summaries have finite retention."
     ]
+    if matrix is not None and isinstance(matrix.get("outputs"), list):
+        lines.extend(["", "### Subscription scope comparison (not installed-list coverage)", "",
+                      "| Source rule sets | Upstream hosts matched | Unmatched; review only |",
+                      "|---|---:|---:|"])
+        for row in matrix["outputs"]:
+            if not isinstance(row, dict):
+                continue
+            lines.append(
+                f"| {row.get('name','?')} | {row.get('covered_by_exact_or_parent','?')} | "
+                f"{row.get('not_covered_by_exact_or_parent','?')} |"
+            )
     if errors:
         lines.extend(["", "### Gate errors"] + ["- " + problem for problem in errors])
     return "\n".join(lines) + "\n"
@@ -79,14 +122,17 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     for name in ("stable", "candidate", "delta", "drift"):
         parser.add_argument("--" + name, type=Path, required=True)
+    parser.add_argument("--matrix", type=Path,
+                        help="optional per-subscription matrix (CI supplies a verified one)")
     parser.add_argument("--github-summary", type=Path, help="append markdown to GitHub job summary")
     args = parser.parse_args()
     try:
         reports = []
         for name in ("stable", "candidate", "delta", "drift"):
             reports.append(json.loads(getattr(args, name).read_text(encoding="utf-8")))
-        errors = gather(*reports)
-        markdown = render(*reports, errors)
+        matrix = json.loads(args.matrix.read_text(encoding="utf-8")) if args.matrix else None
+        errors = gather(*reports, matrix=matrix)
+        markdown = render(*reports, errors, matrix=matrix)
         if args.github_summary:
             with args.github_summary.open("a", encoding="utf-8") as output:
                 output.write(markdown)
