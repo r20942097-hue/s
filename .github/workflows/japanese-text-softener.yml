@@ -47,6 +47,8 @@ jobs:
         run: python scripts/audit_filter_candidates.py --fetch-upstream
       - name: Review pinned upstream delta and independent EasyPrivacy (read-only)
         run: python scripts/scan_upstream_delta.py --fetch-upstream --crosscheck-independent --limit 5
+      - name: Observe latest upstream drift (read-only, never updates pins)
+        run: python scripts/check_upstream_drift.py --report "$RUNNER_TEMP/filter-upstream-drift.json"
   engine:
     runs-on: ubuntu-latest
     timeout-minutes: 10
