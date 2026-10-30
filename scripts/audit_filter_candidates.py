@@ -126,7 +126,7 @@ def audit(records, profiles, snapshots=None):
     if not isinstance(candidates, list) or len(candidates) == 0:
         errors.append("missing candidate evidence rows")
         candidates = []
-    if candidate_rules != [] or candidate_set.get("disabled") is not True:
+    if candidate_rules != [] or not isinstance(candidate_set, dict) or candidate_set.get("disabled") is not True:
         errors.append("quarantined proposal still has active candidate rules")
     quarantine = records.get("quarantine")
     expected_archived = {
