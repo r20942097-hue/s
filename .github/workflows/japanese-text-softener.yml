@@ -48,12 +48,18 @@ jobs:
       - name: Validate opt-in candidate evidence (offline)
         run: python scripts/audit_filter_candidates.py
       - name: Verify pinned upstream candidate sources and scoped allowlist
+        env:
+          FILTER_PINNED_CACHE_DIR: ${{ runner.temp }}/filter-pinned-blobs
         run: python scripts/audit_filter_candidates.py --fetch-upstream --report "$RUNNER_TEMP/filter-candidate-evidence.json"
       - name: Review pinned upstream delta and independent EasyPrivacy (read-only)
+        env:
+          FILTER_PINNED_CACHE_DIR: ${{ runner.temp }}/filter-pinned-blobs
         run: python scripts/scan_upstream_delta.py --fetch-upstream --crosscheck-independent --limit 5 --report "$RUNNER_TEMP/filter-review-queue.json"
       - name: Observe latest upstream drift (read-only, never updates pins)
         run: python scripts/check_upstream_drift.py --report "$RUNNER_TEMP/filter-upstream-drift.json"
       - name: Compare each actual subscription scope (read-only)
+        env:
+          FILTER_PINNED_CACHE_DIR: ${{ runner.temp }}/filter-pinned-blobs
         run: python scripts/compare_subscription_coverage.py --crosscheck-independent --report "$RUNNER_TEMP/filter-subscription-matrix.json"
       - name: Show candidate quality-gate summary (no publication)
         run: |
