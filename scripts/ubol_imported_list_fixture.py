@@ -32,15 +32,18 @@ CONTROL_RULE = f"||{CONTROL_HOST}^$third-party"
 def candidate_payload(profile):
     if not isinstance(profile, dict) or not isinstance(profile.get("rule_sets"), dict):
         raise ValueError("invalid local candidate registry")
-    standard = profile["rule_sets"]["privacy-v2"]["rules"]
-    optional = profile["rule_sets"]["privacy-optional-20261030"]["rules"]
+    archive = json.loads((ROOT / "verification/filter-candidates.json").read_text(encoding="utf-8"))
+    retired = archive.get("quarantine", {})
     first = [f"||{host}^$third-party" for host in EXPECTED_HOSTS[:3]]
-    if not all(rule in standard for rule in first):
-        raise ValueError("v2 candidate was changed or removed")
     last = [f"||{host}^$third-party" for host in EXPECTED_HOSTS[3:]]
-    # Rules 4-7 are stored in the opt-in set in a different order.
-    if sorted(optional) != sorted(last) or len(optional) != 4:
-        raise ValueError("unexpected optional candidates; fail closed")
+    if (retired.get("schema") != "stock-overlap-quarantine/v1"
+            or set(retired.get("three_v2_rules", [])) != set(first)
+            or set(retired.get("four_extra_rules", [])) != set(last)
+            or retired.get("active_rule_count") != 0):
+        raise ValueError("historical held-rule archive was changed or removed")
+    for entry in profile["rule_sets"].values():
+        if any(rule in entry.get("rules", []) for rule in first + last):
+            raise ValueError("retired stock-overlap rule leaked into active subscriptions")
     return ("! Title: Isolated test-only candidate import\n"
             "! Expires: 7 days\n"
             "! This snapshot must never be published or auto-promoted.\n"
@@ -231,6 +234,7 @@ def main():
     status = {"schema": "filter-real-ubol-import-fixture/v1",
               "real_official_extension": True,
               "candidate_rules_supplied": 7,
+              "candidate_rules_source": "quarantined evidence (not active subscription)",
               "fixture_only_control_rules": 1,
               "source_scope": "isolated local HTTP, transient profile",
               "import_compile": "NOT_RUN",
