@@ -8,7 +8,7 @@ import unittest
 from zipfile import ZipFile, ZipInfo, ZIP_DEFLATED
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
-from ubol_real_addon_fixture import inspect_zip, validate_lock, verify_archive_bytes, validate_runtime_identity, LOCK_PATH
+from ubol_real_addon_fixture import inspect_zip, validate_lock, verify_archive_bytes, validate_runtime_identity, measure_hypothetical_dnr, LOCK_PATH
 
 
 class RealUBOLReleaseTests(unittest.TestCase):
@@ -22,6 +22,31 @@ class RealUBOLReleaseTests(unittest.TestCase):
                 zipfile.writestr(name, content)
         output.seek(0)
         return ZipFile(output, "r")
+
+    def test_hypothetical_dnr_check_does_not_claim_blocking(self):
+        class Worker:
+            def evaluate(self, script, hosts):
+                self.hosts = hosts
+                return {"status": "OBSERVED", "cases": [
+                    {"host": host, "matched_rule_count": 0, "matched_rules": []}
+                    for host in hosts
+                ]}
+        fake = Worker()
+        result = measure_hypothetical_dnr(fake)
+        self.assertEqual(result["status"], "OBSERVED")
+        self.assertEqual(len(result["cases"]), 7)
+        self.assertEqual(len(set(fake.hosts)), 7)
+        class Unsupported:
+            def evaluate(self, script, hosts):
+                return {"status": "NOT_SUPPORTED", "cases": [], "reason": "API unavailable"}
+        self.assertEqual(measure_hypothetical_dnr(Unsupported())["status"], "NOT_SUPPORTED")
+
+    def test_partial_hypothetical_results_rejected(self):
+        class Incomplete:
+            def evaluate(self, script, hosts):
+                return {"status": "OBSERVED", "cases": []}
+        with self.assertRaisesRegex(ValueError, "incomplete"):
+            measure_hypothetical_dnr(Incomplete())
 
     def test_locale_message_key_is_not_raw_runtime_display_name(self):
         source = {
