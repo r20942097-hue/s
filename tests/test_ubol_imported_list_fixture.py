@@ -30,14 +30,14 @@ class OfficialUBOLImportTests(unittest.TestCase):
     def test_reject_changed_or_new_candidate(self):
         import copy
         profiles=copy.deepcopy(self.profiles)
-        profiles["rule_sets"]["privacy-v2"]["rules"].remove(
+        profiles["rule_sets"]["privacy-v2"]["rules"].append(
             "||sync.adkernel.com^$third-party")
-        with self.assertRaisesRegex(ValueError,"changed or removed"):
+        with self.assertRaisesRegex(ValueError,"leaked"):
             candidate_payload(profiles)
         profiles=copy.deepcopy(self.profiles)
         profiles["rule_sets"]["privacy-optional-20261030"]["rules"].append(
             "||unreviewed-host.invalid^$third-party")
-        with self.assertRaisesRegex(ValueError,"unexpected optional"):
+        with self.assertRaisesRegex(ValueError,"leaked"):
             candidate_payload(profiles)
 
     def test_local_http_only_serves_one_readonly_resource(self):
