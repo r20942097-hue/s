@@ -93,7 +93,13 @@ def exercise_import(root, manifest, source_url, feed, site):
                 return Boolean(data[key]);
             }""", arg=source_url, timeout=20000)
             after = exercise(context, rows, site)
-            comparison = compare(before, after)
+            # Existing stock uBOL already removes fbclid/gclid; they are
+            # retention controls, NOT part of the before/after delta's
+            # "all baseline params present" precondition.
+            click_keys = {"fbclid", "gclid"}
+            before_delta = [x for x in before if x["key"] not in click_keys]
+            after_delta = [x for x in after if x["key"] not in click_keys]
+            comparison = compare(before_delta, after_delta)
             utm = next(x for x in comparison if x["key"] == "utm_source")
             if not utm["with_stock_ubol_removed"]:
                 raise ValueError("imported removeparam rule did not remove utm_source in real HTTP")
@@ -114,7 +120,6 @@ def exercise_import(root, manifest, source_url, feed, site):
             if not original_utm["parameter_present"]:
                 raise ValueError("removeparam effect not reverted by official unsubscribe")
             # The stock protections of two known click IDs must remain active.
-            click_keys = {"fbclid", "gclid"}
             if any(x["parameter_present"] for x in after if x["key"] in click_keys):
                 raise ValueError("import disrupted baseline stock click-ID protection")
             page.close()
