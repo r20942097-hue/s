@@ -57,6 +57,8 @@ python scripts/compare_subscription_coverage.py --crosscheck-independent
 # CIでは scripts/summarize_filter_gates.py が4検査結果を Job Summary に統合
 ```
 
+公式uBO Liteへの候補7件の実登録・解除試験が成功しました。隔離された一時HTTP配信とChromium環境で、7候補＋1テスト専用ルールを読み込み、登録前0→登録後block一致→解除後0のDNR照合を確認しています。これらは**仮想リクエストに対する拡張機能の判定**であり、実サイトの互換性や広告遮断効果の実測ではありません。
+
 公式uBO Liteの既定DNRルールについて、候補7ホストの仮想第三者画像通信を確認した結果、**全7件が既定の`block`アクションに一致**しました。追加効果を無条件に認めないため、候補は採用保留のままです。対応リストはPeter Lowe 3件、EasyList 1件、EasyPrivacy 3件。実サイト通信・Firefox版uBOでは未検証です。詳細は [受入基準](docs/RELEASE_ACCEPTANCE.md) を参照してください。
 
 公式uBO Liteの2026年10月26日版をSHA-256で固定し、CI中に一時取得してPlaywright Chromiumへ読み込む検証を追加しました。起動時の6つの既定DNRルールセットを確認していますが、**このPRの候補7ルールをuBO Liteへ登録する検証ではありません**。実サイトE2Eも未実施です。詳細は [受入ゲート](docs/RELEASE_ACCEPTANCE.md) を参照してください。
