@@ -35,3 +35,10 @@
 - scripts/ubol_real_addon_fixture.py はChromiumの一時プロファイルで **改変のない実際のuBO Lite** を起動して、MV3サービスワーカーおよび標準DNR 6ルールセット有効化を確認。CI初回はローカライズ済み表示名とManifestの__MSGキーを比較して誤失敗したため修正し、起動PASSを取得済み。
 - 開発専用testMatchOutcomeによる7候補の仮想通信への既定ルール照合は、使用可能な場合のみ「一致したルール」扱い（実際の遮断とは区別）。本件は実uBO Liteへ候補リストをインポートしておらず、Firefox実uBO・本番サイトも未検証。
 - docs/RELEASE_ACCEPTANCE.md を正本とし、C3とD/E/Fを混同しない。Draft PR #14はNO_GO、mainおよび公開URLは変更しない。
+
+## 2026-10-30｜既定uBO Lite DNR 7候補の独立検証
+
+- 実Chromium上で公式uBO Liteの標準DNRルールセット6件を有効化したうえで、Chromeの開発用testMatchOutcomeに候補7ホストを第三者画像通信として照会。ヒットしたruleId/rulesetIdを固定ZIPの静的ルールJSONと照合し、**7/7 blockアクションを確認**。
+- 内訳：pglがmatch.prod.bidr.io、sync.richaudience.com、id5-sync.com；EasyListがsync.adkernel.com；EasyPrivacyがevent.getblue.io、sync.ebis.ne.jp、pixel.wetracked.io。
+- 狭いEasyPrivacy2資料で未検出の4件も既定uBO Lite内の別ルールに遮断対象がある。**新規7件は保留を推奨**。この観測は仮想通信に限定され、Firefox版uBO・実サイトの価値や安全性は未確定。
+- PR #14の候補は人手の正式採否までDraft／NO_GO。最新のGitHub Actionsを確認し、古い未検証・アクション0件の中間実行結果で判断しない。
