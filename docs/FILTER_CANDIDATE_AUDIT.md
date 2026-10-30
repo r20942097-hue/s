@@ -82,6 +82,27 @@ The CI test job writes four **temporary** JSON reports for pinned stable bytes, 
 
 The reports are kept only in the runner's temporary directory, and are not published to production or committed. GitHub Actions logs, checks and summaries are subject to retention limits (90 days maximum for public repositories as of October 2026); see [GitHub Actions retention](https://docs.github.com/en/organizations/managing-organization-settings/configuring-the-retention-period-for-github-actions-artifacts-and-logs-in-your-organization). Permanent evidence remains the versioned code, pinned-source registries, regression fixtures and PR description; CI logs are supporting evidence and should not be assumed permanent.
 
+## Per-subscription incremental coverage (not a release test)
+
+The optional `scripts/compare_subscription_coverage.py` runs the **same immutable upstream input** across each `s` output (`ad.txt`, `tracking.txt`, all v2 lists), plus `stable_combined` and `v2_balanced` logical groups. No optional or strict rule is silently treated as part of the stable subscriptions. Source rules with restricted URL/type scope are not counted as complete host coverage.
+
+    python scripts/compare_subscription_coverage.py --crosscheck-independent
+    python scripts/compare_subscription_coverage.py --crosscheck-independent --report /tmp/filter-subscription-comparison.json
+
+The resulting per-output counts are registry-based counterfactuals, not observations of actual installed lists or user traffic. The GitHub CI quality-gate summary verifies each output's matched and unmatched totals against the same pinned host universe. A missing output, inconsistency or publication status mismatch fails the gate.
+
+## Protected baseline Git tree verification
+
+Stable fidelity is now checked against **two independent local representations**: `verification/stable-fidelity-lock.json` and the real historical Git tree at `20a26610db8970abef1bd7016f5f641ce25b7063`. CI fetches this immutable commit read-only and runs:
+
+    python scripts/check_stable_fidelity.py --verify-base-tree
+
+A rewritten lock plus rewritten stable asset cannot pass solely by agreeing with each other when the historical tree still contains the old blob. This remains a PR-controlled CI check, not a cryptographic signature or substitute for human approval.
+
+## Filter syntax findings and conservatism
+
+Primary reference: [uBlock Origin official static filter syntax](https://github.com/gorhill/uBlock/wiki/Static-filter-syntax). The `domain=`/`from=` option names the page context rather than the request target; `$important` bypasses network exceptions; `3p` is an alias for `third-party`. The selected upstream allowlist's `@@||host` patterns are analyzed cautiously. `$generichide`, `$elemhide`, `$removeparam`, `$redirect-rule`, `$badfilter` and similar **directive exceptions are not treated as whole-network allow rules**. The scanner does not evaluate every option, browser-specific matching or installed filter precedence, so a possible exception is not proof of effective allowlisting.
+
 ## Quality gates
 1. All accepted rules must remain narrow and third-party-only. No broad exception weakening and no hidden auto-promote.
 2. Existing network rules and stable paths remain byte-identical.
