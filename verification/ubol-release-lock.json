@@ -1,0 +1,18 @@
+{
+  "schema": "filter-real-addon-fixture/v1",
+  "source_repository": "uBlockOrigin/uBOL-home",
+  "release_tag": "2026.1026.1812",
+  "published_at": "2026-10-26T18:13:42Z",
+  "asset_name": "uBOLite_2026.1026.1812.chromium.zip",
+  "asset_url": "https://github.com/uBlockOrigin/uBOL-home/releases/download/2026.1026.1812/uBOLite_2026.1026.1812.chromium.zip",
+  "sha256": "d3788eac9f0a44c67f3745a43c3fd446ef33d56b1121f469b19e0fa0a836c2b5",
+  "size_bytes": 9009606,
+  "max_archive_bytes": 18000000,
+  "max_total_extracted_bytes": 150000000,
+  "max_members": 10000,
+  "test_only": true,
+  "never_commit_archive": true,
+  "publication": "NO_GO",
+  "real_site_e2e": "NOT_RUN",
+  "notes": "Hash and asset name observed in GitHub's official release API. Downloaded only by explicit CI test to temporary runner paths; unrelated to subscription publication."
+}
