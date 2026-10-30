@@ -43,7 +43,8 @@
     "python scripts/scan_upstream_delta.py --fetch-upstream --crosscheck-independent --limit 5",
     "python scripts/check_stable_fidelity.py --verify-base-tree",
     "python scripts/compare_subscription_coverage.py --crosscheck-independent",
-    "python scripts/browser_fixture_smoke.py (requires playwright==1.64.1 and bundled browsers)"
+    "python scripts/browser_fixture_smoke.py (requires playwright==1.64.1 and bundled browsers)",
+    "python scripts/chromium_dnr_fixture.py (Playwright Chromium, temporary native MV3 DNR extension)"
   ],
   "downstream": {
     "repository": "r20942097-hue/faaff",
@@ -65,11 +66,18 @@
     "existing_main_subscriptions": "UNCHANGED",
     "protected_asset_count": 8,
     "new_rules_auto_promoted": 0,
-    "confirmed_automated_tests": "Python/engine checks, provenance and byte parity; check latest CI run for exact counts",
-    "browser_fixture": "PASS (synthetic localhost, Chromium+Firefox, Playwright surrogate; not real extension)",
-    "real_extension_live_site_e2e": "NOT_RUN",
+    "confirmed_automated_tests": "Python 146/146; uBO+Ghostery synthetic network 1,075/1,075; Chromium+Firefox local browser fixture; Chromium native MV3 DNR fixture; CI at latest head must be checked",
+    "browser_fixture": "PASS: Chromium+Firefox synthetic site / Playwright surrogate; Chromium ephemeral native MV3 declarativeNetRequest block on localhost. No uBO/uBOL loaded.",
+    "real_extension_live_site_e2e": "NOT_RUN: uBO/uBOL/AdGuard on production sites",
     "owner_merge_approval": "NEEDS_HUMAN",
     "acceptance_document": "docs/RELEASE_ACCEPTANCE.md",
-    "caution": "Source drift comparison and CI fixtures are not proof of incremental blocking efficacy or site compatibility"
+    "caution": "Source drift comparison and CI fixtures are not proof of incremental blocking efficacy or site compatibility",
+    "native_dnr_fixture": "PASS: Chromium MV3 temporary extension, first- vs third-party control, login/checkout local fixture",
+    "selected_easyprivacy_candidate_comparison": {
+      "candidate_count": 7,
+      "parent_or_exact_host_rule": 3,
+      "no_match_in_selected_two_files": 4,
+      "incremental_effect": "NOT_ESTABLISHED"
+    }
   }
 }
