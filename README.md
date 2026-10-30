@@ -46,6 +46,13 @@ node scripts/check_engine.mjs --engine-dir ../work/filter-engine
 python scripts/audit_upstream.py --cache ../work/upstream-audit --fetch --report ../work/upstream-audit.json
 ```
 
+任意の新規候補監査・差分抽出（外部サイトの候補を自動採用しません）：
+
+```sh
+python scripts/audit_filter_candidates.py --fetch-upstream
+python scripts/scan_upstream_delta.py --fetch-upstream --limit 40
+```
+
 変更内容は[更新記録](CHANGELOG.md)、検証に使うバージョンは[エンジン固定情報](verification/engine-lock.json)です。公開ページの通信確認や合成画面テストは、認証・動画再生のE2Eとは区別します。
 
 ## ライセンス
