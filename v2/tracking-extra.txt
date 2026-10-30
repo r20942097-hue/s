@@ -1,0 +1,18 @@
+[Adblock Plus 2.0]
+! Title: Universal Web Tracking Filter v2 - Experimental Extra (Opt-in)
+! Version: 20261030.2
+! Expires: 5 days
+! Homepage: https://github.com/r20942097-hue/s
+! Subscription: https://raw.githubusercontent.com/r20942097-hue/s/main/v2/tracking-extra.txt
+! Description: No active rules; seven redundant proposals quarantined as evidence.
+! Warning: Optional experimental filter. May interfere with attribution or analytics-dependent site features.
+! Policy: Third-party host rules only; no site-wide blocking, global cosmetics or broad scriptlets.
+! Compatibility: uBlock Origin / AdGuard / ABP-compatible network syntax where supported.
+! Candidate evidence: verification/filter-candidates.json
+! Real-site E2E: NOT_RUN; do not enable by default.
+! License: GPL-3.0-only
+! Status: QUARANTINED_NO_ACTIVE_RULES
+! Generated: filter-profiles.json via scripts/generate_lists.py
+!
+! Quarantined overlapping rule research; zero active rules
+!

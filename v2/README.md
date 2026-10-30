@@ -24,6 +24,17 @@ Subscribe to `ad.txt` and `tracking.txt`. This additionally blocks third-party a
 ### Strict Privacy
 Subscribe to all three lists. `strict.txt` additionally blocks tag managers, identity-linked measurement, and attribution frameworks. It has a materially higher site-breakage risk.
 
+### Experimental tracking extra (opt-in only)
+
+The separate [tracking-extra.txt](tracking-extra.txt) is a narrow review queue of **four** third-party tracker hosts:
+`id5-sync.com`, `event.getblue.io`, `sync.ebis.ne.jp`, `pixel.wetracked.io`. It is not included from other lists and has no effect until separately subscribed to, after publication approval.
+
+The exact candidate rules, pinned AdGuard classification lines, a selected allowlist review, and rejected/held hosts are recorded in [filter-candidates.json](../verification/filter-candidates.json). Separate [independent EasyPrivacy source pins](../verification/filter-independent-baselines.json) are used to distinguish local novelty from merely already-listed network hosts. These are not proof of incremental ad blocking or site safety. The read-only [candidate-audit script](../scripts/audit_filter_candidates.py) verifies registry parity; with `--fetch-upstream` it verifies immutable Git blob bytes and exact line anchors. This does **not** mean the rules are proven safe on live websites. Users already subscribing to AdGuard/EasyPrivacy may get little incremental blocking benefit.
+
+### Candidate-audit limits
+
+The review scanner now distinguishes real `@@||request-host` exception targets (including parent-host inheritance) from `domain=` applicability, and selected EasyPrivacy whole-host rules from script/path-limited references. Its output remains review-only, not a compatibility assessment. An additional pinned [stable fidelity lock](../verification/stable-fidelity-lock.json) rejects inadvertent changes to eight pre-existing public assets.
+
 ## Design rules
 
 - Network rules are narrowed to third-party requests where practical.
@@ -42,6 +53,8 @@ Subscribe to all three lists. `strict.txt` additionally blocks tag managers, ide
 
 ## Status
 
-Candidate. The 20261011.1 update is local and has not been published. The advertising profile has 93 network rules; privacy has 38; Strict has 13. Amazon's broad advertising domain was removed after exception review. Broad New Relic and Sentry SDK domains were isolated in Strict.
+Candidate: files exist on main, but are not promoted to the recommended root stable lists. The initial 20261011.1 candidate had 93 ad rules, 38 privacy rules and 13 Strict rules. Amazon's broad advertising domain was removed after exception review; New Relic and Sentry remain Strict-only.
+
+Proposed 20261030.1 privacy-only update (Draft PR, not live): 41 privacy rules, adding only `match.prod.bidr.io`, `sync.adkernel.com` and `sync.richaudience.com` as third-party cookie/ID-sync endpoint filters. Evidence: named-host references in tracker/blocklist datasets; no new parent-domain block. Root stable, v2 ads, v2 Strict and subscriber URLs do not change. Historical full-profile review remains 2026-10-11; the three-rule delta was reviewed on 2026-10-30. No real-browser or production-site breakage verification is claimed.
 
 Pinned upstream references and actual uBO/Ghostery engines were checked. Public-page network smoke checks and synthetic DOM tests do not establish login, form or video-playback compatibility. v2 is not automatically promoted over the root stable lists.

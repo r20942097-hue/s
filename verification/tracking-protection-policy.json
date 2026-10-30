@@ -1,0 +1,144 @@
+{
+  "schema": "filter-tracking-protection-policy/v1",
+  "status": "PRESERVE_TRACKING_PREVENTION",
+  "release": "NO_GO",
+  "owner_merge": "NEEDS_HUMAN",
+  "live_site_e2e": "NOT_RUN",
+  "active_scope": {
+    "stable": {
+      "path": "tracking.txt",
+      "rule_set": "privacy-core"
+    },
+    "candidate": {
+      "path": "v2/tracking.txt",
+      "rule_set": "privacy-v2"
+    },
+    "quarantine": {
+      "path": "v2/tracking-extra.txt",
+      "rule_set": "privacy-optional-20261030",
+      "active_rule_count": 0
+    }
+  },
+  "observed_rule_families": [
+    {
+      "id": "third_party_analytics",
+      "label": "第三者アクセス解析・計測",
+      "required_rules": [
+        "||google-analytics.com^$third-party",
+        "||mixpanel.com^$third-party"
+      ],
+      "scope": "core"
+    },
+    {
+      "id": "session_replay",
+      "label": "セッション記録・操作分析",
+      "required_rules": [
+        "||hotjar.com^$third-party",
+        "||fullstory.com^$third-party"
+      ],
+      "scope": "core"
+    },
+    {
+      "id": "advertising_measurement",
+      "label": "広告成果・リターゲティング用通信",
+      "required_rules": [
+        "||bat.bing.com^$third-party",
+        "||px.ads.linkedin.com^$third-party"
+      ],
+      "scope": "candidate"
+    },
+    {
+      "id": "tracking_beacons",
+      "label": "計測用ビーコン",
+      "required_rules": [
+        "||beacon.geniee.jp^$third-party"
+      ],
+      "scope": "candidate"
+    }
+  ],
+  "candidate_rule_rules": {
+    "no_unreviewed_publication": true,
+    "require_baseline_overlap_check": true,
+    "require_endpoint_level_justification": true,
+    "require_negative_controls": true,
+    "require_live_site_compatibility_before_release": true,
+    "accept_only_established_incremental_value": true,
+    "exclude_archived_stock_overlap_count": 7
+  },
+  "additional_privacy_elements": [
+    {
+      "id": "tracking_url_parameters",
+      "state": "RESEARCH_ONLY",
+      "reason": "uBO $removeparam support differs by MV2/MV3; preexisting AdGuard URL Tracking or stock rules may already handle common parameters; broad cleaning can damage login/referral flows"
+    },
+    {
+      "id": "cname_first_party",
+      "state": "RESEARCH_ONLY",
+      "reason": "first-party/CNAME scope and browser behavior require independent verification; no broad hostname rule implied"
+    },
+    {
+      "id": "fingerprinting_browser_apis",
+      "state": "RESEARCH_ONLY",
+      "reason": "network list cannot reliably enforce API-level changes; extension/browser settings differ"
+    },
+    {
+      "id": "gpc_header",
+      "state": "BROWSER_SETTING_NOT_FILTER_RULE",
+      "reason": "Global Privacy Control requires browser/extension setting, not a host-block rule"
+    }
+  ],
+  "boundaries": "This policy verifies deliberate anti-tracking rule families and non-duplicate admission safeguards; does not establish actual privacy efficacy, complete site compatibility, or novel default-uBOL coverage.",
+  "protected_rule_baseline": {
+    "stable": [
+      "||google-analytics.com^$third-party",
+      "||analytics.google.com^$third-party",
+      "||scorecardresearch.com^$third-party",
+      "||quantserve.com^$third-party",
+      "||hotjar.com^$third-party",
+      "||fullstory.com^$third-party",
+      "||mixpanel.com^$third-party",
+      "||amplitude.com^$third-party",
+      "||clarity.ms^$third-party"
+    ],
+    "candidate": [
+      "||google-analytics.com^$third-party",
+      "||analytics.google.com^$third-party",
+      "||scorecardresearch.com^$third-party",
+      "||quantserve.com^$third-party",
+      "||hotjar.com^$third-party",
+      "||fullstory.com^$third-party",
+      "||mixpanel.com^$third-party",
+      "||amplitude.com^$third-party",
+      "||clarity.ms^$third-party",
+      "||mouseflow.com^$third-party",
+      "||luckyorange.com^$third-party",
+      "||luckyorange.net^$third-party",
+      "||heapanalytics.com^$third-party",
+      "||heatmap.com^$third-party",
+      "||contentsquare.net^$third-party",
+      "||logrocket.com^$third-party",
+      "||logrocket.io^$third-party",
+      "||smartlook.com^$third-party",
+      "||crazyegg.com^$third-party",
+      "||matomo.cloud^$third-party",
+      "||segment.io^$third-party",
+      "||segment.com^$third-party",
+      "||mparticle.com^$third-party",
+      "||nr-data.net^$third-party",
+      "||sentry-cdn.com^$third-party",
+      "||browser-intake-datadoghq.com^$third-party",
+      "||cloudflareinsights.com^$third-party",
+      "||quantummetric.com^$third-party",
+      "||crashlytics.com^$third-party",
+      "||rudderstack.com^$third-party",
+      "||yandexmetrica.com^$third-party",
+      "||bat.bing.com^$third-party",
+      "||analytics.tiktok.com^$third-party",
+      "||tr.snapchat.com^$third-party",
+      "||px.ads.linkedin.com^$third-party",
+      "||static.ads-twitter.com^$third-party",
+      "||beacon.geniee.jp^$third-party",
+      "||genieedmp.com^$third-party"
+    ]
+  }
+}

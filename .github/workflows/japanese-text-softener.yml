@@ -2,6 +2,8 @@ name: Filter list checks
 
 on:
   push:
+    branches:
+      - main
     paths:
       - '*.txt'
       - 'v2/**'
@@ -14,6 +16,10 @@ on:
   pull_request:
 
   workflow_dispatch:
+
+concurrency:
+  group: filter-lists-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 permissions:
   contents: read
@@ -37,10 +43,42 @@ jobs:
           fi
       - name: Run filter regression tests
         run: python -m unittest discover -s tests -p 'test_*.py' -v
+      - name: Fetch pinned immutable baseline Git tree (read-only)
+        run: git fetch --no-tags --depth=1 origin 20a26610db8970abef1bd7016f5f641ce25b7063
+      - name: Check stable subscription fidelity against immutable Git tree
+        run: python scripts/check_stable_fidelity.py --verify-base-tree --report "$RUNNER_TEMP/filter-stable-fidelity.json"
       - name: Validate all filter lists
         run: python scripts/validate_lists.py
       - name: Check generated network lists
         run: python scripts/generate_lists.py --check
+      - name: Validate opt-in candidate evidence (offline)
+        run: python scripts/audit_filter_candidates.py
+      - name: Enforce active tracking prevention while excluding stock duplicate rules
+        run: python scripts/check_tracking_protection.py --report "$RUNNER_TEMP/filter-tracking-protection.json"
+      - name: Verify pinned upstream candidate sources and scoped allowlist
+        env:
+          FILTER_PINNED_CACHE_DIR: ${{ runner.temp }}/filter-pinned-blobs
+        run: python scripts/audit_filter_candidates.py --fetch-upstream --report "$RUNNER_TEMP/filter-candidate-evidence.json"
+      - name: Review pinned upstream delta and independent EasyPrivacy (read-only)
+        env:
+          FILTER_PINNED_CACHE_DIR: ${{ runner.temp }}/filter-pinned-blobs
+        run: python scripts/scan_upstream_delta.py --fetch-upstream --crosscheck-independent --limit 5 --report "$RUNNER_TEMP/filter-review-queue.json"
+      - name: Observe latest upstream drift (read-only, never updates pins)
+        run: python scripts/check_upstream_drift.py --report "$RUNNER_TEMP/filter-upstream-drift.json"
+      - name: Compare each actual subscription scope (read-only)
+        env:
+          FILTER_PINNED_CACHE_DIR: ${{ runner.temp }}/filter-pinned-blobs
+        run: python scripts/compare_subscription_coverage.py --crosscheck-independent --report "$RUNNER_TEMP/filter-subscription-matrix.json"
+      - name: Show candidate quality-gate summary (no publication)
+        run: |
+          python scripts/summarize_filter_gates.py \
+            --stable "$RUNNER_TEMP/filter-stable-fidelity.json" \
+            --candidate "$RUNNER_TEMP/filter-candidate-evidence.json" \
+            --delta "$RUNNER_TEMP/filter-review-queue.json" \
+            --drift "$RUNNER_TEMP/filter-upstream-drift.json" \
+            --matrix "$RUNNER_TEMP/filter-subscription-matrix.json" \
+            --tracking "$RUNNER_TEMP/filter-tracking-protection.json" \
+            --github-summary "$GITHUB_STEP_SUMMARY"
   engine:
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -60,3 +98,67 @@ jobs:
         run: npm ci --prefix verification/ghostery --ignore-scripts --no-audit --no-fund
       - name: Check with uBlock Origin and Ghostery engines
         run: node scripts/check_engine.mjs --engine-dir "$RUNNER_TEMP/filter-engine" --ghostery-entry verification/ghostery/node_modules/@ghostery/adblocker/dist/esm/index.js
+
+  browser:
+    name: browser integration (isolated, no live sites)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.13'
+      - name: Install pinned Playwright (browser smoke only)
+        run: python -m pip install playwright==1.64.1
+      - name: Install isolated Chromium and Firefox
+        run: python -m playwright install --with-deps chromium firefox
+      - name: Check synthetic browser fixture with request-abort surrogate
+        run: python scripts/browser_fixture_smoke.py --report "$RUNNER_TEMP/browser-fixture.json"
+      - name: Check Chromium native MV3 DNR browser engine (local fixture only)
+        run: python scripts/chromium_dnr_fixture.py --report "$RUNNER_TEMP/chromium-dnr-fixture.json"
+      - name: Load official, SHA256-pinned uBO Lite release in isolated Chromium
+        env:
+          FILTER_UBOL_CACHE_DIR: ${{ runner.temp }}/filter-ubol-official-verified
+        run: python scripts/ubol_real_addon_fixture.py --report "$RUNNER_TEMP/real-ubol-fixture.json"
+      - name: Import held candidate rules into official uBO Lite (localhost only)
+        env:
+          FILTER_UBOL_CACHE_DIR: ${{ runner.temp }}/filter-ubol-official-verified
+        run: python scripts/ubol_imported_list_fixture.py --report "$RUNNER_TEMP/ubol-import-fixture.json"
+      - name: Screen alternate upstream hosts against stock uBO Lite DNR (read-only)
+        env:
+          FILTER_UBOL_CACHE_DIR: ${{ runner.temp }}/filter-ubol-official-verified
+        run: python scripts/ubol_stock_gap_probe.py --limit 80 --report "$RUNNER_TEMP/ubol-stock-gap.json"
+      - name: Compare query tracking IDs with stock uBO Lite on synthetic URLs
+        env:
+          FILTER_UBOL_CACHE_DIR: ${{ runner.temp }}/filter-ubol-official-verified
+        run: python scripts/ubol_query_param_probe.py --report "$RUNNER_TEMP/ubol-query-param.json"
+      - name: Observe actual loopback HTTP query parameters in official uBO Lite
+        env:
+          FILTER_UBOL_CACHE_DIR: ${{ runner.temp }}/filter-ubol-official-verified
+        run: python scripts/ubol_local_param_http_probe.py --report "$RUNNER_TEMP/ubol-local-param-http.json"
+      - name: Lab-only test of uBO Lite utm_source modifier import and rollback
+        env:
+          FILTER_UBOL_CACHE_DIR: ${{ runner.temp }}/filter-ubol-official-verified
+        run: python scripts/ubol_param_import_lab.py --report "$RUNNER_TEMP/ubol-param-import-lab.json"
+      - name: Verify actual local HTTP query and synthetic signed-URL risk
+        run: |
+          python scripts/verify_url_param_lab.py \
+            --stock "$RUNNER_TEMP/ubol-local-param-http.json" \
+            --experimental "$RUNNER_TEMP/ubol-param-import-lab.json" \
+            --github-summary "$GITHUB_STEP_SUMMARY"
+      - name: Probe path-scoped removeparam with signed-path negative controls
+        env:
+          FILTER_UBOL_CACHE_DIR: ${{ runner.temp }}/filter-ubol-official-verified
+        run: python scripts/ubol_scoped_param_lab.py --report "$RUNNER_TEMP/ubol-scoped-param-lab.json"
+      - name: Verify scoped real HTTP lab evidence without release approval
+        run: python scripts/verify_scoped_param_lab.py --report "$RUNNER_TEMP/ubol-scoped-param-lab.json" --github-summary "$GITHUB_STEP_SUMMARY"
+      - name: Verify reversible browser integration and no-release gates
+        run: |
+          python scripts/verify_browser_gates.py \
+            --surrogate "$RUNNER_TEMP/browser-fixture.json" \
+            --native "$RUNNER_TEMP/chromium-dnr-fixture.json" \
+            --stock "$RUNNER_TEMP/real-ubol-fixture.json" \
+            --imported "$RUNNER_TEMP/ubol-import-fixture.json" \
+            --github-summary "$GITHUB_STEP_SUMMARY"

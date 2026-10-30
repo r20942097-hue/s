@@ -1,5 +1,127 @@
 # 更新記録
 
+## 2026-10-30 / 署名URL複合対照の追加・グローバル除去ルール不採用（Draft、未公開）
+
+- 非公開の実験用removeparam=utm_sourceを公式uBO Liteへ取り込み、架空HMAC署名を含む実HTTP URLでグローバル除去による署名不一致を再現。登録前・解除後はHMAC整合性が回復。
+- 実環境の決済や認証が破損したと断言はしないが、署名がURLパラメーター全体に依存する条件では**一般適用を認めない**。追跡専用エンドポイント／URLパスと安全な例外の設計へ移行。
+- 新規公開ルール0。重複7件の隔離、既存追跡防止9件/38件、main・安定版8ファイルを保全。証拠：verification/url-parameter-lab.json。
+
+## 2026-10-30 / URL追跡パラメーター差分と実HTTPの隔離試験（Draft、未公開）
+
+- 公式uBO Liteで追跡側5キー＋署名・認証側5キーの仮想ナビゲーション/XHR 20ケースを照合。既定redirect一致6件／一致なし14件を記録（これだけでは除去の証明ではない）。
+- Chromiumの一時DNS設定で予約済み.testホストをローカルHTTPへ向け、既定uBO Liteがfbclid/gclidを実際に削除し、utm_sourceは残すことを確認。state・code・X-Amz-Signatureは保持。
+- lab専用のremoveparam=utm_sourceを公式uBO Liteへ一時インポート。utm_sourceがPRESENT→REMOVED→PRESENTと変化し、既定クリックIDの除去と認証キーの個別保持も確認。**実サイトや複合署名URLは未検証、公開候補0**。
+- 同一CIジョブ内の公式ZIPのSHA-256再検証付き一時キャッシュを追加。PRとpushの重複CIを整理し、旧PR検証のキャンセルとmainのpush検証を維持。
+- 検証詳細：docs/URL_TRACKING_PARAMETER_AUDIT.md、verification/url-parameter-lab.json。
+
+## 2026-10-30 / 追跡防止の維持をCIで明示（Draft PR、未公開）
+
+- 安定版トラッキング9件、Draft v2追跡防止38件を維持する品質ゲートを追加。第三者計測、セッション記録、広告計測、ビーコンの代表ルール消失や旧重複7ルール復活を検出。
+- URLパラメーター除去、CNAME、指紋採取、GPCの制御範囲を区別し、既定対策との重複確認や実サイト検証前に機能搭載済みと宣言しない。
+- 追跡防止ポリシーとテストを追加。docs/TRACKING_PROTECTION_POLICY.mdを参照。main・公開購読URLは保全し、NO_GOは維持。
+
+## 2026-10-30 / 既定遮断の重複7件を活動候補から隔離、80件追加案を検査（Draft・未公開）
+
+- 公式uBO Liteの既定DNRが遮断する7件を`privacy-v2`から3件、実験`privacy-optional-20261030`から4件除外。v2の追跡リストを再生成し、実験リストは明示的な隔離マーカー付き0ルール。過去の根拠はverification/filter-candidates.jsonに保持。
+- `audit_filter_candidates.py`と回帰テストで7件の無断復活を拒否。安定版とmainは保全。
+- 新しい`ubol_stock_gap_probe.py`で固定AdGuard追跡リストの低リスク一次候補80件を、実uBO Lite（6既定DNR）の仮想3種類（image/script/XHR）と照合。45既定遮断、34未一致、1未解決。**新規活動ルール0件**。
+- 用途を確認できたadtrace.ai・adbrix.io・adtasukaru.comは追加前の要エンドポイント特定・実サイト検証に分類。詳細：docs/STOCK_GAP_REVIEW.md。正式公開NO_GO。
+
+## 2026-10-30 / 公式uBO Liteの外部候補リスト導入・解除の往復試験（Draft PR、未公開）
+
+- SHA-256検証済みの公式uBO Liteを隔離Chromiumに読み込み、PRの候補7件をローカルHTTPで配信、公式の`importFilterList`経路から取り込み成功。配布URL・公開リストは未変更。
+- 候補7件と独立した試験専用`*.invalid` 1件を追加し、8ルール受理・コンパイル保存を確認。仮想第三者画像リクエストのDNR比較で、登録前0→登録後block一致→登録解除後0を検証。
+- `verify_browser_gates.py` でChromium/Firefoxの模擬通信、ネイティブMV3試験、公式uBO Lite起動、リスト追加・削除を統合したfail-closed品質判定を追加。実通信や実サイトの検証済み宣言は禁止。
+- ユーザー環境、main、公開購読、安定版は変更せず。PRの7候補は引き続き重複可能性が高く、採用保留、NO_GO。
+
+## 2026-10-30 / 既定uBO Liteとの実DNR差分判定：7候補採用保留（Draft PR、未公開）
+
+- Chromeの開発用 `testMatchOutcome()` が返した候補7ホストへの仮想第三者画像通信のルールIDを、SHA-256検証済み公式uBO Lite ZIP内の静的ルールJSONに照合。全7件で `block` アクションに一致。
+- 内訳：Peter Lowe (pgl) 3件、EasyList 1件、EasyPrivacy 3件。この固定リリース／リクエスト条件では追加ルールの遮断範囲が既定DNRと重なるため、新候補7件を自動採用しない。
+- 選択したEasyPrivacyの2資料で一致しなかった4件も、実uBO Liteの別の既定リストに一致することを確認。採用判断はFirefox版uBOと本番サイトの増分評価まで保留。
+- これは仮想通信へのアクション照合であり、実際のサイト通信、ログイン、動画再生、誤遮断のE2E結果ではない。
+
+## 2026-10-30 / 公式uBO Liteの実拡張起動試験（Draft PR、未公開）
+
+- uBlockOrigin/uBOL-homeの2026.1026.1812 Chromium版を公式GitHubリリースのSHA-256に固定し、CI内で改変せず展開・起動する検証を追加。ZIPは出力・Git管理しない。
+- Playwright付属Chromiumで実際のuBO Liteサービスワーカーと既定DNRルールセット6個の有効化を確認。安全な展開チェック（ZIPパス・symlink・重複・サイズ・ハッシュ）と回帰試験を追加。
+- 公式マニフェストの多言語メッセージキーと実際の表示名の違いを扱い、起動可否とルール有効化を独立検証。
+- Chromiumの開発用仮想通信APIが利用できれば候補7ホストと既定DNRルールの一致を追加観測する。**候補リストを実uBO Liteに導入しておらず、サイトでの追加遮断効果は未証明**。
+- 既存安定版と公開URLを維持し、公開ゲートはNO_GOのまま。
+
+## 2026-10-30 / Chromium MV3実遮断ゲート・7候補の個別証拠（Draft PR、未公開）
+
+- Playwright付属Chromiumの永続プロファイルに、CI一時生成の最小MV3拡張を読み込む実験を追加。ブラウザー標準declarativeNetRequestによる第三者通信遮断、第一者通信許可、未導入時の陽性対照、模擬ログイン/決済維持を確認。**実uBlock Origin／uBO Liteや実サイトを使用していない**。
+- 新規候補7件を選択EasyPrivacy 2資料と個別照合。bidr.io、getblue.io、ebis.ne.jpの親ドメインルールに対応する3件を確認。残る4件はこの2資料で一致なし。**増分価値・互換性は全件NOT_ESTABLISHED／NOT_RUN**。
+- scripts/compare_subscription_coverage.py と統合品質ゲートに候補別証拠を追加し、追加採用／公開成功の誤判定を拒否する回帰テストを拡張。
+- main、安定版8ファイル、既存購読URL、faaff同期、Releaseには変更なし。Draft PRはNO_GOを維持。
+
+## 2026-10-30 / vNext完成ゲート・隔離ブラウザー試験・上流取得最適化（Draft PR、未公開）
+
+- 最終受入条件を docs/RELEASE_ACCEPTANCE.md に統合。自動CIと実拡張・実サイト検証の境界、残課題、所有者承認を明確化。
+- Playwright 1.64.1で隔離Chromium/Firefoxを実際に起動するbrowser fixtureを追加。ローカル合成サイトで擬似通信遮断、模擬フォーム・決済操作をテスト。**本物のuBO/AdGuard拡張と実サイト、動画再生は未検証**。
+- ハッシュ検証済みの固定Git Blobを同一CI実行の一時領域で再利用。破損・過大サイズ・不正なリンクをFAILとし、無検証のキャッシュ使用や自動候補採用は禁止。
+- ai/PROJECT_STATE.json、ai/HANDOFF.mdを更新して候補版の正本・残課題を引き継ぎ可能にした。既存の安定版8ファイル、main、購読URLは変更していない。
+
+## 2026-10-30 / vNext購読別効果比較・例外誤判定修正・Gitツリー保全（Draft PR、未公開）
+
+- **自動採用0件**を維持し、公式uBOフィルター構文を再確認。装飾・URL除去・リダイレクト・badfilter等の例外ディレクティブを、ネットワーク許可の証拠として数えないよう修正。
+- `compare_subscription_coverage.py` により安定版、v2、実験用、合成購読の各ルールセットを混同せず固定上流のホスト一致状況を比較。出力はレビュー資料のみで実ブラウザー動作の実測値ではない。
+- `check_stable_fidelity.py --verify-base-tree` を追加し、公開8ファイルの保全台帳と歴史的Git Tree Blob IDを照合。台帳と配布ファイルを同時改変した事故も発見する構成。
+- GitHub Actionsの品質サマリーに購読別の数値整合性を追加。新規回帰テストを追加し、現在の公開ファイルと購読URLは保全。
+
+## 2026-10-30 / 統合品質ゲートとCIサマリー（Draft PR、未公開）
+
+- 安定版Blob検証、候補原資料検証、上流差分、上流更新監視の4種類のJSONをCIの一時ディレクトリに出力。
+- `summarize_filter_gates.py` でスキーマ・検証状態・集計一致・公開禁止状態を再検査し、Job Summaryへ表形式で可視化。
+- いずれかの証拠欠落や不正な公開成功宣言をFAILとして扱う。実ブラウザー検証を実行済みと誤表示しない。
+- GitHub Actionsのログ・チェックは保持期間の対象となるため、PR内の固定出典台帳・試験コード・説明文を永続記録として保全。安定版・公開購読URLは不変更。
+
+## 2026-10-30 / 出典精密化・安定版8ファイル保全（Draft PR、未公開）
+
+- uBO/ABP構文の公式仕様に基づき、`@@||host` の通信対象と `domain=` の適用元ドメインを別扱いに修正。親ドメインからサブドメインへの例外の可能性も検出。
+- 選択したEasyPrivacyルールをホスト全体とリソース種別・パス限定に分割。掲載だけで遮断範囲全体を覆うとは判定しない。
+- `verification/stable-fidelity-lock.json` に `main` の既存公開8ファイルのGit Blob IDを固定。バイト変更、紛失、シンボリックリンクをCIで検出。許可された安定版改訂はロック変更も所有者によるレビュー必須。
+- 上流資料・生成正本・既存購読URL・`main`は保持。実ブラウザーE2EはNOT_RUN。
+
+## 2026-10-30 / 全候補レビューのページング機構（Draft PR、未公開）
+
+- 監査キュー全件を最大200件ずつ、決定的順序・ゼロ起点オフセットでページ分割可能にした。
+- `queue_total`・`queue_offset`・`next_offset` をJSONレポートに追加。欠落や二重取得を回帰テストで検出。
+- 引き続き読み取り専用で、PR/配布リストへの自動ルール追加は行わない。
+
+## 2026-10-30 / 上流ファイル更新検知（Draft PR、未公開）
+
+- AdGuard Tracking Protection と EasyPrivacy の固定資料4ファイルについて、最新のmaster参照をコミットSHAに解決し、各ファイルのGit blobハッシュ差分を検出する読み取り専用ツールを追加。
+- 最新内容に変化があっても、登録済みの固定SHA・配布ルール・購読URL・公開状態を自動変更しない。 `UNCHANGED_CONTENT` / `DRIFT_OBSERVED` / 不明・失敗を区別。
+- 上流メタデータの偽装・ファイルサイズ超過・誤ったパス・不正ハッシュを検証する回帰テストを追加。CIで最新の上流更新有無を記録（ログ・一時ファイルのみ）。
+- 公開と実ブラウザーE2Eは引き続き未実施。
+
+## 2026-10-30 / 差分判定の精度向上・独立ソースの照合（Draft PR、未公開）
+
+- 既存フィルターの親ドメインで完全に覆う場合と、より広域な親ドメイン遮断に拡張する場合を別分類。後者を安全な重複と誤判定しない。
+- 選択した例外資料について、単なるホスト文字列の記載と、`@@` 形式の許可ルールを別集計。
+- 独立したEasyPrivacy 2資料をGitコミット・blob SHAに固定し、参照と不一致検出を追加。追加効果・サイト安全性の認定には使用しない。
+- `tracking-extra.txt` の候補ルールを他の購読出力へ含める変更を拒否する検査を追加。
+- CLIは読み取り専用、上流からの自動採用0件、現在のルール7件以外のブロック対象追加なし。安定版購読URL・原本・リリースへの変更なし。
+- Linux CIでリグレッション、二つのエンジン、固定ソース整合性と独立照合を検査。実ブラウザーE2EはNOT_RUN。
+
+## 2026-10-30 / v2実験用追跡リストと出典検証ゲート（Draft PR、未公開）
+
+- `v2/tracking-extra.txt` を**任意購読・既定無効**の実験用候補として追加（4ホストのみ）。
+- `filter-profiles.json` を唯一のルール正本とし、生成先4件を自動生成。安定版および既存のv2ファイルには変更なし。
+- `verification/filter-candidates.json` に固定Gitコミット/Blob・原資料行番号・選定理由・候補除外理由・誤検知リスクを記録。
+- `scripts/audit_filter_candidates.py` と回帰試験を追加し、出典・ルールの一致、選定したallowlist内の例外文字列、既存ルールとの親子重複などを検査。上流取得はGit blobハッシュ検証付き。
+- CIの既存Filter list checksで候補検証を実施。uBO・Ghosteryの既存エンジン検証と併用。
+- 実ブラウザ/実サイト互換性：NOT_RUN。自動昇格、mainマージ、faaff取り込み、リリース：実施しない。
+
+## 2026-10-30 / v2追跡フィルターの限定差分（Draft PR、未公開）
+
+- v2の `tracking.txt` に広告ID同期用の3ホスト `match.prod.bidr.io`、`sync.adkernel.com`、`sync.richaudience.com` を第三者通信に限定して追加。親ドメインの広域遮断は行わない。
+- 根拠: 公開トラッカーデータとAdGuard系ホストリストに当該ホストの個別記載がある。現在のすべての実サイトでの到達・互換性を確認したものではない。
+- 出力別の任意 `version` を生成器に追加。候補の `v2/tracking.txt` のみ `20261030.1` に更新し、rootの安定版、v2広告、v2 Strict、購読URL、ライセンスは変更しない。
+- 基本静的テスト・生成再現・実エンジン検証はCI結果を別途確認。ブラウザー実サイトE2EはNOT_RUN。所有者承認までmainへのmergeなし。
+
 ## 2026-10-19 / パス付きルールと長いファイル名の追加検査
 
 - URLパスに改行や制御文字を含むルールを拒否し、別のフィルター行の混入を防ぎます。

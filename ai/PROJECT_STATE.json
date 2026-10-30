@@ -2,7 +2,7 @@
   "schema": "project-state/v1",
   "repository": "r20942097-hue/s",
   "role": "ブラウザー用フィルターの公開配布元（release authority）",
-  "updated": "2026-10-28",
+  "updated": "2026-10-30",
   "default_branch": "main",
   "heads": {
     "main_before_governance_pr": "a3bb00a94c2c44ad882a85078a4e3e74730290a2",
@@ -14,8 +14,22 @@
     "NO_NEW_INTERNAL_PUSH": "active: main への直接 push 禁止（作業ブランチへの push と PR 作成は可）"
   },
   "permissions": {
-    "always_allowed": ["read", "create proposal/feature branches", "push to proposal/feature branches", "open draft/normal PRs", "rerun CI", "run local verification"],
-    "requires_owner_approval": ["merge to main", "delete original branches/files", "visibility/publication changes", "force-push / history rewrite", "production deploy", "add ZIP/binary artifacts"]
+    "always_allowed": [
+      "read",
+      "create proposal/feature branches",
+      "push to proposal/feature branches",
+      "open draft/normal PRs",
+      "rerun CI",
+      "run local verification"
+    ],
+    "requires_owner_approval": [
+      "merge to main",
+      "delete original branches/files",
+      "visibility/publication changes",
+      "force-push / history rewrite",
+      "production deploy",
+      "add ZIP/binary artifacts"
+    ]
   },
   "protection": {
     "main_ruleset": "PR必須（承認0）・必須チェック test / engine（Filter list checks）・force-push禁止・削除禁止",
@@ -24,16 +38,167 @@
   "verification_commands": [
     "python -m unittest discover -s tests -p 'test_*.py' -v",
     "python scripts/validate_lists.py",
-    "python scripts/generate_lists.py --check"
+    "python scripts/generate_lists.py --check",
+    "python scripts/audit_filter_candidates.py --fetch-upstream",
+    "python scripts/scan_upstream_delta.py --fetch-upstream --crosscheck-independent --limit 5",
+    "python scripts/check_stable_fidelity.py --verify-base-tree",
+    "python scripts/compare_subscription_coverage.py --crosscheck-independent",
+    "python scripts/browser_fixture_smoke.py (requires playwright==1.64.1 and bundled browsers)",
+    "python scripts/chromium_dnr_fixture.py (Playwright Chromium, temporary native MV3 DNR extension)",
+    "python scripts/ubol_real_addon_fixture.py --report /tmp/real-ubol.json (Playwright Chromium; official ZIP fetched and SHA256-verified)",
+    "python scripts/ubol_imported_list_fixture.py --report /tmp/ubol-import.json",
+    "python scripts/verify_browser_gates.py --surrogate <json> --native <json> --stock <json> --imported <json>",
+    "python scripts/ubol_query_param_probe.py --report /tmp/param-baseline.json",
+    "python scripts/ubol_local_param_http_probe.py --report /tmp/param-real-local.json",
+    "python scripts/ubol_param_import_lab.py --report /tmp/param-import-lab.json"
   ],
   "downstream": {
     "repository": "r20942097-hue/faaff",
     "pinned_import": "faaff/ai/imports/s.json（本リポジトリ main 変更後は faaff 側で別PRにより再取り込み）"
   },
   "open_items": [
+    "v2候補の実ブラウザー＋本物のフィルター拡張によるサイト互換性、既定リスト比の増分効果：NOT_RUN。docs/RELEASE_ACCEPTANCE.md参照",
     "git 履歴に RPLAY_*.zip（約4MB×10）が残存。完全削除には filter-repo + force-push + GitHub Support 依頼が必要（要承認・未実施）",
     "LICENSE ファイル未配置（ライセンスは各フィルターのヘッダーで宣言）",
     "has_wiki が有効（未使用と推定・未検証）",
     "Actions に main に存在しないワークフロー「Validate v2 filters」が登録残り"
-  ]
+  ],
+  "active_candidate": {
+    "pull_request": "https://github.com/r20942097-hue/s/pull/14",
+    "branch": "proposal/filter-v2-privacy-cookie-sync-20261030",
+    "publication_status": "NO_GO",
+    "review_status": "DRAFT",
+    "proposed_changes": "v2/tracking.txt narrow delta plus opt-in v2/tracking-extra.txt; verified-source audit and read-only discovery",
+    "existing_main_subscriptions": "UNCHANGED",
+    "protected_asset_count": 8,
+    "new_rules_auto_promoted": 0,
+    "confirmed_automated_tests": "Python 146/146; uBO+Ghostery synthetic network 1,075/1,075; Chromium+Firefox local browser fixture; Chromium native MV3 DNR fixture; CI at latest head must be checked",
+    "browser_fixture": "PASS: Chromium+Firefox synthetic site / Playwright surrogate; Chromium ephemeral native MV3 declarativeNetRequest block on localhost. No uBO/uBOL loaded.",
+    "real_extension_live_site_e2e": "NOT_RUN: official uBO Lite boot is not candidate subscription or live-site compatibility",
+    "owner_merge_approval": "NEEDS_HUMAN",
+    "acceptance_document": "docs/RELEASE_ACCEPTANCE.md",
+    "caution": "Source drift comparison and CI fixtures are not proof of incremental blocking efficacy or site compatibility",
+    "native_dnr_fixture": "PASS: Chromium MV3 temporary extension, first- vs third-party control, login/checkout local fixture",
+    "selected_easyprivacy_candidate_comparison": {
+      "candidate_count": 7,
+      "parent_or_exact_host_rule": 3,
+      "no_match_in_selected_two_files": 4,
+      "incremental_effect": "NOT_ESTABLISHED"
+    },
+    "official_ubol_release": {
+      "version": "2026.1026.1812",
+      "asset_sha256": "d3788eac9f0a44c67f3745a43c3fd446ef33d56b1121f469b19e0fa0a836c2b5",
+      "browser": "Playwright Chromium",
+      "status": "PASS: real official MV3 service worker and six stock DNR rulesets",
+      "candidate_list_loaded": false,
+      "real_site_compatibility": "NOT_RUN"
+    },
+    "official_ubol_stock_hypothetical": {
+      "status": "PASS_READONLY_DNR_MATCH",
+      "date": "2026-10-30",
+      "release": "2026.1026.1812",
+      "request_shape": "https://<candidate-host>/pixel.gif; image; 3p initiator https://example.org/",
+      "candidates_reviewed": 7,
+      "default_stock_block_action_matches": 7,
+      "matches_by_ruleset": {
+        "pgl": 3,
+        "easylist": 1,
+        "easyprivacy": 3
+      },
+      "action_lookup": "verified static rule JSON from same pinned SHA256 release ZIP",
+      "actual_live_requests": "NOT_RUN",
+      "incremental_value": "NOT_ESTABLISHED; likely redundant for tested uBOL default request shape",
+      "publication": "HOLD"
+    },
+    "release_decision": "NO_GO: 7/7 candidate hosts already matched default stock uBOL block actions in hypothetical case; do not auto-promote",
+    "real_ubol_import": {
+      "status": "PASS: official uBOL 2026.1026.1812 imported 7 held candidates plus 1 never-published control",
+      "local_server": "127.0.0.1 ephemeral HTTP",
+      "accepted_count": 8,
+      "compiled_storage": "PASS",
+      "temporary_native_dnr_before": 0,
+      "after_import_block_action_at_least": 1,
+      "after_unsubscribe": 0,
+      "rollback": "PASS",
+      "live_site_effectiveness": "NOT_RUN",
+      "public_subscription_url": "UNCHANGED",
+      "release": "NO_GO"
+    },
+    "browser_quality_gates": "PASS for four isolated browser categories; see latest current-head CI and docs/RELEASE_ACCEPTANCE.md",
+    "redundant_rules_quarantine": {
+      "status": "PASS",
+      "archived_count": 7,
+      "removed_from_v2_tracking": 3,
+      "removed_from_v2_tracking_extra": 4,
+      "active_new_rules": 0,
+      "archive_path": "verification/filter-candidates.json",
+      "experimental_output": "QUARANTINED_NO_ACTIVE_RULES",
+      "publication": "NO_GO"
+    },
+    "alternate_upstream_screening": {
+      "scope": "first 80 deterministic low-reference hosts of pinned AdGuard 2751 source universe, prefiltered by selected EasyPrivacy+allowlist",
+      "real_official_ubol": "2026.1026.1812",
+      "request_types": [
+        "image",
+        "script",
+        "xmlhttprequest"
+      ],
+      "stock_block_action_match": 45,
+      "zero_stock_block_match_in_tested_shapes": 34,
+      "unresolved": 1,
+      "priority_review": [
+        "adtrace.ai",
+        "adbrix.io",
+        "adtasukaru.com"
+      ],
+      "recommended_active_additions": 0,
+      "real_site_e2e": "NOT_RUN",
+      "docs": "docs/STOCK_GAP_REVIEW.md"
+    },
+    "tracking_parameter_validation": {
+      "status": "LAB_PASS_ONLY",
+      "official_ubol": "2026.1026.1812",
+      "stock_query_hypothetical": {
+        "cases": 20,
+        "redirect_matches": 6,
+        "no_redirect_matches": 14,
+        "indeterminate": 0
+      },
+      "local_http_stock": {
+        "fbclid": "REMOVED",
+        "gclid": "REMOVED",
+        "utm_source": "PRESENT",
+        "state": "PRESERVED",
+        "code": "PRESERVED",
+        "X-Amz-Signature": "PRESERVED"
+      },
+      "imported_rule_lab": {
+        "rule": "*$removeparam=utm_source",
+        "before": "PRESENT",
+        "with_import": "REMOVED",
+        "after_unsubscribe": "PRESENT",
+        "signed_real_url": "NOT_RUN",
+        "public_adoption": "NO_GO",
+        "synthetic_signed_hmac_url": {
+          "baseline": "PASS",
+          "while_global_modifier_active": "BROKEN",
+          "after_unsubscribe": "PASS",
+          "tested_local_http": "PASS",
+          "real_signed_url": "NOT_RUN",
+          "publication": "NO_GO",
+          "consequence": "GLOBAL_UTM_SOURCE_REMOVAL_NOT_APPROVED"
+        }
+      },
+      "new_active_rules": 0,
+      "report": "docs/URL_TRACKING_PARAMETER_AUDIT.md",
+      "evidence": "verification/url-parameter-lab.json",
+      "approved_rule_scope": "NONE",
+      "next_priority": "Endpoint/path-scoped tracking parameter proposal with real signed/auth URL negative controls; Firefox uBO and live-site verification"
+    },
+    "ci_optimization": {
+      "official_zip_cache": "runner.temp per job; SHA256 verified on each read; no cross-run persistence",
+      "workflow": "push main only, pull_request all branches, cancel outdated PR checks",
+      "status": "CI latest-head verification required"
+    }
+  }
 }

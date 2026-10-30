@@ -1,0 +1,120 @@
+{
+  "schema": "filter-candidates/v1",
+  "reviewed_at": "2026-10-30",
+  "scope": "Historical evidence only: four opt-in proposals were quarantined after stock uBO Lite 2026.1026.1812 matched block actions. Zero active candidate rules; no automatic adoption.",
+  "sources": {
+    "tracking": {
+      "repository": "AdguardTeam/AdguardFilters",
+      "commit": "d24169d99d6b81377a355a070597ace818016d9c",
+      "path": "SpywareFilter/sections/tracking_servers.txt",
+      "git_blob_sha": "4e81c6d0a6178aa344b712d9da3328c71c2a40a8"
+    },
+    "allowlist": {
+      "repository": "AdguardTeam/AdguardFilters",
+      "commit": "d24169d99d6b81377a355a070597ace818016d9c",
+      "path": "SpywareFilter/sections/allowlist.txt",
+      "git_blob_sha": "63f56a98edde6ca0300cee5f13f0e2da817b4667"
+    }
+  },
+  "output": "v2/tracking-extra.txt",
+  "candidates": [
+    {
+      "host": "id5-sync.com",
+      "rule": "||id5-sync.com^$third-party",
+      "status": "quarantined_stock_duplicate",
+      "risk": "medium",
+      "source": "tracking",
+      "line": 2144,
+      "exact_upstream_rule": "||id5-sync.com^$third-party",
+      "selected_allowlist": "no_literal_reference_observed",
+      "impact": "ID-sync vendor hostname; may affect advertising attribution",
+      "live_site_e2e": "NOT_RUN",
+      "stock_ubol_check": "block_action_match_for_third_party_image_2026.1026.1812",
+      "in_active_subscription": false
+    },
+    {
+      "host": "event.getblue.io",
+      "rule": "||event.getblue.io^$third-party",
+      "status": "quarantined_stock_duplicate",
+      "risk": "medium",
+      "source": "tracking",
+      "line": 1959,
+      "exact_upstream_rule": "||event.getblue.io^$third-party",
+      "selected_allowlist": "no_literal_reference_observed",
+      "impact": "event collection endpoint; may affect site telemetry",
+      "live_site_e2e": "NOT_RUN",
+      "stock_ubol_check": "block_action_match_for_third_party_image_2026.1026.1812",
+      "in_active_subscription": false
+    },
+    {
+      "host": "sync.ebis.ne.jp",
+      "rule": "||sync.ebis.ne.jp^$third-party",
+      "status": "quarantined_stock_duplicate",
+      "risk": "medium",
+      "source": "tracking",
+      "line": 1890,
+      "exact_upstream_rule": "||sync.ebis.ne.jp^$third-party",
+      "selected_allowlist": "no_literal_reference_observed",
+      "impact": "Japanese advertising/conversion synchronization; may affect attribution",
+      "live_site_e2e": "NOT_RUN",
+      "stock_ubol_check": "block_action_match_for_third_party_image_2026.1026.1812",
+      "in_active_subscription": false
+    },
+    {
+      "host": "pixel.wetracked.io",
+      "rule": "||pixel.wetracked.io^$third-party",
+      "status": "quarantined_stock_duplicate",
+      "risk": "medium",
+      "source": "tracking",
+      "line": 686,
+      "exact_upstream_rule": "||pixel.wetracked.io^$third-party",
+      "selected_allowlist": "no_literal_reference_observed",
+      "impact": "third-party tracking pixel; actual site breakage not tested",
+      "live_site_e2e": "NOT_RUN",
+      "stock_ubol_check": "block_action_match_for_third_party_image_2026.1026.1812",
+      "in_active_subscription": false
+    }
+  ],
+  "held": [
+    {
+      "host": "docodoco.jp",
+      "reason": "Selected AdGuard spyware allowlist contains an explicit domain-specific exception for api.docodoco.jp (jrtours.co.jp). Avoid broad auto-promotion."
+    },
+    {
+      "host": "pixel.tapad.com",
+      "reason": "Already present in maintained uAssets and AdGuard resources. Low novelty for users already subscribed to baseline lists."
+    },
+    {
+      "host": "newrelic.com",
+      "reason": "Broad SDK host; existing v2 Strict only, can break error telemetry and diagnostics."
+    }
+  ],
+  "governance": {
+    "main_merge": "NEEDS_HUMAN",
+    "downstream_import": "LAB_ONLY_VIA_LOCALHOST_NO_PRODUCTION",
+    "live_browser_e2e": "NOT_RUN",
+    "auto_promote": false,
+    "quarantined_stock_duplicate": true
+  },
+  "quarantine": {
+    "schema": "stock-overlap-quarantine/v1",
+    "release": "2026.1026.1812",
+    "active_rule_count": 0,
+    "quarantined_rule_count": 7,
+    "three_v2_rules": [
+      "||match.prod.bidr.io^$third-party",
+      "||sync.adkernel.com^$third-party",
+      "||sync.richaudience.com^$third-party"
+    ],
+    "four_extra_rules": [
+      "||id5-sync.com^$third-party",
+      "||event.getblue.io^$third-party",
+      "||sync.ebis.ne.jp^$third-party",
+      "||pixel.wetracked.io^$third-party"
+    ],
+    "tested_request": "https://HOST/pixel.gif, initiator=https://example.org/, image",
+    "rule_action": "block",
+    "site_effectiveness": "NOT_RUN",
+    "publication": "NO_GO"
+  }
+}

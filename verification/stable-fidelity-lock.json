@@ -1,0 +1,18 @@
+{
+  "schema": "filter-stable-fidelity/v1",
+  "baseline_commit": "20a26610db8970abef1bd7016f5f641ce25b7063",
+  "recorded_at": "2026-10-30",
+  "publication_hold": true,
+  "require_owner_review_for_pin_changes": true,
+  "notes": "Exact Git blob identities for eight pre-existing stable/manual subscription files from the current protected main branch. Candidate v2/tracking.txt and new opt-in tracking-extra.txt intentionally excluded. A PR can edit this manifest, so this is an accidental-regression guard, not a cryptographic approval mechanism.",
+  "files": {
+    "ad.txt": "3b6d05fd4c25e6c67033fb529a7b295b1fd96ad4",
+    "ad-ubo.txt": "813b67147a375151a58544d28e329cf17e7b9a60",
+    "tracking.txt": "e0db1c7277d57f1d65fa4c2dd68edc7f219fbe3e",
+    "v2/ad.txt": "577ae6dc6a2d99e9d0f2ba1dddff4ea7e05dda1a",
+    "v2/strict.txt": "67d136ae75b60dad3dadb68c8512f295f1f960cb",
+    "twitch-custom-optional.txt": "525d80b1bffa50d4a49389f9c4b84bacba8d8343",
+    "japanese-text-softener.txt": "9b8eba75cae4a7ddaf409329e3ee292fc5bbd994",
+    "japanese-text-softener-deep.txt": "6b800af88b59d414b4e3b3c1fcd9d9f6849d8446"
+  }
+}
