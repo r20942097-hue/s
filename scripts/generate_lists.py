@@ -81,7 +81,12 @@ def validate_profiles(data):
         if not single_line(label) or not label.strip():
             errors.append(f"{key}: label must be a nonempty single line")
         rules = entry.get("rules")
-        if not isinstance(rules, list) or not rules:
+        # This single retired, never-published proposal output is intentionally
+        # kept as a zero-rule explanatory placeholder. All other lists must
+        # retain active rules. Never generalize this exception.
+        dormant = (key == "privacy-optional-20261030"
+                   and entry.get("disabled") is True and rules == [])
+        if not isinstance(rules, list) or (not rules and not dormant):
             errors.append(f"{key}: rules must be a nonempty array")
             continue
         seen = set()
@@ -151,6 +156,13 @@ def validate_profiles(data):
                 licenses.add(value)
         if len(active) != len(set(active)):
             errors.append(f"{path}: duplicate rules across rule sets")
+        if not active:
+            allowed_dormant = (scope == "s" and path == "v2/tracking-extra.txt"
+                               and keys == ["privacy-optional-20261030"]
+                               and sets["privacy-optional-20261030"].get("disabled") is True
+                               and "! Status: QUARANTINED_NO_ACTIVE_RULES" in headers)
+            if not allowed_dormant:
+                errors.append(f"{path}: empty active rules forbidden outside retired opt-in list")
         if licenses != {values.get('License')}:
             errors.append(f"{path}: output license must match all source rule sets")
         includes = output.get('includes', [])
