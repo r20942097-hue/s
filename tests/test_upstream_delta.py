@@ -41,6 +41,36 @@ class DeltaScanTests(unittest.TestCase):
         self.assertEqual(report["queue"][0]["selected_allowlist_references"], [1])
         self.assertEqual(report["queue"][0]["status"], "REVIEW_REQUIRED")
 
+    def test_domain_option_is_applicability_not_exception_request_target(self):
+        tracking = "||checkout-site.example^$third-party\n"
+        allow = "@@||actual-tracker.example^$script,domain=checkout-site.example\n"
+        report = scan(self.profiles, self.evidence, tracking, allow)
+        self.assertEqual(report["candidate_hosts_with_selected_allowlist_reference"], 1)
+        self.assertEqual(report["candidate_hosts_with_selected_allowlist_exception"], 0)
+        self.assertEqual(report["queue"][0]["selected_allowlist_references"], [1])
+        self.assertEqual(report["queue"][0]["selected_allowlist_exception_lines"], [])
+        self.assertNotIn("selected_allowlist_exception", report["queue"][0]["risk_flags"])
+
+    def test_parent_host_exception_flags_subdomain_with_line_provenance(self):
+        tracking = "||sub.tracker-parent.example^$third-party\n"
+        allow = ("@@||tracker-parent.example^$domain=publisher.example\n"
+                 "! this comment mentions sub.tracker-parent.example\n")
+        report = scan(self.profiles, self.evidence, tracking, allow)
+        self.assertEqual(report["candidate_hosts_with_selected_allowlist_exception"], 1)
+        self.assertEqual(report["candidate_hosts_with_ancestor_exception_target"], 1)
+        self.assertEqual(report["queue"][0]["selected_allowlist_exception_lines"], [1])
+        self.assertEqual(report["queue"][0]["selected_allowlist_ancestor_exception_lines"], [1])
+        self.assertEqual(report["queue"][0]["selected_allowlist_references"], [1, 2])
+        self.assertIn("selected_allowlist_ancestor_exception", report["queue"][0]["risk_flags"])
+
+    def test_exception_lookalike_hostname_and_comment_are_not_target(self):
+        tracking = "||sensitive.example^$third-party\n"
+        allow = ("! @@||sensitive.example^ is only a comment\n"
+                 "@@||not-sensitive.example^$domain=sensitive.example\n")
+        report = scan(self.profiles, self.evidence, tracking, allow)
+        self.assertEqual(report["candidate_hosts_with_selected_allowlist_exception"], 0)
+        self.assertEqual(report["queue"][0]["selected_allowlist_exception_lines"], [])
+
     def test_host_boundaries_reject_lookalike(self):
         text = "||novel-tracking.example^$third-party\n"
         allow = "@@||fake-novel-tracking.example.org^\n"
