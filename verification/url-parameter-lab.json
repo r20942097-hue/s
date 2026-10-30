@@ -1,0 +1,41 @@
+{
+  "schema": "filter-url-param-lab-evidence/v1",
+  "status": "RESEARCH_ONLY",
+  "date": "2026-10-30",
+  "tested_extension": "official uBO Lite",
+  "official_extension_release": "2026.1026.1812",
+  "fixture_rule": "*$removeparam=utm_source",
+  "rule_scope": "GLOBAL_EXPERIMENT_ONLY_NOT_APPROVED_FOR_PUBLISHING",
+  "localhost_experiment": {
+    "source": "scripts/ubol_param_import_lab.py",
+    "actual_loopback_http": true,
+    "host": "tracking-fixture.test",
+    "injected_into_unmodified_official_extension": true,
+    "before": "utm_source PRESENT",
+    "with_experimental_rule": "utm_source REMOVED",
+    "after_unsubscribe": "utm_source PRESENT",
+    "stock_baseline_already_strips": [
+      "fbclid",
+      "gclid"
+    ],
+    "safe_query_controls_preserved_individually": [
+      "state",
+      "code",
+      "X-Amz-Signature"
+    ],
+    "combined_signed_query_integrity": "NOT_TESTED",
+    "external_site_compatibility": "NOT_RUN"
+  },
+  "additional_questions": [
+    "Does a signed URL containing utm_source and a signature break after global removeparam?",
+    "Are specific endpoint/path-scoped rules needed and sufficient?",
+    "Would the user already have the same behavior from an enabled default or optional uBO/AdGuard list?",
+    "Does full uBlock Origin on Firefox behave equivalently?",
+    "Do login/checkout/redirect links survive controlled on/off live-site tests?"
+  ],
+  "new_active_rules": 0,
+  "added_to_generated_filter_lists": false,
+  "publication": "NO_GO",
+  "owner_approval": "NEEDS_HUMAN",
+  "conclusion": "Only synthetic local HTTP provides evidence of incremental removal; no generalized live-site safety or incremental value has been established."
+}
