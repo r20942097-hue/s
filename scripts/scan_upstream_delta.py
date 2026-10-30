@@ -15,30 +15,44 @@ from generate_lists import valid_hostname
 from independent_baseline import fetch_baselines, observed_network_hosts, observed_reference
 
 RULE = re.compile(r"\|\|([a-z0-9.-]+)\^\$third-party\Z")
-ANY_RULE = re.compile(r"\|\|([a-z0-9.-]+)(?:\^|/)")
+FULL_RULE = re.compile(r"\|\|([a-z0-9.-]+)\^\$third-party\Z")
+PARTIAL_RULE = re.compile(r"\|\|([a-z0-9.-]+)(?:\^|/)")
 # Conservative literal-host tokens; regex-escaped and wildcard references are NOT
 # decoded and must remain outside the claims of this limited allowlist search.
 HOST_TOKEN = re.compile(r"(?<![A-Za-z0-9_.-])([A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)+)(?![A-Za-z0-9_.-])")
 
 
 def filter_hosts(profiles):
-    hosts = set()
+    """Separate all-resource 3p hostname blocks from path/type-restricted rules.
+
+    A rule such as ||example.com/path$third-party or
+    ||example.com^$third-party,script cannot fully cover a host-wide 3p rule.
+    """
+    full, restricted = set(), set()
     for rule_set in profiles["rule_sets"].values():
         for rule in rule_set["rules"]:
-            m = ANY_RULE.match(rule)
-            if m is not None:
-                hosts.add(m.group(1))
-    return hosts
+            matched = FULL_RULE.fullmatch(rule)
+            if matched is not None:
+                full.add(matched.group(1))
+                continue
+            matched = PARTIAL_RULE.match(rule)
+            if matched is not None:
+                restricted.add(matched.group(1))
+    return {"full": full, "restricted": restricted}
 
 
 def coverage(host, existing):
-    """Return exact/ancestor coverage before detecting riskier parent expansion."""
+    """Classify only proven local rule containment; all other cases need review."""
     parts = host.split(".")
-    for index in range(len(parts) - 1):
-        if ".".join(parts[index:]) in existing:
-            return "covered"
-    if any(value.endswith("." + host) for value in existing):
+    ancestors = (".".join(parts[index:]) for index in range(len(parts) - 1))
+    if any(parent in existing["full"] for parent in ancestors):
+        return "covered"
+    known = existing["full"] | existing["restricted"]
+    if any(value.endswith("." + host) for value in known):
         return "expands-existing-child"
+    if any(parent == host or host.endswith("." + parent)
+           for parent in existing["restricted"]):
+        return "expands-existing-restricted"
     return "not-covered"
 
 
@@ -69,6 +83,7 @@ def scan(profiles, evidence, tracking_text, allowlist_text, limit=40, baseline_s
     exact_third_party = 0
     covered = 0
     expanded = 0
+    restricted_expansions = 0
     with_references = 0
     with_exception_rules = 0
     for line_no, line in enumerate(tracking_text.splitlines(), 1):
@@ -86,6 +101,8 @@ def scan(profiles, evidence, tracking_text, allowlist_text, limit=40, baseline_s
             continue
         if status == "expands-existing-child":
             expanded += 1
+        elif status == "expands-existing-restricted":
+            restricted_expansions += 1
         evidence_rows = references.get(host, {"mentions": [], "exception_rules": []})
         mentions = evidence_rows["mentions"]
         exceptions = evidence_rows["exception_rules"]
@@ -99,6 +116,8 @@ def scan(profiles, evidence, tracking_text, allowlist_text, limit=40, baseline_s
         flags = []
         if status == "expands-existing-child":
             flags.append("parent_domain_expansion")
+        elif status == "expands-existing-restricted":
+            flags.append("type_or_path_scope_expansion")
         if baseline_reference:
             flags.append("selected_independent_easyprivacy_reference")
         if exceptions:
@@ -122,7 +141,7 @@ def scan(profiles, evidence, tracking_text, allowlist_text, limit=40, baseline_s
     # without removing them or claiming the remaining candidates are safe.
     queue.sort(key=lambda item: (
         bool(item["selected_allowlist_exception_lines"]),
-        item["coverage"] == "expands-existing-child",
+        item["coverage"] != "not-covered",
         bool(item["selected_allowlist_references"]),
         bool(item["selected_independent_easyprivacy_reference"]),
         item["host"]
@@ -134,6 +153,7 @@ def scan(profiles, evidence, tracking_text, allowlist_text, limit=40, baseline_s
         "upstream_exact_third_party_rules": exact_third_party,
         "already_covered_by_local_parent_or_exact": covered,
         "parent_expansion_candidates": expanded,
+        "restricted_scope_expansion_candidates": restricted_expansions,
         "new_candidate_hosts": len(queue),
         "candidate_hosts_with_selected_allowlist_reference": with_references,
         "candidate_hosts_with_selected_allowlist_exception": with_exception_rules,
@@ -146,6 +166,7 @@ def scan(profiles, evidence, tracking_text, allowlist_text, limit=40, baseline_s
         "limitations": [
             "Local-only coverage: not equivalent to installed EasyList, EasyPrivacy or AdGuard even when independent cross-check is enabled.",
             "Literal-host allowlist scan: regex-escaped, wildcard and semantic exceptions are not evaluated.",
+            "Only exact ||host^$third-party from local profiles is accepted as complete coverage; other rule scopes require manual review.",
             "Not all network filter options or first-party/CNAME behaviors are analyzed.",
             "Independent cross-check only reads two named EasyPrivacy source files. Excludes other EasyPrivacy rules and other blocker configurations.",
             "No real-browser or production-site tests."
@@ -199,6 +220,7 @@ def main():
     print("DELTA SCAN READ_ONLY:", report["new_candidate_hosts"], "not locally covered;",
           report["already_covered_by_local_parent_or_exact"], "covered;",
           report["parent_expansion_candidates"], "parent-expansion candidates;",
+          report["restricted_scope_expansion_candidates"], "restricted-scope expansions;",
           report["candidate_hosts_with_selected_allowlist_exception"],
           "with selected allowlist exceptions;",
           "EasyPrivacy crosscheck:", report["selected_independent_easyprivacy_comparison"],
