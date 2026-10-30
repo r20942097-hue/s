@@ -63,6 +63,32 @@ class DeltaScanTests(unittest.TestCase):
         self.assertEqual(report["queue"][0]["selected_allowlist_references"], [1, 2])
         self.assertIn("selected_allowlist_ancestor_exception", report["queue"][0]["risk_flags"])
 
+    def test_non_network_exception_directives_are_not_network_allows(self):
+        tracking = ("||cosmetic-exception.example^$third-party\n"
+                    "||redirect-only-exception.example^$third-party\n"
+                    "||badfilter-exception.example^$third-party\n"
+                    "||real-network-exception.example^$third-party\n")
+        allow = ("@@||cosmetic-exception.example^$generichide\n"
+                 "@@||redirect-only-exception.example^$redirect-rule\n"
+                 "@@||badfilter-exception.example^$badfilter\n"
+                 "@@||real-network-exception.example^$script,domain=checkout.example\n")
+        report = scan(self.profiles, self.evidence, tracking, allow)
+        self.assertEqual(report["candidate_hosts_with_selected_allowlist_exception"], 1)
+        self.assertEqual(report["candidate_hosts_with_selected_allowlist_reference"], 4)
+        indexed = {row["host"]: row for row in report["queue"]}
+        for host in ("cosmetic-exception.example", "redirect-only-exception.example",
+                     "badfilter-exception.example"):
+            self.assertEqual(indexed[host]["selected_allowlist_exception_lines"], [])
+            self.assertIn("selected_allowlist_literal_mention", indexed[host]["risk_flags"])
+        self.assertEqual(indexed["real-network-exception.example"]["selected_allowlist_exception_lines"], [4])
+
+    def test_non_network_modifier_combined_with_domain_stays_non_allow(self):
+        report = scan(self.profiles, self.evidence,
+                      "||non-network-option.example^$third-party",
+                      "@@||non-network-option.example^$removeparam,domain=example.org")
+        self.assertEqual(report["candidate_hosts_with_selected_allowlist_exception"], 0)
+        self.assertEqual(report["candidate_hosts_with_selected_allowlist_reference"], 1)
+
     def test_exception_lookalike_hostname_and_comment_are_not_target(self):
         tracking = "||sensitive.example^$third-party\n"
         allow = ("! @@||sensitive.example^ is only a comment\n"
