@@ -57,6 +57,8 @@ python scripts/compare_subscription_coverage.py --crosscheck-independent
 # CIでは scripts/summarize_filter_gates.py が4検査結果を Job Summary に統合
 ```
 
+**URL追跡パラメーター対策の検証を前進**：公式uBO Liteの実HTTP隔離試験で既定のfbclid/gclid除去を確認。utm_sourceは既定では残りましたが、一時的な試験用removeparamルールで削除・解除後復帰を確認しています。実サイトや署名付きURL全体の安全性が未検証のため、活動リストへの追加はしていません。[詳細な検証記録](docs/URL_TRACKING_PARAMETER_AUDIT.md)。
+
 **追跡防止機能は維持しています。** 安定版 `tracking.txt` の9件とDraft版 `v2/tracking.txt` の38件は分析・セッション記録・広告計測・ビーコン通信を対象とします。[追跡防止方針](docs/TRACKING_PROTECTION_POLICY.md)で、その維持、重複除去、将来のURL追跡パラメーター・CNAME対策の採用条件を説明しています。
 
 **既定uBO Liteのblockルールと重複する7件は、Draftのv2活動リストから除外しました。** 活動候補0件とし、元の証拠は隔離台帳に保存。別途、既定uBO Liteで選択80ホストを画像・script・XHRで照合し、45件が既定遮断一致、34件が未一致、1件が未解決でした。追加ルールは未承認のままです。[根拠・候補一覧](docs/STOCK_GAP_REVIEW.md)。
