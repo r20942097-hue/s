@@ -47,18 +47,23 @@ def valid_hostname(host):
                    for part in host.split('.'))
 
 
+def valid_version(value):
+    if not isinstance(value, str) or not re.fullmatch(r"\d{8}\.\d+", value):
+        return False
+    try:
+        datetime.strptime(value[:8], "%Y%m%d")
+    except ValueError:
+        return False
+    return True
+
+
 def validate_profiles(data):
     errors = []
     if not isinstance(data, dict) or data.get("schema") != "filter-profiles/v1":
         return ["unsupported profile schema"]
     version = data.get("version", "")
-    if not isinstance(version, str) or not re.fullmatch(r"\d{8}\.\d+", version):
-        errors.append("version must use YYYYMMDD.N")
-    else:
-        try:
-            datetime.strptime(version[:8], "%Y%m%d")
-        except ValueError:
-            errors.append("invalid version date")
+    if not valid_version(version):
+        errors.append("invalid version: expected YYYYMMDD.N with a real date")
     reviewed = data.get("reviewed_at")
     try:
         if not isinstance(reviewed, str) or datetime.strptime(reviewed, "%Y-%m-%d").date().isoformat() != reviewed:
@@ -122,8 +127,11 @@ def validate_profiles(data):
                 errors.append(f"{path}: expected one nonempty {key}")
             else:
                 values[key] = matching[0]
-        if isinstance(version, str) and values.get('Version', '').replace('{version}', version) != version:
-            errors.append(f"{path}: output Version must match the profile version")
+        output_version = output.get('version', version)
+        if not valid_version(output_version):
+            errors.append(f"{path}: invalid output version")
+        elif values.get('Version', '').replace('{version}', output_version) != output_version:
+            errors.append(f"{path}: output Version must match the output version")
         if not re.fullmatch(r'[1-9]\d* days?', values.get('Expires', '')):
             errors.append(f"{path}: Expires must be a positive number of days")
         for key in ('Homepage', 'Subscription'):
@@ -154,7 +162,7 @@ def validate_profiles(data):
 def render(data, output):
     lines = ['[Adblock Plus 2.0]']
     for header in output['headers']:
-        lines.append(header.replace('{version}', data['version']).replace('{reviewed_at}', data['reviewed_at']))
+        lines.append(header.replace('{version}', output.get('version', data['version'])).replace('{reviewed_at}', data['reviewed_at']))
     lines += ['! Generated: filter-profiles.json via scripts/generate_lists.py', '!']
     for key in output['rule_sets']:
         entry = data['rule_sets'][key]
