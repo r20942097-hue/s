@@ -31,6 +31,10 @@ The separate [tracking-extra.txt](tracking-extra.txt) is a narrow review queue o
 
 The exact candidate rules, pinned AdGuard classification lines, a selected allowlist review, and rejected/held hosts are recorded in [filter-candidates.json](../verification/filter-candidates.json). Separate [independent EasyPrivacy source pins](../verification/filter-independent-baselines.json) are used to distinguish local novelty from merely already-listed network hosts. These are not proof of incremental ad blocking or site safety. The read-only [candidate-audit script](../scripts/audit_filter_candidates.py) verifies registry parity; with `--fetch-upstream` it verifies immutable Git blob bytes and exact line anchors. This does **not** mean the rules are proven safe on live websites. Users already subscribing to AdGuard/EasyPrivacy may get little incremental blocking benefit.
 
+### Candidate-audit limits
+
+The review scanner now distinguishes real `@@||request-host` exception targets (including parent-host inheritance) from `domain=` applicability, and selected EasyPrivacy whole-host rules from script/path-limited references. Its output remains review-only, not a compatibility assessment. An additional pinned [stable fidelity lock](../verification/stable-fidelity-lock.json) rejects inadvertent changes to eight pre-existing public assets.
+
 ## Design rules
 
 - Network rules are narrowed to third-party requests where practical.
