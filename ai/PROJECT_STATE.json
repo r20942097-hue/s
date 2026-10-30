@@ -178,11 +178,22 @@
         "with_import": "REMOVED",
         "after_unsubscribe": "PRESENT",
         "signed_real_url": "NOT_RUN",
-        "public_adoption": "NO_GO"
+        "public_adoption": "NO_GO",
+        "synthetic_signed_hmac_url": {
+          "baseline": "PASS",
+          "while_global_modifier_active": "BROKEN",
+          "after_unsubscribe": "PASS",
+          "tested_local_http": "PASS",
+          "real_signed_url": "NOT_RUN",
+          "publication": "NO_GO",
+          "consequence": "GLOBAL_UTM_SOURCE_REMOVAL_NOT_APPROVED"
+        }
       },
       "new_active_rules": 0,
       "report": "docs/URL_TRACKING_PARAMETER_AUDIT.md",
-      "evidence": "verification/url-parameter-lab.json"
+      "evidence": "verification/url-parameter-lab.json",
+      "approved_rule_scope": "NONE",
+      "next_priority": "Endpoint/path-scoped tracking parameter proposal with real signed/auth URL negative controls; Firefox uBO and live-site verification"
     },
     "ci_optimization": {
       "official_zip_cache": "runner.temp per job; SHA256 verified on each read; no cross-run persistence",
