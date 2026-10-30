@@ -41,7 +41,13 @@ scripts/ubol_local_param_http_probe.py は予約済み tracking-fixture.test を
 - リスト登録解除後：utm_sourceが再び残る。
 - fbclid/gclidの既定除去は維持。state・code・X-Amz-Signature単独の保持も確認する。
 
-**この実験は一般サイト向けの新しいルールを承認するものではない。** 全URLへ適用する除去ルールは、署名の計算対象にutm_sourceが含まれるサイトでは検証・決済・認証を破損し得る。**utm_sourceと実際の署名が同居するURL**などの複合条件、Firefox版uBO、実サイトE2Eは未検証。一般公開せず、[検査記録](../verification/url-parameter-lab.json)に保全する。
+**重要な新実測**：[CI run 41066213386](https://github.com/r20942097-hue/s/actions/runs/41066213386)では、utm_sourceを含む架空のHMAC署名付きURLを同じループバックHTTPサーバーへ送信し、次のことを確認した。
+
+- グローバルなremoveparam登録前：架空URLのHMAC署名は有効。
+- グローバルなremoveparam登録中：utm_sourceが削除され、**HMAC署名が不一致（BROKEN）**。
+- 登録解除後：utm_sourceとHMAC署名の整合性が回復。
+
+したがって**全サイト向けの広域utm_source除去ルールは採用しない**。今後は追跡専用のホスト／URLパスなどの限定条件と、認証・署名URLの除外を先に設計する。これは**架空のHMAC署名**で検証したもので、実サイト上の認証・決済・署名付きリクエストへの実害を直接測定した結果ではない。FirefoxフルuBO・実サイトE2Eも未実施。[詳細な検査記録](../verification/url-parameter-lab.json)を保全する。
 
 ## 採用条件
 
