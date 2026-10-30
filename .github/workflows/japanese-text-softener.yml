@@ -131,6 +131,10 @@ jobs:
         env:
           FILTER_UBOL_CACHE_DIR: ${{ runner.temp }}/filter-ubol-official-verified
         run: python scripts/ubol_local_param_http_probe.py --report "$RUNNER_TEMP/ubol-local-param-http.json"
+      - name: Lab-only test of uBO Lite utm_source modifier import and rollback
+        env:
+          FILTER_UBOL_CACHE_DIR: ${{ runner.temp }}/filter-ubol-official-verified
+        run: python scripts/ubol_param_import_lab.py --report "$RUNNER_TEMP/ubol-param-import-lab.json"
       - name: Verify reversible browser integration and no-release gates
         run: |
           python scripts/verify_browser_gates.py \
