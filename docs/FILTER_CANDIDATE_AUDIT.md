@@ -33,6 +33,13 @@ Read-only upstream-delta review queue (suggestions only; **not** adopted as filt
     python scripts/scan_upstream_delta.py --fetch-upstream --limit 40
     python scripts/scan_upstream_delta.py --fetch-upstream --report /tmp/filter-delta-review.json
 
+The complete review queue is accessible with deterministic, bounded pages. Each page preserves the same total count and ordering, with `queue_offset`, `queue_total` and `next_offset` metadata. For example:
+
+    python scripts/scan_upstream_delta.py --fetch-upstream --crosscheck-independent --limit 200 --offset 0 --report /tmp/filter-review-page-000.json
+    python scripts/scan_upstream_delta.py --fetch-upstream --crosscheck-independent --limit 200 --offset 200 --report /tmp/filter-review-page-200.json
+
+Continue until `next_offset` is `null`. Paging exports review metadata only; no generated filters, subscriptions, commits or auto-adoption are created.
+
 This scan now distinguishes **complete local parent coverage** from a higher-risk **parent-domain expansion**. It also separates literal text references in the selected allowlist from actual `@@` exception-form lines. The scanner indexes literal references once; regex-escaped or wildcard exceptions and runtime matching are not modeled. The output is a review queue, not a ranked list of proven-safe filters.
 
 Independent cross-project comparison (requires verification of all sources):
