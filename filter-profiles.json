@@ -2,7 +2,7 @@
   "schema": "filter-profiles/v1",
   "version": "20261011.1",
   "reviewed_at": "2026-10-11",
-  "notes": "Common rules are generated into existing subscription paths. No upstream candidates are automatically promoted. v2 remains candidate; broad SDK domains are isolated in Strict.",
+  "notes": "Common rules are generated into existing subscription paths. No upstream candidates are automatically promoted. v2 remains candidate; broad SDK domains are isolated in Strict. Seven demonstrably stock-overlapping rules are quarantined in verification and excluded from generated v2 subscriptions; zero automatic adoption.",
   "rule_sets": {
     "ads-core": {
       "label": "International ad delivery and programmatic advertising",
@@ -189,10 +189,7 @@
         "||px.ads.linkedin.com^$third-party",
         "||static.ads-twitter.com^$third-party",
         "||beacon.geniee.jp^$third-party",
-        "||genieedmp.com^$third-party",
-        "||match.prod.bidr.io^$third-party",
-        "||sync.adkernel.com^$third-party",
-        "||sync.richaudience.com^$third-party"
+        "||genieedmp.com^$third-party"
       ]
     },
     "strict-v2": {
@@ -215,14 +212,10 @@
       ]
     },
     "privacy-optional-20261030": {
-      "label": "Optional third-party tracking and cookie-ID synchronization (2026-10-30 review queue)",
+      "label": "Quarantined overlapping rule research; zero active rules",
       "license": "GPL-3.0-only",
-      "rules": [
-        "||id5-sync.com^$third-party",
-        "||event.getblue.io^$third-party",
-        "||sync.ebis.ne.jp^$third-party",
-        "||pixel.wetracked.io^$third-party"
-      ]
+      "rules": [],
+      "disabled": true
     }
   },
   "outputs": [
@@ -301,14 +294,14 @@
         "! Compatibility: uBlock Origin / AdGuard / ABP-compatible syntax where supported.",
         "! Last reviewed: {reviewed_at}",
         "! Sources reviewed: EasyPrivacy, AdGuard Tracking Protection, uBlock Origin privacy filters.",
-        "! Candidate delta reviewed: 2026-10-30 (three narrowly scoped cookie-sync hosts; real-site E2E NOT_RUN).",
+        "! Candidate delta: seven stock-duplicate rules removed 2026-10-30; review retained in verification.",
         "! License: GPL-3.0-only"
       ],
       "rule_sets": [
         "privacy-v2"
       ],
       "includes": [],
-      "version": "20261030.1"
+      "version": "20261030.2"
     },
     {
       "scope": "s",
@@ -319,19 +312,20 @@
         "! Expires: 5 days",
         "! Homepage: https://github.com/r20942097-hue/s",
         "! Subscription: https://raw.githubusercontent.com/r20942097-hue/s/main/v2/tracking-extra.txt",
-        "! Description: Four narrowly scoped third-party tracking candidates, not a substitute for EasyPrivacy.",
+        "! Description: No active rules; seven redundant proposals quarantined as evidence.",
         "! Warning: Optional experimental filter. May interfere with attribution or analytics-dependent site features.",
         "! Policy: Third-party host rules only; no site-wide blocking, global cosmetics or broad scriptlets.",
         "! Compatibility: uBlock Origin / AdGuard / ABP-compatible network syntax where supported.",
         "! Candidate evidence: verification/filter-candidates.json",
         "! Real-site E2E: NOT_RUN; do not enable by default.",
-        "! License: GPL-3.0-only"
+        "! License: GPL-3.0-only",
+        "! Status: QUARANTINED_NO_ACTIVE_RULES"
       ],
       "rule_sets": [
         "privacy-optional-20261030"
       ],
       "includes": [],
-      "version": "20261030.1"
+      "version": "20261030.2"
     },
     {
       "scope": "s",
