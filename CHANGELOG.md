@@ -1,5 +1,12 @@
 # 更新記録
 
+## 2026-10-30 / 既定uBO Liteとの実DNR差分判定：7候補採用保留（Draft PR、未公開）
+
+- Chromeの開発用 `testMatchOutcome()` が返した候補7ホストへの仮想第三者画像通信のルールIDを、SHA-256検証済み公式uBO Lite ZIP内の静的ルールJSONに照合。全7件で `block` アクションに一致。
+- 内訳：Peter Lowe (pgl) 3件、EasyList 1件、EasyPrivacy 3件。この固定リリース／リクエスト条件では追加ルールの遮断範囲が既定DNRと重なるため、新候補7件を自動採用しない。
+- 選択したEasyPrivacyの2資料で一致しなかった4件も、実uBO Liteの別の既定リストに一致することを確認。採用判断はFirefox版uBOと本番サイトの増分評価まで保留。
+- これは仮想通信へのアクション照合であり、実際のサイト通信、ログイン、動画再生、誤遮断のE2E結果ではない。
+
 ## 2026-10-30 / 公式uBO Liteの実拡張起動試験（Draft PR、未公開）
 
 - uBlockOrigin/uBOL-homeの2026.1026.1812 Chromium版を公式GitHubリリースのSHA-256に固定し、CI内で改変せず展開・起動する検証を追加。ZIPは出力・Git管理しない。
