@@ -76,6 +76,12 @@ This is an accidental-release-regression check, not a signature or immutable ext
 - Selected EasyPrivacy observations separate whole-host blocking shapes (`||host^`, `||host^$third-party`) from `script`, path or other option-restricted references; the latter are **not** counted as complete coverage.
 - Neither parse models the full filter syntax. Runtime behavior, scoped exceptions, engine differences and baseline list activation remain NOT_RUN or out of scope.
 
+## PR job summary and traceability
+
+The CI test job writes four **temporary** JSON reports for pinned stable bytes, candidate provenance, selected independent delta comparisons, and upstream drift. `scripts/summarize_filter_gates.py` checks their schemas, numeric consistency, source verification and publication locks before appending a readable Markdown table to GitHub Actions **Job Summary**. A missing, malformed or publication-approved claim fails CI.
+
+The reports are kept only in the runner's temporary directory, and are not published to production or committed. GitHub Actions logs, checks and summaries are subject to retention limits (90 days maximum for public repositories as of October 2026); see [GitHub Actions retention](https://docs.github.com/en/organizations/managing-organization-settings/configuring-the-retention-period-for-github-actions-artifacts-and-logs-in-your-organization). Permanent evidence remains the versioned code, pinned-source registries, regression fixtures and PR description; CI logs are supporting evidence and should not be assumed permanent.
+
 ## Quality gates
 1. All accepted rules must remain narrow and third-party-only. No broad exception weakening and no hidden auto-promote.
 2. Existing network rules and stable paths remain byte-identical.
