@@ -113,6 +113,8 @@ jobs:
         run: python scripts/ubol_real_addon_fixture.py --report "$RUNNER_TEMP/real-ubol-fixture.json"
       - name: Import held candidate rules into official uBO Lite (localhost only)
         run: python scripts/ubol_imported_list_fixture.py --report "$RUNNER_TEMP/ubol-import-fixture.json"
+      - name: Screen alternate upstream hosts against stock uBO Lite DNR (read-only)
+        run: python scripts/ubol_stock_gap_probe.py --limit 80 --report "$RUNNER_TEMP/ubol-stock-gap.json"
       - name: Verify reversible browser integration and no-release gates
         run: |
           python scripts/verify_browser_gates.py \
