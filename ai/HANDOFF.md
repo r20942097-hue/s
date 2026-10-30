@@ -42,3 +42,10 @@
 - 内訳：pglがmatch.prod.bidr.io、sync.richaudience.com、id5-sync.com；EasyListがsync.adkernel.com；EasyPrivacyがevent.getblue.io、sync.ebis.ne.jp、pixel.wetracked.io。
 - 狭いEasyPrivacy2資料で未検出の4件も既定uBO Lite内の別ルールに遮断対象がある。**新規7件は保留を推奨**。この観測は仮想通信に限定され、Firefox版uBO・実サイトの価値や安全性は未確定。
 - PR #14の候補は人手の正式採否までDraft／NO_GO。最新のGitHub Actionsを確認し、古い未検証・アクション0件の中間実行結果で判断しない。
+
+## 2026-10-30｜公式uBO Lite外部購読・解除、C4を追加
+
+- `scripts/ubol_imported_list_fixture.py` はリポジトリ内の3+4候補を隔離HTTP `127.0.0.1` で配信し、公式拡張のダッシュボードメッセージ経路でインポート、コンパイル、DNR適用・解除を検証。ダウンロードした公式拡張とブラウザープロファイルは一時ディレクトリのみ。
+- 追加の`isolated-import-test.invalid`は純粋なテスト制御用で、配布対象・候補7件には含めない。制御用ホストのDNR一致が0→block→0と可逆に変化することを、実際のuBO Lite拡張に対するChromium仮想通信APIで確認した。
+- `scripts/verify_browser_gates.py` が隔離テスト4系統のレポートと状態を統合。CIのJob Summaryに記録する。現実のサイトへの通信、ログイン・決済・映像の実動作、Firefox上の公式フルuBOはNOT_RUN。
+- `docs/RELEASE_ACCEPTANCE.md` のC4を完成。D～Fは未達。main/既存購読/安定版保全、Draft/NO_GOを維持。
