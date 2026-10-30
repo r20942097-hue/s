@@ -1,5 +1,14 @@
 # 更新記録
 
+## 2026-10-30 / v2実験用追跡リストと出典検証ゲート（Draft PR、未公開）
+
+- `v2/tracking-extra.txt` を**任意購読・既定無効**の実験用候補として追加（4ホストのみ）。
+- `filter-profiles.json` を唯一のルール正本とし、生成先4件を自動生成。安定版および既存のv2ファイルには変更なし。
+- `verification/filter-candidates.json` に固定Gitコミット/Blob・原資料行番号・選定理由・候補除外理由・誤検知リスクを記録。
+- `scripts/audit_filter_candidates.py` と回帰試験を追加し、出典・ルールの一致、選定したallowlist内の例外文字列、既存ルールとの親子重複などを検査。上流取得はGit blobハッシュ検証付き。
+- CIの既存Filter list checksで候補検証を実施。uBO・Ghosteryの既存エンジン検証と併用。
+- 実ブラウザ/実サイト互換性：NOT_RUN。自動昇格、mainマージ、faaff取り込み、リリース：実施しない。
+
 ## 2026-10-30 / v2追跡フィルターの限定差分（Draft PR、未公開）
 
 - v2の `tracking.txt` に広告ID同期用の3ホスト `match.prod.bidr.io`、`sync.adkernel.com`、`sync.richaudience.com` を第三者通信に限定して追加。親ドメインの広域遮断は行わない。
