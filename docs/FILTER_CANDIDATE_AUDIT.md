@@ -46,6 +46,15 @@ The online check fetches only two explicitly pinned GitHub source files. It vali
 
 The GitHub Actions test job runs the online pinned-source check. The engine job parses every .txt list in root and v2 and checks uBlock Origin and Ghostery network behavior using synthetic first-party, third-party and boundary requests. Both are necessary but do not provide proof about live websites.
 
+## Source drift monitoring without silent refresh
+
+Use the new read-only checker to compare the four pinned sources against the two currently observed upstream `master` branch snapshots, each resolved to a specific commit SHA before downloading:
+
+    python scripts/check_upstream_drift.py
+    python scripts/check_upstream_drift.py --report /tmp/upstream-drift.json
+
+The report marks each source as `UNCHANGED_CONTENT` or `DRIFT_OBSERVED`, retains pinned and observed Git blob SHA identities and indicates `rule_adoption: FORBIDDEN`. Source changes are expected over time and **do not** automatically update `verification/*.json`, filter rules or release status. A network or schema error returns an unknown/error state instead of silently reporting unchanged content. CI checks it without committing the report.
+
 ## Quality gates
 1. All accepted rules must remain narrow and third-party-only. No broad exception weakening and no hidden auto-promote.
 2. Existing network rules and stable paths remain byte-identical.
