@@ -8,7 +8,7 @@ import unittest
 from zipfile import ZipFile, ZipInfo, ZIP_DEFLATED
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
-from ubol_real_addon_fixture import inspect_zip, validate_lock, verify_archive_bytes, validate_runtime_identity, measure_hypothetical_dnr, LOCK_PATH
+from ubol_real_addon_fixture import inspect_zip, validate_lock, verify_archive_bytes, validate_runtime_identity, measure_hypothetical_dnr, resolve_official_rule_actions, LOCK_PATH
 
 
 class RealUBOLReleaseTests(unittest.TestCase):
@@ -22,6 +22,53 @@ class RealUBOLReleaseTests(unittest.TestCase):
                 zipfile.writestr(name, content)
         output.seek(0)
         return ZipFile(output, "r")
+
+    def test_sha_verified_static_rule_file_actions_are_explicit(self):
+        with __import__("tempfile").TemporaryDirectory() as name:
+            root = Path(name)
+            directory = root / "rulesets" / "main"
+            directory.mkdir(parents=True)
+            (directory / "pgl.json").write_text(json.dumps([
+                {"id": 5, "action": {"type": "block"}, "condition": {}},
+                {"id": 6, "action": {"type": "allow"}, "condition": {}}
+            ]))
+            manifest = {"declarative_net_request": {"rule_resources": [
+                {"id": "pgl", "path": "/rulesets/main/pgl.json", "enabled": True}
+            ]}}
+            observed = {"status": "OBSERVED", "cases": [
+                {"host": "test.example", "matched_rules": [
+                    {"rule_id": 5, "ruleset_id": "pgl",
+                     "action_type": "UNKNOWN", "action_lookup_error": "unavailable"},
+                    {"rule_id": 6, "ruleset_id": "pgl",
+                     "action_type": "UNKNOWN", "action_lookup_error": "unavailable"}
+                ], "block_action_count": 0}
+            ]}
+            result = resolve_official_rule_actions(root, manifest, observed)
+            case = result["cases"][0]
+            self.assertEqual(case["block_action_count"], 1)
+            self.assertEqual(case["unresolved_actions"], 0)
+            self.assertEqual([m["action_type"] for m in case["matched_rules"]],
+                             ["block", "allow"])
+            self.assertIn("OFFICIAL_STATIC_RULES", result["action_lookup"])
+
+    def test_unknown_rule_id_never_assumed_blocked(self):
+        with __import__("tempfile").TemporaryDirectory() as name:
+            root = Path(name)
+            directory = root / "rulesets" / "main"
+            directory.mkdir(parents=True)
+            (directory / "a.json").write_text("[]")
+            manifest = {"declarative_net_request": {"rule_resources": [
+                {"id": "a", "path": "/rulesets/main/a.json", "enabled": True}
+            ]}}
+            obs = {"status": "OBSERVED", "cases": [
+                {"host": "host.example", "matched_rules": [
+                    {"rule_id": 999, "ruleset_id": "a",
+                     "action_type": "UNKNOWN", "action_lookup_error": "API not supported"}
+                ]}
+            ]}
+            out = resolve_official_rule_actions(root, manifest, obs)
+            self.assertEqual(out["cases"][0]["block_action_count"], 0)
+            self.assertEqual(out["cases"][0]["unresolved_actions"], 1)
 
     def test_hypothetical_dnr_check_does_not_claim_blocking(self):
         class Worker:
