@@ -24,6 +24,9 @@ EXPECTED_HOSTS = (
     "id5-sync.com", "event.getblue.io", "sync.ebis.ne.jp",
     "pixel.wetracked.io",
 )
+# Invalid TLD reserved for synthetic testing; must never enter published lists.
+CONTROL_HOST = "isolated-import-test.invalid"
+CONTROL_RULE = f"||{CONTROL_HOST}^$third-party"
 
 
 def candidate_payload(profile):
@@ -41,7 +44,8 @@ def candidate_payload(profile):
     return ("! Title: Isolated test-only candidate import\n"
             "! Expires: 7 days\n"
             "! This snapshot must never be published or auto-promoted.\n"
-            + "\n".join(first + last) + "\n").encode("utf-8")
+            + "! Test-only control below: never commit to a filter output\n"
+            + "\n".join(first + last + [CONTROL_RULE]) + "\n").encode("utf-8")
 
 
 @contextmanager
@@ -90,10 +94,38 @@ def analyze_imported_list(lists, url, fetches):
     if not isinstance(item.get("rules"), dict):
         raise ValueError("imported list compilation stats missing")
     accepted = item.get("filters", {}).get("accepted", 0)
-    if type(accepted) is not int or accepted < 7:
-        raise ValueError("fewer than seven candidate filters accepted")
+    if type(accepted) is not int or accepted < 8:
+        raise ValueError("seven candidates and test-only control not fully accepted")
     return {"registered": True, "enabled": True, "download_requests": fetches,
             "accepted_filters": accepted, "compiled_rule_stats": item["rules"]}
+
+
+def hypothetical_control(page):
+    """Read-only: query the actual extension DNR engine about a unique fake host."""
+    return page.evaluate("""async hostname => {
+        const request = {
+            url: 'https://' + hostname + '/fixture-image.gif',
+            initiator: 'https://example.org/',
+            type: 'image',
+            method: 'get'
+        };
+        const outcome = await chrome.declarativeNetRequest.testMatchOutcome(request);
+        const dynamic = await chrome.declarativeNetRequest.getDynamicRules();
+        const session = await chrome.declarativeNetRequest.getSessionRules();
+        const actions = [];
+        for (const row of (outcome.matchedRules || [])) {
+            const collection = row.rulesetId === '_session' ? session :
+                               row.rulesetId === '_dynamic' ? dynamic : [];
+            const found = collection.find(x => x.id === row.ruleId);
+            actions.push({ruleset_id: row.rulesetId, action_type:
+                          found ? found.action.type : 'UNKNOWN'});
+        }
+        return {
+            match_count: actions.length,
+            block_action_count: actions.filter(a => a.action_type === 'block').length,
+            matches: actions
+        };
+    }""", CONTROL_HOST)
 
 
 def exercise(extension_root, source_manifest, url, server):
@@ -116,8 +148,16 @@ def exercise(extension_root, source_manifest, url, server):
             validate_runtime_identity(info, source_manifest)
             page = context.new_page()
             page.goto(f"chrome-extension://{extension_id}/dashboard.html", wait_until="domcontentloaded")
-            # Run the same message path as uBOL's own dashboard; never modify
-            # the official extension source or inject candidate DNR rules.
+            # Separate baseline from the imported-list intervention.
+            before = hypothetical_control(page)
+            if before["match_count"] != 0:
+                raise ValueError("fixture host unexpectedly blocked by stock uBOL")
+            initial_sets = page.evaluate(
+                "() => chrome.runtime.sendMessage({what:'getEnabledRulesets'})")
+            if not isinstance(initial_sets, list) or not initial_sets:
+                raise ValueError("cannot capture initial uBOL enabled rulesets")
+            # Run the same message path as uBOL's dashboard, with no extension
+            # source edits and no direct DNR rule injection.
             page.evaluate("""async sourceUrl => {
                 await chrome.runtime.sendMessage({what:'importFilterList', url:sourceUrl});
             }""", url)
@@ -127,7 +167,7 @@ def exercise(extension_root, source_manifest, url, server):
                 const items = await chrome.runtime.sendMessage({what:'getImportedLists'});
                 const item = Array.isArray(items) && items.find(x => x.id === sourceUrl);
                 return item && item.enabled === true
-                    && item.filters && item.filters.accepted >= 7;
+                    && item.filters && item.filters.accepted >= 8;
             }""", arg=url, timeout=30000)
             lists = page.evaluate(
                 "() => chrome.runtime.sendMessage({what:'getImportedLists'})")
@@ -140,6 +180,44 @@ def exercise(extension_root, source_manifest, url, server):
             if stored is not True:
                 raise ValueError("official uBOL did not persist compiled imported list")
             stats["compiled_storage_present"] = True
+            # The imported list is only proved active if the unique fixture
+            # host's block action is visible to the browser's native DNR engine.
+            page.wait_for_function("""async hostname => {
+                const matches = (await chrome.declarativeNetRequest.testMatchOutcome({
+                    url: 'https://' + hostname + '/fixture-image.gif',
+                    initiator: 'https://example.org/', type: 'image', method: 'get'
+                })).matchedRules || [];
+                return matches.length > 0;
+            }""", arg=CONTROL_HOST, timeout=20000)
+            after = hypothetical_control(page)
+            if after["block_action_count"] < 1:
+                raise ValueError("imported local control did not activate a block action")
+            stats["control_before"] = before
+            stats["control_after_import"] = after
+            # Exercise the official uBOL unsubscribe path in the same
+            # ephemeral profile, and verify reversal of the DNR change.
+            page.evaluate("""async data => {
+                await chrome.runtime.sendMessage({
+                    what: 'applyRulesets', enabledRulesets: data.initial_sets,
+                    toRemove: [data.url]
+                });
+            }""", {"initial_sets": initial_sets, "url": url})
+            page.wait_for_function("""async data => {
+                const lists = await chrome.runtime.sendMessage({what:'getImportedLists'});
+                return Array.isArray(lists) && !lists.some(x => x.id === data.url);
+            }""", arg={"url": url}, timeout=20000)
+            page.wait_for_function("""async hostname => {
+                const result = await chrome.declarativeNetRequest.testMatchOutcome({
+                    url: 'https://' + hostname + '/fixture-image.gif',
+                    initiator: 'https://example.org/', type: 'image', method: 'get'
+                });
+                return (result.matchedRules || []).length === 0;
+            }""", arg=CONTROL_HOST, timeout=20000)
+            stats["control_after_unsubscribe"] = hypothetical_control(page)
+            stats["unsubscribe_reverted"] = (
+                stats["control_after_unsubscribe"]["match_count"] == 0)
+            if not stats["unsubscribe_reverted"]:
+                raise ValueError("local candidate unsubscribe did not revert DNR")
             page.close()
             return stats
         finally:
@@ -153,6 +231,7 @@ def main():
     status = {"schema": "filter-real-ubol-import-fixture/v1",
               "real_official_extension": True,
               "candidate_rules_supplied": 7,
+              "fixture_only_control_rules": 1,
               "source_scope": "isolated local HTTP, transient profile",
               "import_compile": "NOT_RUN",
               "actual_live_site_e2e": "NOT_RUN",
@@ -184,7 +263,9 @@ def main():
     print("OFFICIAL uBOL CANDIDATE IMPORT:", status["import_compile"], ";",
           status["observations"]["accepted_filters"], "accepted;",
           status["observations"]["download_requests"], "local fetches;",
-          "no real site/benefit/Firefox validation")
+          "fixture block", status["observations"]["control_after_import"]["block_action_count"],
+          "; unsubscribed", status["observations"]["unsubscribe_reverted"],
+          "; no real site/benefit/Firefox validation")
     return 0
 
 
