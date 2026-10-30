@@ -23,11 +23,19 @@
       "code",
       "X-Amz-Signature"
     ],
-    "combined_signed_query_integrity": "NOT_TESTED",
-    "external_site_compatibility": "NOT_RUN"
+    "combined_signed_query_integrity": "SYNTHETIC_HMAC_BROKEN_WITH_GLOBAL_RULE",
+    "external_site_compatibility": "NOT_RUN",
+    "synthetic_signed_url_integrity": {
+      "before_import": "PASS",
+      "with_global_removeparam": "BROKEN",
+      "after_unsubscribe": "PASS",
+      "scenario": "synthetic HMAC includes utm_source among signed query parameters",
+      "result_source": "GitHub Actions 41066213386; scripts/ubol_param_import_lab.py",
+      "real_website_signatures": "NOT_RUN"
+    }
   },
   "additional_questions": [
-    "Does a signed URL containing utm_source and a signature break after global removeparam?",
+    "Which real-site endpoint-specific rules can remove tracking params without modifying signed/authenticated URLs?",
     "Are specific endpoint/path-scoped rules needed and sufficient?",
     "Would the user already have the same behavior from an enabled default or optional uBO/AdGuard list?",
     "Does full uBlock Origin on Firefox behave equivalently?",
@@ -37,5 +45,5 @@
   "added_to_generated_filter_lists": false,
   "publication": "NO_GO",
   "owner_approval": "NEEDS_HUMAN",
-  "conclusion": "Only synthetic local HTTP provides evidence of incremental removal; no generalized live-site safety or incremental value has been established."
+  "conclusion": "Global removeparam=utm_source changes HTTP requests and breaks a synthetic HMAC-signed URL. A narrowly scoped alternative requires real site safety evidence; zero active additions, NO_GO."
 }
