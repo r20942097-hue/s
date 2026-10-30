@@ -39,6 +39,8 @@ def proposed_candidate_rows(profiles, baselines, evidence):
             or archive.get("active_rule_count") != 0
             or not isinstance(extra, list) or len(extra) != 4 or len(set(extra)) != 4):
         raise ValueError("missing or changed seven-rule stock-overlap archive")
+    if profiles["rule_sets"]["privacy-optional-20261030"].get("rules") != []:
+        raise ValueError("disabled proposal has active/unreviewed candidate leaked")
     active = [rule for rule_set in profiles["rule_sets"].values()
               for rule in rule_set.get("rules", [])]
     if any(rule in active for rule in [*V2_PROPOSED_RULES, *extra]):
