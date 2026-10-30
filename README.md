@@ -57,6 +57,14 @@ python scripts/compare_subscription_coverage.py --crosscheck-independent
 # CIでは scripts/summarize_filter_gates.py が4検査結果を Job Summary に統合
 ```
 
+完成条件・公開前の未完了工程は [受入ゲート](docs/RELEASE_ACCEPTANCE.md) を参照してください。GitHub Actionsのbrowser fixtureは**実際のChromium/Firefox**で合成ページを検証しますが、模擬遮断にはPlaywrightのroute.abortを使用しており、実フィルター拡張のサイト互換性を実証しません。
+
+隔離された合成ブラウザーテストをローカルで実行する場合（Playwright 1.64.1とそのChromium/Firefoxバイナリが別途必要）:
+
+~~~sh
+python scripts/browser_fixture_smoke.py
+~~~
+
 変更内容は[更新記録](CHANGELOG.md)、検証に使うバージョンは[エンジン固定情報](verification/engine-lock.json)です。公開ページの通信確認や合成画面テストは、認証・動画再生のE2Eとは区別します。
 
 ## ライセンス
