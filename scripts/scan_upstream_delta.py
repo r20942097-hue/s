@@ -38,6 +38,7 @@ def scan(profiles, evidence, tracking_text, allowlist_text, limit=40):
         raise ValueError("upstream snapshots must decode as text")
     source = evidence["sources"]["tracking"]
     existing = filter_hosts(profiles)
+    allowlist_lines = allowlist_text.splitlines()
     reviewed = set()
     queue = []
     exact_third_party = 0
@@ -56,7 +57,7 @@ def scan(profiles, evidence, tracking_text, allowlist_text, limit=40):
             overlapped += 1
             continue
         pattern = re.compile(HOST_BOUNDARY.format(re.escape(host)), re.I)
-        exceptions = [i for i, candidate_line in enumerate(allowlist_text.splitlines(), 1)
+        exceptions = [i for i, candidate_line in enumerate(allowlist_lines, 1)
                       if pattern.search(candidate_line)]
         if exceptions:
             with_exceptions += 1
