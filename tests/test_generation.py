@@ -151,6 +151,22 @@ class GenerationTests(unittest.TestCase):
     def test_checked_in_outputs_are_current(self):
         self.assertEqual(generation.generate(self.data, {'s': generation.ROOT}, check=True), [])
 
+    def test_candidate_output_version_isolated_and_validated(self):
+        data = copy.deepcopy(self.data)
+        target = next(item for item in data['outputs'] if item['path'] == 'v2/tracking.txt')
+        target['version'] = '20261030.2'
+        self.assertEqual(generation.validate_profiles(data), [])
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self.assertEqual(generation.generate(data, {'s': root}), [])
+            self.assertIn('! Version: 20261030.2', (root / 'v2/tracking.txt').read_text())
+            self.assertIn('! Version: 20261011.1', (root / 'tracking.txt').read_text())
+            self.assertIn('! Version: 20261011.1', (root / 'v2/ad.txt').read_text())
+        for invalid in ['20261301.1', 'invalid', [], None, True]:
+            with self.subTest(invalid=invalid):
+                target['version'] = invalid
+                self.assertTrue(any('invalid output version' in err for err in generation.validate_profiles(data)))
+
     def test_generation_is_repeatable(self):
         with TemporaryDirectory() as tmp:
             root = Path(tmp)
