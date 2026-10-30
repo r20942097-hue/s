@@ -45,7 +45,9 @@
     "python scripts/compare_subscription_coverage.py --crosscheck-independent",
     "python scripts/browser_fixture_smoke.py (requires playwright==1.64.1 and bundled browsers)",
     "python scripts/chromium_dnr_fixture.py (Playwright Chromium, temporary native MV3 DNR extension)",
-    "python scripts/ubol_real_addon_fixture.py --report /tmp/real-ubol.json (Playwright Chromium; official ZIP fetched and SHA256-verified)"
+    "python scripts/ubol_real_addon_fixture.py --report /tmp/real-ubol.json (Playwright Chromium; official ZIP fetched and SHA256-verified)",
+    "python scripts/ubol_imported_list_fixture.py --report /tmp/ubol-import.json",
+    "python scripts/verify_browser_gates.py --surrogate <json> --native <json> --stock <json> --imported <json>"
   ],
   "downstream": {
     "repository": "r20942097-hue/faaff",
@@ -105,6 +107,20 @@
       "incremental_value": "NOT_ESTABLISHED; likely redundant for tested uBOL default request shape",
       "publication": "HOLD"
     },
-    "release_decision": "NO_GO: 7/7 candidate hosts already matched default stock uBOL block actions in hypothetical case; do not auto-promote"
+    "release_decision": "NO_GO: 7/7 candidate hosts already matched default stock uBOL block actions in hypothetical case; do not auto-promote",
+    "real_ubol_import": {
+      "status": "PASS: official uBOL 2026.1026.1812 imported 7 held candidates plus 1 never-published control",
+      "local_server": "127.0.0.1 ephemeral HTTP",
+      "accepted_count": 8,
+      "compiled_storage": "PASS",
+      "temporary_native_dnr_before": 0,
+      "after_import_block_action_at_least": 1,
+      "after_unsubscribe": 0,
+      "rollback": "PASS",
+      "live_site_effectiveness": "NOT_RUN",
+      "public_subscription_url": "UNCHANGED",
+      "release": "NO_GO"
+    },
+    "browser_quality_gates": "PASS for four isolated browser categories; see latest current-head CI and docs/RELEASE_ACCEPTANCE.md"
   }
 }
