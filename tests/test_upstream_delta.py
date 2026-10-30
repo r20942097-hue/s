@@ -160,7 +160,7 @@ class DeltaScanTests(unittest.TestCase):
         self.assertEqual(report["already_covered_by_local_parent_or_exact"], 1)
         self.assertEqual(report["parent_expansion_candidates"], 1)
         self.assertEqual(report["new_candidate_hosts"], 2)
-        expanded = next(x for x in report["queue"] if x["host"] == "wetracked.io")
+        expanded = next(x for x in report["queue"] if x["host"] == "geniee.jp")
         self.assertEqual(expanded["coverage"], "expands-existing-child")
         self.assertIn("parent_domain_expansion", expanded["risk_flags"])
         self.assertEqual(report["queue"][0]["host"], "brand-new-review.example")
