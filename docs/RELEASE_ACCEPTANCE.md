@@ -1,5 +1,7 @@
 # フィルターv2の完成条件・受入基準（2026-10-30）
 
+2026年10月30日の追加判定：既定フィルターと重複した7ルールは活動候補から除外（v2/tracking.txtから3、実験用v2/tracking-extra.txtから4）。後者は隔離マーカー付きのゼロルールファイルに変更しました。出典と履歴はverification/filter-candidates.jsonに保管。別候補80件をスクリーニングし、34件が3種の仮想通信で未一致、45件は既定block一致、1件は未解決です。**新規採用ゼロ**。詳細は[重複除去と新候補](STOCK_GAP_REVIEW.md)。
+
 現在の判定は **CANDIDATE / PUBLICATION_HOLD / NO_GO**。自動テストの成功は安全な正式公開を意味しません。既存URLとmainの公開ファイルを維持し、所有者の明示承認があるまでマージ・Release・本番同期を行いません。
 
 正本の確認・議論は [Draft PR #14](https://github.com/r20942097-hue/s/pull/14) に集約します。
