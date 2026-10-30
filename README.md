@@ -13,6 +13,7 @@
 | より深いフォント調整 | [japanese-text-softener-deep.txt](japanese-text-softener-deep.txt) | 標準版を含む追加プロファイル |
 | 外部Twitch拡張 | [twitch-custom-optional.txt](twitch-custom-optional.txt) | 追加リソースが必要。既定では無効 |
 | 次世代フィルター | [v2/README.md](v2/README.md) | 候補版。実サイト検証後に評価 |
+| 実験用追跡フィルター | [v2/tracking-extra.txt](v2/tracking-extra.txt) | 4件の限定ホスト。**任意・既定無効**。実サイト検証未実施 |
 
 購読URLは `https://raw.githubusercontent.com/r20942097-hue/s/main/` に各ファイル名を付けたものです。リポジトリの公開状態は確認済みです。20261011.1の更新差分と検証結果は [PR #3](https://github.com/r20942097-hue/s/pull/3) で確認できます。購読先は既定ブランチへの反映後に更新されます。
 
