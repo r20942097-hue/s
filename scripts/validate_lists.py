@@ -62,7 +62,14 @@ def validate(root=ROOT):
                 errors.append(f"{name}:{number}: duplicate active rule")
             seen.add(line)
         if not seen:
-            errors.append(f"{name}: no active rules")
+            # Quarantine marker documents why this unpublished v2 candidate
+            # subscription intentionally has zero blocking rules. Never
+            # allow empty stable lists or a copy with a different path.
+            allowed = (name == "v2/tracking-extra.txt"
+                       and "! Status: QUARANTINED_NO_ACTIVE_RULES" in lines
+                       and all(not x.startswith("||") for x in lines))
+            if not allowed:
+                errors.append(f"{name}: no active rules")
     visiting, visited = set(), set()
 
     def visit(path):
