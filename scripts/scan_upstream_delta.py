@@ -1,8 +1,10 @@
-"""Read-only candidate discovery from verified pinned upstream snapshots.
+"""Bounded read-only upstream review: never import candidates into live filters.
 
-Produces a *review queue*, not filters. No rule adoption, list writes or push.
+All classification comes from immutable pinned snapshots. "Novel" means only
+not present in our local profile registry, NOT new to ecosystem filtering.
 """
 import argparse
+from collections import defaultdict
 import json
 from pathlib import Path
 import re
@@ -13,7 +15,9 @@ from generate_lists import valid_hostname
 
 RULE = re.compile(r"\|\|([a-z0-9.-]+)\^\$third-party\Z")
 ANY_RULE = re.compile(r"\|\|([a-z0-9.-]+)(?:\^|/)")
-HOST_BOUNDARY = r"(?<![A-Za-z0-9_.-]){}(?![A-Za-z0-9_.-])"
+# Conservative literal-host tokens; regex-escaped and wildcard references are NOT
+# decoded and must remain outside the claims of this limited allowlist search.
+HOST_TOKEN = re.compile(r"(?<![A-Za-z0-9_.-])([A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)+)(?![A-Za-z0-9_.-])")
 
 
 def filter_hosts(profiles):
@@ -26,24 +30,44 @@ def filter_hosts(profiles):
     return hosts
 
 
-def overlapping(host, existing):
-    return any(host == prior or host.endswith("." + prior)
-               or prior.endswith("." + host) for prior in existing)
+def coverage(host, existing):
+    """Return exact/ancestor coverage before detecting riskier parent expansion."""
+    parts = host.split(".")
+    for index in range(len(parts) - 1):
+        if ".".join(parts[index:]) in existing:
+            return "covered"
+    if any(value.endswith("." + host) for value in existing):
+        return "expands-existing-child"
+    return "not-covered"
+
+
+def allowlist_index(text):
+    """Single-pass index for *literal* host appearances; never equate with safety."""
+    found = defaultdict(lambda: {"mentions": [], "exception_rules": []})
+    for line_no, line in enumerate(text.splitlines(), 1):
+        hosts = {match.group(1).lower() for match in HOST_TOKEN.finditer(line)}
+        for host in hosts:
+            found[host]["mentions"].append(line_no)
+            if line.lstrip().startswith("@@"):
+                found[host]["exception_rules"].append(line_no)
+    return found
 
 
 def scan(profiles, evidence, tracking_text, allowlist_text, limit=40):
-    if not isinstance(limit, int) or limit < 1 or limit > 200:
-        raise ValueError("review queue limit must be 1..200")
+    if isinstance(limit, bool) or not isinstance(limit, int) or limit < 1 or limit > 200:
+        raise ValueError("review queue limit must be an integer 1..200")
     if not isinstance(tracking_text, str) or not isinstance(allowlist_text, str):
         raise ValueError("upstream snapshots must decode as text")
     source = evidence["sources"]["tracking"]
     existing = filter_hosts(profiles)
-    allowlist_lines = allowlist_text.splitlines()
+    references = allowlist_index(allowlist_text)
     reviewed = set()
     queue = []
     exact_third_party = 0
-    overlapped = 0
-    with_exceptions = 0
+    covered = 0
+    expanded = 0
+    with_references = 0
+    with_exception_rules = 0
     for line_no, line in enumerate(tracking_text.splitlines(), 1):
         m = RULE.fullmatch(line.strip())
         if m is None:
@@ -53,38 +77,74 @@ def scan(profiles, evidence, tracking_text, allowlist_text, limit=40):
         if not valid_hostname(host) or host in reviewed:
             continue
         reviewed.add(host)
-        if overlapping(host, existing):
-            overlapped += 1
+        status = coverage(host, existing)
+        if status == "covered":
+            covered += 1
             continue
-        pattern = re.compile(HOST_BOUNDARY.format(re.escape(host)), re.I)
-        exceptions = [i for i, candidate_line in enumerate(allowlist_lines, 1)
-                      if pattern.search(candidate_line)]
+        if status == "expands-existing-child":
+            expanded += 1
+        evidence_rows = references.get(host, {"mentions": [], "exception_rules": []})
+        mentions = evidence_rows["mentions"]
+        exceptions = evidence_rows["exception_rules"]
+        if mentions:
+            with_references += 1
         if exceptions:
-            with_exceptions += 1
-        queue.append({"host": host, "rule": line.strip(), "line": line_no,
-                      "source_url": ("https://github.com/" + source["repository"] + "/blob/"
-                                     + source["commit"] + "/" + source["path"] + "#L" + str(line_no)),
-                      "selected_allowlist_references": exceptions[:10],
-                      "needs_manual_review": True,
-                      "status": "REVIEW_REQUIRED",
-                      "live_site_e2e": "NOT_RUN"})
-    queue.sort(key=lambda item: (bool(item["selected_allowlist_references"]), item["host"]))
-    return {"schema": "upstream-delta-review/v1",
-            "source_commit": source["commit"],
-            "source_blob_sha": source["git_blob_sha"],
-            "upstream_exact_third_party_rules": exact_third_party,
-            "already_covered_or_parent_overlap": overlapped,
-            "new_candidate_hosts": len(queue),
-            "candidate_hosts_with_selected_allowlist_reference": with_exceptions,
-            "queue_limit": limit, "queue": queue[:limit],
-            "note": "Classification is not safety or incremental efficacy. No automatic adoption.",
-            "publication": "NO_GO", "live_site_e2e": "NOT_RUN"}
+            with_exception_rules += 1
+        flags = []
+        if status == "expands-existing-child":
+            flags.append("parent_domain_expansion")
+        if exceptions:
+            flags.append("selected_allowlist_exception")
+        elif mentions:
+            flags.append("selected_allowlist_literal_mention")
+        queue.append({
+            "host": host, "rule": line.strip(), "line": line_no,
+            "source_url": ("https://github.com/" + source["repository"] + "/blob/"
+                           + source["commit"] + "/" + source["path"] + "#L" + str(line_no)),
+            "coverage": status,
+            "selected_allowlist_references": mentions[:10],
+            "selected_allowlist_exception_lines": exceptions[:10],
+            "risk_flags": flags,
+            "needs_manual_review": True,
+            "status": "REVIEW_REQUIRED",
+            "live_site_e2e": "NOT_RUN"
+        })
+    # Exclude exceptional and parent-expansion cases from the first triage batch,
+    # without removing them or claiming the remaining candidates are safe.
+    queue.sort(key=lambda item: (
+        bool(item["selected_allowlist_exception_lines"]),
+        item["coverage"] == "expands-existing-child",
+        bool(item["selected_allowlist_references"]),
+        item["host"]
+    ))
+    return {
+        "schema": "upstream-delta-review/v2",
+        "source_commit": source["commit"],
+        "source_blob_sha": source["git_blob_sha"],
+        "upstream_exact_third_party_rules": exact_third_party,
+        "already_covered_by_local_parent_or_exact": covered,
+        "parent_expansion_candidates": expanded,
+        "new_candidate_hosts": len(queue),
+        "candidate_hosts_with_selected_allowlist_reference": with_references,
+        "candidate_hosts_with_selected_allowlist_exception": with_exception_rules,
+        "candidate_hosts_without_selected_allowlist_literal_reference": len(queue)-with_references,
+        "queue_limit": limit,
+        "queue": queue[:limit],
+        "limitations": [
+            "Local-only coverage: not a comparison against installed EasyList, EasyPrivacy or AdGuard.",
+            "Literal-host allowlist scan: regex-escaped, wildcard and semantic exceptions are not evaluated.",
+            "Not all network filter options or first-party/CNAME behaviors are analyzed.",
+            "No real-browser or production-site tests."
+        ],
+        "publication": "NO_GO",
+        "live_site_e2e": "NOT_RUN"
+    }
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--fetch-upstream", action="store_true",
-                        help="fetch exact pinned Git blobs, never moving upstream HEAD")
+                        help="fetch immutable verified source/allowlist, never moving HEAD")
     parser.add_argument("--tracking-file", type=Path, help="offline snapshot input")
     parser.add_argument("--allowlist-file", type=Path, help="offline selected exception input")
     parser.add_argument("--report", type=Path, help="write JSON outside the repository only")
@@ -114,9 +174,11 @@ def main():
     except (OSError, ValueError, KeyError, UnicodeError, TypeError) as error:
         print("DELTA SCAN FAILED:", error, file=sys.stderr)
         return 1
-    print("DELTA SCAN READ_ONLY:", report["new_candidate_hosts"], "unreviewed hosts;",
-          report["candidate_hosts_with_selected_allowlist_reference"],
-          "literal allowlist overlaps; review queue:", len(report["queue"]),
+    print("DELTA SCAN READ_ONLY:", report["new_candidate_hosts"], "not locally covered;",
+          report["already_covered_by_local_parent_or_exact"], "covered;",
+          report["parent_expansion_candidates"], "parent-expansion candidates;",
+          report["candidate_hosts_with_selected_allowlist_exception"],
+          "with selected allowlist exceptions; review queue:", len(report["queue"]),
           "; NO_GO for auto-promotion")
     if not args.report:
         print(json.dumps(report["queue"][:min(10, args.limit)], ensure_ascii=False, indent=2))
