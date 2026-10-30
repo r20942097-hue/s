@@ -41,6 +41,8 @@ def candidate_payload(profile):
             or set(retired.get("four_extra_rules", [])) != set(last)
             or retired.get("active_rule_count") != 0):
         raise ValueError("historical held-rule archive was changed or removed")
+    if profile["rule_sets"]["privacy-optional-20261030"].get("rules") != []:
+        raise ValueError("disabled proposal has unreviewed candidate leaked")
     for entry in profile["rule_sets"].values():
         if any(rule in entry.get("rules", []) for rule in first + last):
             raise ValueError("retired stock-overlap rule leaked into active subscriptions")
