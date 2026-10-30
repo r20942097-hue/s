@@ -105,7 +105,7 @@ def observed_scope(host, sources):
     if sources is None:
         return None
     parts = host.split(".")
-    ancestors = (".".join(parts[i:]) for i in range(len(parts)-1))
+    ancestors = tuple(".".join(parts[i:]) for i in range(len(parts)-1))
     for scope in ("full", "restricted"):
         for path in sorted(sources):
             groups = sources[path]
