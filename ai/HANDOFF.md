@@ -12,6 +12,13 @@
 6. 未対応: `PROJECT_STATE.json` の `open_items` を参照。
 
 
+## 2026-10-30｜Chromium Native DNR・候補別レビューを追加
+
+- scripts/chromium_dnr_fixture.py はPlaywright付属Chromiumへ一時MV3拡張を読み込み、実ブラウザー標準DNRで第三者ビーコンを遮断したことをHTTP到達数で検証する。uBO/uBOL・実サイトとは明確に別工程。
+- scripts/compare_subscription_coverage.py に proposed_candidate_evidence 7件を追加。EasyPrivacy固定2ファイルで親ホストルールが対応するのは3件。残り4件は未掲載と断言せず「今回の2資料に一致なし」、全件増分価値未確定。
+- CI browserジョブは旧Playwright模擬通信のChromium/Firefox対照試験に加え、Chromium Native DNRもPASSが必要。未検証の実拡張・本番サイト検証と公開承認は残る。
+- docs/RELEASE_ACCEPTANCE.md のC1/C2を確認。正式公開は引き続きNO_GO。
+
 ## 2026-10-30｜フィルターv2完成優先の引継ぎ
 
 - Draft PR: https://github.com/r20942097-hue/s/pull/14 （未マージ）。リリース判定は **NO_GO / NEEDS_HUMAN**。既存購読URL、安定版8ファイル、mainは保全。
