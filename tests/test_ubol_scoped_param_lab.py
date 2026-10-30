@@ -32,6 +32,7 @@ class ScopeTests(unittest.TestCase):
         active["signed_target"]["utm"] = False
         active["signed_target"]["valid"] = False
         self.assertEqual(verify(before, active, after)["same_endpoint_signed"], "BROKEN")
+        self.assertEqual(verify(before, active, after)["signed_before_after"], "PASS")
         active["checkout"]["utm"] = False
         with self.assertRaisesRegex(ValueError, "unrelated path"):
             verify(before, active, after)

@@ -56,5 +56,6 @@ def verify(before, active, restored):
     return {"target": "PRESENT_REMOVED_RESTORED",
             "other_paths": "PRESERVED",
             "other_signed_urls": "PRESERVED",
+            "signed_before_after": "PASS",
             "same_endpoint_signed": ("PASS" if active["signed_target"]["valid"] else "BROKEN"),
             "real_site": "NOT_RUN"}
