@@ -153,14 +153,14 @@ class DeltaScanTests(unittest.TestCase):
 
     def test_parent_domain_expansion_is_flagged_and_not_counted_as_covered(self):
         # An ancestor of an already blocked host is not automatically redundant.
-        text = ("||geniee.jp^$third-party\n"
-                "||beacon.geniee.jp^$third-party\n"
+        text = ("||tiktok.com^$third-party\n"
+                "||analytics.tiktok.com^$third-party\n"
                 "||brand-new-review.example^$third-party\n")
         report = scan(self.profiles, self.evidence, text, "", 10)
         self.assertEqual(report["already_covered_by_local_parent_or_exact"], 1)
         self.assertEqual(report["parent_expansion_candidates"], 1)
         self.assertEqual(report["new_candidate_hosts"], 2)
-        expanded = next(x for x in report["queue"] if x["host"] == "geniee.jp")
+        expanded = next(x for x in report["queue"] if x["host"] == "tiktok.com")
         self.assertEqual(expanded["coverage"], "expands-existing-child")
         self.assertIn("parent_domain_expansion", expanded["risk_flags"])
         self.assertEqual(report["queue"][0]["host"], "brand-new-review.example")
