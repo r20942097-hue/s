@@ -52,7 +52,8 @@ python scripts/audit_upstream.py --cache ../work/upstream-audit --fetch --report
 python scripts/audit_filter_candidates.py --fetch-upstream
 python scripts/scan_upstream_delta.py --fetch-upstream --crosscheck-independent --limit 40
 python scripts/check_upstream_drift.py
-python scripts/check_stable_fidelity.py
+python scripts/check_stable_fidelity.py --verify-base-tree  # 履歴Gitコミットを取得済みの環境
+python scripts/compare_subscription_coverage.py --crosscheck-independent
 # CIでは scripts/summarize_filter_gates.py が4検査結果を Job Summary に統合
 ```
 
