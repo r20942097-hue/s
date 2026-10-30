@@ -4,12 +4,13 @@ Read-only; analyses only exact pinned upstream sources. A counted rule shape is
 not proof of filtering behavior on live sites or within a user's extensions.
 """
 import argparse
+import re
 import json
 from pathlib import Path
 import sys
 
 from audit_filter_candidates import ROOT, fetch_pinned, read_json
-from independent_baseline import fetch_baselines, observed_network_hosts
+from independent_baseline import fetch_baselines, observed_network_hosts, observed_scope
 from scan_upstream_delta import scan, filter_hosts
 
 OUTPUT_GROUPS = {
@@ -17,6 +18,48 @@ OUTPUT_GROUPS = {
     "v2_balanced": ("v2/ad.txt", "v2/tracking.txt"),
 }
 REPORT_SCHEMA = "filter-subscription-coverage/v1"
+V2_PROPOSED_RULES = (
+    "||match.prod.bidr.io^$third-party",
+    "||sync.adkernel.com^$third-party",
+    "||sync.richaudience.com^$third-party"
+)
+THIRD_PARTY_HOST = re.compile(r"\|\|([a-z0-9.-]+)\^\$third-party\Z")
+
+
+def proposed_candidate_rows(profiles, baselines):
+    """Audit only seven explicitly proposed rules, not the entire installed set.
+
+    Selected EasyPrivacy matches here are literal request-host/parent-rule
+    *shape* comparisons; absence does not establish incremental ad blocking.
+    """
+    existing = profiles["rule_sets"]["privacy-v2"]["rules"]
+    if any(rule not in existing for rule in V2_PROPOSED_RULES):
+        raise ValueError("proposed v2 rule missing or altered")
+    extra = profiles["rule_sets"]["privacy-optional-20261030"]["rules"]
+    if len(extra) != 4 or len(set(extra)) != 4:
+        raise ValueError("optional candidates must remain four unique rules")
+    candidates = [("v2/tracking.txt", rule) for rule in V2_PROPOSED_RULES]
+    candidates += [("v2/tracking-extra.txt", rule) for rule in extra]
+    reference = observed_network_hosts(baselines) if baselines is not None else None
+    rows = []
+    for output, rule in candidates:
+        match = THIRD_PARTY_HOST.fullmatch(rule)
+        if match is None:
+            raise ValueError("unexpected unscoped candidate rule")
+        host = match.group(1)
+        found = observed_scope(host, reference) if reference is not None else None
+        rows.append({
+            "output": output, "host": host, "rule": rule,
+            "selected_easyprivacy_reference": found["path"] if found else None,
+            "selected_easyprivacy_match_shape": found["scope"] if found else None,
+            "selected_easyprivacy_matching_host": found["matched_host"] if found else None,
+            "incremental_blocking_value": "NOT_ESTABLISHED",
+            "real_site_compatibility": "NOT_RUN",
+            "adopted_to_stable": False
+        })
+    if len({r["host"] for r in rows}) != 7:
+        raise ValueError("duplicate across proposed candidate sets")
+    return rows
 
 
 def matching_sets(profiles, paths):
@@ -74,12 +117,15 @@ def analyze(profiles, evidence, tracking, allowlist, baselines=None):
             "selected_easyprivacy_overlap_among_not_covered":
                 result["candidate_hosts_also_observed_in_selected_easyprivacy"]
         })
+    candidate_rows = proposed_candidate_rows(profiles, baselines)
     return {
         "schema": REPORT_SCHEMA,
         "pinned_tracking_commit": evidence["sources"]["tracking"]["commit"],
         "source_host_universe": total,
         "independent_comparison": "PASS" if baselines is not None else "NOT_RUN",
         "outputs": rows,
+        "proposed_candidate_count": len(candidate_rows),
+        "proposed_candidate_evidence": candidate_rows,
         "publication": "NO_GO",
         "live_site_e2e": "NOT_RUN",
         "limitations": [
@@ -123,6 +169,11 @@ def main():
     print("SUBSCRIPTION COVERAGE READ_ONLY:", len(report["outputs"]),
           "subscription/group scopes;", report["source_host_universe"],
           "source hosts; NO_GO for auto adoption", file=sys.stderr)
+    for candidate in report["proposed_candidate_evidence"]:
+        print("PROPOSED CANDIDATE:", candidate["host"],
+              "selected EasyPrivacy:", candidate["selected_easyprivacy_match_shape"] or "NO_SELECTED_MATCH",
+              "matched via:", candidate["selected_easyprivacy_matching_host"],
+              "; incremental effect NOT_ESTABLISHED", file=sys.stderr)
     for item in report["outputs"]:
         print("SUBSCRIPTION SCOPE:", item["name"],
               "matched", item["covered_by_exact_or_parent"],
