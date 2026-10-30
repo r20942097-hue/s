@@ -84,6 +84,44 @@ class IndependentBaselineTests(unittest.TestCase):
         self.assertIsNone(observed_reference("foo.example", observed))
         self.assertIsNone(observed_reference("just-another.example", observed))
 
+    def test_independent_paths_and_types_do_not_imply_full_host_block(self):
+        from independent_baseline import observed_scope
+        paths = [source["path"] for source in self.info["sources"]]
+        data = {
+            paths[0]: ("||script-only.example^$third-party,script\n"
+                       "||path-only.example/tracker$third-party\n"
+                       "||unrestricted.example^$third-party\n"
+                       "||entire.example^\n"),
+            paths[1]: "||sub.from-parent.example^$third-party\n"
+        }
+        observed = observed_network_hosts(data)
+        self.assertEqual(observed_scope("script-only.example", observed)["scope"], "restricted")
+        self.assertEqual(observed_scope("path-only.example", observed)["scope"], "restricted")
+        self.assertEqual(observed_scope("unrestricted.example", observed)["scope"], "full")
+        self.assertEqual(observed_scope("cdn.entire.example", observed)["scope"], "full")
+        self.assertIsNone(observed_scope("from-parent.example", observed))
+
+    def test_scoped_baseline_observation_is_not_full_scope_block(self):
+        paths = [source["path"] for source in self.info["sources"]]
+        baseline = {
+            paths[0]: "||restricted-observation.example/path$third-party\n",
+            paths[1]: "||full-observation.example^$third-party\n"
+        }
+        report = scan(
+            self.profiles, self.candidates,
+            "||restricted-observation.example^$third-party\n"
+            "||full-observation.example^$third-party\n"
+            "||not-observed.example^$third-party\n",
+            "", baseline_sources=baseline
+        )
+        self.assertEqual(report["candidate_hosts_also_observed_in_selected_easyprivacy"], 2)
+        self.assertEqual(report["candidate_hosts_with_selected_easyprivacy_full_host_rule"], 1)
+        self.assertEqual(report["candidate_hosts_with_selected_easyprivacy_scoped_rule_only"], 1)
+        grouped = {row["host"]: row for row in report["queue"]}
+        self.assertEqual(grouped["restricted-observation.example"]["selected_independent_easyprivacy_scope"], "restricted")
+        self.assertEqual(grouped["full-observation.example"]["selected_independent_easyprivacy_scope"], "full")
+        self.assertIsNone(grouped["not-observed.example"]["selected_independent_easyprivacy_scope"])
+
     def test_crosscheck_categorization_without_adopting(self):
         paths = [source["path"] for source in self.info["sources"]]
         sources = {
